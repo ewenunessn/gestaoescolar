@@ -33,8 +33,8 @@ const escola: EscolaEntrega = {
   nome: 'CMEI Berco da Liberdade',
   endereco: 'Rua Teste',
   total_itens: 0,
-  itens_pendentes: 0,
   itens_entregues: 0,
+  percentual_entregue: 0,
 };
 
 describe('ItensEntregaList', () => {

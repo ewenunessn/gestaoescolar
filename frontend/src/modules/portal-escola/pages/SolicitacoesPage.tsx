@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Box, Button, CircularProgress, Dialog, DialogTitle, DialogContent, 
@@ -20,6 +20,12 @@ import {
   Solicitacao, NovoItemData,
 } from "../../../services/solicitacoesAlimentos";
 import { produtoService, Produto } from "../../../services/produtoService";
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from "../../../services/realtime";
+import { getSolicitacaoItemStatusView } from "../../../services/solicitacoesAlimentosStatus";
 
 export default function SolicitacoesPage() {
   const navigate = useNavigate();
@@ -75,17 +81,29 @@ export default function SolicitacoesPage() {
       });
   }, []);
 
-  const carregarSolicitacoes = async () => {
-    setLoading(true);
+  const carregarSolicitacoes = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const data = await listarMinhasSolicitacoes();
       setSolicitacoes(data);
     } catch {
       toast.error('Erro ao carregar solicitações');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, { domains: ['solicitacoes_alimentos'] })) {
+        carregarSolicitacoes(false);
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+  }, [carregarSolicitacoes]);
 
   const handleCriarSolicitacao = async () => {
     if (novaItens.length === 0) {
@@ -504,22 +522,22 @@ export default function SolicitacoesPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {solicitacaoSelecionada.itens?.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{item.nome_produto}</TableCell>
-                        <TableCell align="center">{item.quantidade} {item.unidade}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={item.status.toUpperCase()}
-                            size="small"
-                            color={
-                              item.status === 'pendente' ? 'warning' :
-                              item.status === 'aceito' ? 'success' : 'error'
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {solicitacaoSelecionada.itens?.map((item, idx) => {
+                      const itemStatus = getSolicitacaoItemStatusView(item.status, solicitacaoSelecionada.status);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell>{item.nome_produto}</TableCell>
+                          <TableCell align="center">{item.quantidade} {item.unidade}</TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={itemStatus.label.toUpperCase()}
+                              size="small"
+                              color={itemStatus.color}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

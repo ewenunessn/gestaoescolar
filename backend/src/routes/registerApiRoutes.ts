@@ -42,6 +42,7 @@ import dashboardRoutes from "../modules/sistema/routes/dashboardRoutes";
 import notificacoesRoutes from "../modules/sistema/routes/notificacoesRoutes";
 import disparosNotificacaoRoutes from "../modules/sistema/routes/disparosNotificacaoRoutes";
 import unidadeMedidaRoutes from "../modules/unidades/routes/unidadeMedidaRoutes";
+import realtimeRoutes from "../modules/sistema/routes/realtimeRoutes";
 
 export function registerApiRoutes(app: Express): void {
   app.use("/api/usuarios", userRoutes);
@@ -89,4 +90,5 @@ export function registerApiRoutes(app: Express): void {
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/notificacoes", notificacoesRoutes);
   app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
+  app.use("/api", realtimeRoutes);
 }

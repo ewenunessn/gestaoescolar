@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import GuiaModel from '../models/Guia';
 import { normalizeRomaneioRouteIds } from '../models/romaneioFilters';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
 import {
   asyncHandler,
   ValidationError,
@@ -10,6 +11,20 @@ import {
   validateRequired,
   handleDatabaseError
 } from '../../../utils/errorHandler';
+
+function publicarGuiaAlterada(
+  action: string,
+  guiaId: number | string,
+  payload?: Record<string, unknown>,
+) {
+  publishRealtimeEvent({
+    domain: 'guias',
+    action,
+    entityId: Number(guiaId),
+    escolaId: payload?.escola_id ? Number(payload.escola_id) : undefined,
+    payload,
+  });
+}
 
 export const guiaController = {
   // Listar todas as guias
@@ -47,6 +62,8 @@ export const guiaController = {
         nome,
         observacao
       });
+
+      publicarGuiaAlterada('created', guia.id, { mes, ano });
 
       res.json({ success: true, data: guia });
     } catch (error) {
@@ -97,6 +114,7 @@ export const guiaController = {
       }
 
       const guiaAtualizada = await GuiaModel.atualizarGuia(parseInt(id), { observacao });
+      publicarGuiaAlterada('updated', id);
       res.json({ success: true, data: guiaAtualizada });
     } catch (error) {
       console.error('Erro ao atualizar guia:', error);
@@ -120,6 +138,7 @@ export const guiaController = {
 
       const deletado = await GuiaModel.deletarGuia(parseInt(id));
       if (deletado) {
+        publicarGuiaAlterada('deleted', id);
         res.json({ success: true, message: 'Guia deletada com sucesso' });
       } else {
         res.status(400).json({ success: false, error: 'Erro ao deletar guia' });
@@ -181,6 +200,11 @@ export const guiaController = {
       });
 
       const guiaProdutoCompleto = await GuiaModel.buscarProdutoGuia(guiaProduto.id);
+      publicarGuiaAlterada('item_added', guiaId, {
+        item_id: guiaProduto.id,
+        produto_id: produtoId,
+        escola_id: escolaId,
+      });
       res.json({ success: true, data: guiaProdutoCompleto });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
@@ -221,6 +245,10 @@ export const guiaController = {
         return res.status(400).json({ success: false, error: 'Erro ao remover produto' });
       }
 
+      publicarGuiaAlterada('item_removed', guiaId, {
+        produto_id: Number(produtoId),
+        escola_id: Number(escolaId),
+      });
       res.json({ success: true, message: 'Produto removido da guia com sucesso' });
     } catch (error) {
       console.error('Erro ao remover produto:', error);
@@ -237,10 +265,19 @@ export const guiaController = {
         return res.status(400).json({ success: false, error: 'ID do item é obrigatório' });
       }
 
+      const item = await GuiaModel.buscarProdutoGuia(parseInt(itemId));
       const deletado = await GuiaModel.removerProdutoGuia(parseInt(itemId));
       
       if (!deletado) {
         return res.status(404).json({ success: false, error: 'Item não encontrado ou erro ao remover' });
+      }
+
+      if (item?.guia_id) {
+        publicarGuiaAlterada('item_removed', item.guia_id, {
+          item_id: Number(itemId),
+          produto_id: item.produto_id,
+          escola_id: item.escola_id,
+        });
       }
 
       res.json({ success: true, message: 'Item removido com sucesso' });
@@ -336,6 +373,13 @@ export const guiaController = {
         status: entrega_confirmada === true ? 'entregue' : entrega_confirmada === false ? 'pendente' : undefined
       });
 
+      publicarGuiaAlterada('delivery_updated', guiaIdNum, {
+        item_id: produto.id,
+        produto_id: produtoIdNum,
+        escola_id: escolaIdNum,
+        entrega_confirmada,
+      });
+
       res.json({ success: true, data: produtoAtualizado });
     } catch (error) {
       console.error('Erro ao atualizar entrega:', error);
@@ -374,6 +418,13 @@ export const guiaController = {
 
       const itemAtualizado = await GuiaModel.atualizarProdutoGuia(Number(itemId), {
         para_entrega
+      });
+
+      publicarGuiaAlterada('item_updated', item.guia_id, {
+        item_id: Number(itemId),
+        produto_id: item.produto_id,
+        escola_id: item.escola_id,
+        para_entrega,
       });
 
       res.json({ 
@@ -509,6 +560,12 @@ export const guiaController = {
         data_entrega
       });
 
+      publicarGuiaAlterada('item_added', guia.id, {
+        item_id: guiaProduto.id,
+        produto_id: Number(produtoId),
+        escola_id: Number(escolaId),
+      });
+
       res.json({ 
         success: true, 
         data: guiaProduto,
@@ -538,6 +595,14 @@ export const guiaController = {
         status,
         data_entrega
       });
+
+      if (produtoGuia?.guia_id) {
+        publicarGuiaAlterada('item_updated', produtoGuia.guia_id, {
+          item_id: Number(itemId),
+          produto_id: produtoGuia.produto_id,
+          escola_id: produtoGuia.escola_id,
+        });
+      }
 
       res.json({ success: true, data: produtoGuia });
     } catch (error) {
@@ -661,6 +726,10 @@ export const guiaController = {
       for (const aj of ajustes) {
         await GuiaModel.atualizarProdutoGuia(aj.item_id, { quantidade: aj.quantidade });
       }
+
+      publicarGuiaAlterada('adjusted', guiaId, {
+        total_ajustados: ajustes.length,
+      });
 
       res.json({ success: true, total_ajustados: ajustes.length });
     } catch (error) {

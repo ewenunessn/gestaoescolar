@@ -8,6 +8,7 @@ import {
   validateRequired,
   handleDatabaseError
 } from "../../../utils/errorHandler";
+import { publishRealtimeEvent } from "../../../services/realtimeEvents";
 
 const STATUS_COMPRA = {
   pendente: { label: 'Pendente', color: 'warning' },
@@ -16,6 +17,19 @@ const STATUS_COMPRA = {
   suspenso: { label: 'Suspenso', color: 'secondary' },
   cancelado: { label: 'Cancelado', color: 'error' }
 } as const;
+
+function publicarCompraAlterada(
+  action: string,
+  pedidoId: number | string,
+  payload?: Record<string, unknown>,
+) {
+  publishRealtimeEvent({
+    domain: "compras",
+    action,
+    entityId: Number(pedidoId),
+    payload,
+  });
+}
 
 export async function listarCompras(req: Request, res: Response) {
   try {
@@ -321,6 +335,11 @@ export async function criarCompra(req: Request, res: Response) {
       ? "Compra salva como rascunho com sucesso"
       : "Compra criada com sucesso";
 
+    publicarCompraAlterada("created", compra_id, {
+      numero,
+      status: compraCompletaResult.rows[0]?.status,
+    });
+
     res.status(201).json({
       success: true,
       message: mensagem,
@@ -519,6 +538,10 @@ export async function atualizarCompra(req: Request, res: Response) {
       const result = await client.query(query, updateValues);
       await client.query('COMMIT');
 
+      publicarCompraAlterada("updated", id, {
+        status: result.rows[0]?.status,
+      });
+
       res.json({
         success: true,
         message: "Pedido atualizado com sucesso",
@@ -596,6 +619,10 @@ export async function atualizarStatusCompra(req: Request, res: Response) {
 
     const result = await db.query(query, values);
 
+    publicarCompraAlterada("status_updated", id, {
+      status: result.rows[0]?.status,
+    });
+
     res.json({
       success: true,
       message: `Status alterado para ${STATUS_COMPRA[status as keyof typeof STATUS_COMPRA]?.label}`,
@@ -666,6 +693,11 @@ export async function excluirCompra(req: Request, res: Response) {
     await client.query(`DELETE FROM pedidos WHERE id = $1`, [id]);
 
     await client.query('COMMIT');
+
+    publicarCompraAlterada("deleted", id, {
+      numero,
+      status,
+    });
 
     res.json({
       success: true,

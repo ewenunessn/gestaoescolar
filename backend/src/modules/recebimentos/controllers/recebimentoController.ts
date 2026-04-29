@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import db from '../../../database';
 import estoqueLedgerService from '../../estoque/services/estoqueLedgerService';
 import { buildRecebimentoCentralEvent } from '../../estoque/services/estoqueIntegracaoService';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
 
 function normalizarTexto(valor: unknown): string | null {
   if (typeof valor !== 'string') return null;
@@ -352,6 +353,27 @@ export async function registrarRecebimento(req: Request, res: Response) {
     `, [novoStatus, pedidoId]);
 
     await client.query('COMMIT');
+
+    publishRealtimeEvent({
+      domain: 'compras',
+      action: 'received',
+      entityId: Number(pedidoId),
+      payload: {
+        pedido_item_id: Number(pedidoItemId),
+        pedido_status: novoStatus,
+      },
+    });
+    publishRealtimeEvent({
+      domain: 'estoque_central',
+      action: 'updated',
+      entityId: Number(item.produto_id),
+      payload: {
+        tipo_movimentacao: 'recebimento',
+        pedido_id: Number(pedidoId),
+        pedido_item_id: Number(pedidoItemId),
+        quantidade_recebida: Number(quantidadeRecebida),
+      },
+    });
 
     res.json({
       success: true,

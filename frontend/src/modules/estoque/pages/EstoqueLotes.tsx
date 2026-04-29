@@ -47,6 +47,7 @@ import {
 } from "../../../services/estoqueCentralService";
 import { produtoService } from "../../../services/produtos";
 import { useToast } from "../../../hooks/useToast";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 
 const EstoqueLotes: React.FC = () => {
   const { produto_id } = useParams<{ produto_id: string }>();
@@ -74,9 +75,9 @@ const EstoqueLotes: React.FC = () => {
     }
   }, [produto_id, apenasAtivos]);
 
-  const carregarDados = async () => {
+  const carregarDados = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const produtoIdNum = parseInt(produto_id!);
 
       const [lotesData, produtoData] = await Promise.all([
@@ -90,9 +91,15 @@ const EstoqueLotes: React.FC = () => {
       console.error("Erro ao carregar dados:", error);
       showError("Erro ao carregar dados do produto");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ["estoque_central"],
+    entityId: produto_id ? Number(produto_id) : null,
+    onRefresh: () => void carregarDados(false),
+  });
 
   const handleProcessarSaida = async () => {
     try {

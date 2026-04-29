@@ -1,6 +1,18 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
 import { toNum } from '../../../utils/typeHelpers';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
+
+function publicarProgramacaoCompraAlterada(action: string, pedidoId: number | string, pedidoItemId?: number | string) {
+  publishRealtimeEvent({
+    domain: 'compras',
+    action,
+    entityId: Number(pedidoId),
+    payload: {
+      pedido_item_id: pedidoItemId !== undefined ? Number(pedidoItemId) : undefined,
+    },
+  });
+}
 
 // ─── Listar programações de um item ──────────────────────────────────────────
 export async function listarProgramacoes(req: Request, res: Response) {
@@ -57,6 +69,11 @@ export async function salvarProgramacoes(req: Request, res: Response) {
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
+    const pedidoResult = await client.query(
+      'SELECT pedido_id FROM pedido_itens WHERE id = $1',
+      [pedido_item_id],
+    );
+    const pedidoId = pedidoResult.rows[0]?.pedido_id;
 
     // Remover programações que não estão mais na lista
     const idsEnviados = programacoes.filter(p => p.id).map(p => p.id);
@@ -142,6 +159,10 @@ export async function salvarProgramacoes(req: Request, res: Response) {
 
     await client.query('COMMIT');
 
+    if (pedidoId) {
+      publicarProgramacaoCompraAlterada('programacao_updated', pedidoId, pedido_item_id);
+    }
+
     // Retornar programações atualizadas
     const updated = await db.query(`
       SELECT
@@ -197,6 +218,7 @@ export async function mesclarItens(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: 'Todos os itens devem ser do mesmo produto e pedido' });
     }
 
+    const pedidoId = check.rows[0].pedido_id;
     const destino_id = item_ids[0];
     const todos_ids = item_ids;
 
@@ -267,6 +289,7 @@ export async function mesclarItens(req: Request, res: Response) {
     `, [destino_id]);
 
     await client.query('COMMIT');
+    publicarProgramacaoCompraAlterada('itens_merged', pedidoId, destino_id);
     res.json({ success: true, item_destino_id: destino_id });
   } catch (error) {
     await client.query('ROLLBACK');

@@ -47,6 +47,7 @@ import {
   type AlertaEstoque
 } from "../../../services/estoqueCentralService";
 import { useToast } from "../../../hooks/useToast";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 
 const EstoqueAlertas: React.FC = () => {
   const navigate = useNavigate();
@@ -69,18 +70,23 @@ const EstoqueAlertas: React.FC = () => {
     carregarAlertas();
   }, [apenasNaoResolvidos]);
 
-  const carregarAlertas = async () => {
+  const carregarAlertas = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const alertasData = await getAlertas(apenasNaoResolvidos);
       setAlertas(alertasData);
     } catch (error) {
       console.error("Erro ao carregar alertas:", error);
       showError("Erro ao carregar alertas");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ["estoque_central"],
+    onRefresh: () => void carregarAlertas(false),
+  });
 
   const handleAtualizarAlertas = async () => {
     try {
@@ -101,7 +107,7 @@ const EstoqueAlertas: React.FC = () => {
     if (!modalResolver.alerta) return;
     
     try {
-      await resolverAlerta(modalResolver.alerta.id);
+      await resolverAlerta(Number(modalResolver.alerta.id));
       setModalResolver({ aberto: false, alerta: null });
       await carregarAlertas();
       success("Alerta marcado como resolvido");

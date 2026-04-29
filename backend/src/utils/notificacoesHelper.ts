@@ -1,4 +1,5 @@
 import db from '../database';
+import { publishRealtimeEvent } from '../services/realtimeEvents';
 
 interface CriarNotificacaoOpts {
   tipo: string;
@@ -25,6 +26,16 @@ export async function criarNotificacao(opts: CriarNotificacaoOpts): Promise<void
         [uid, opts.tipo, opts.titulo, opts.mensagem, opts.link ?? null]
       );
     }
+
+    publishRealtimeEvent({
+      domain: 'notificacoes',
+      action: 'created',
+      usuarioIds: ids,
+      payload: {
+        tipo: opts.tipo,
+        link: opts.link ?? null,
+      },
+    });
   } catch (err) {
     console.error('[notificacoes] Erro ao criar notificação:', err);
   }

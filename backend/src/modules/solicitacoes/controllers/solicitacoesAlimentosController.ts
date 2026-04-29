@@ -3,6 +3,7 @@ import db from '../../../database';
 import { asyncHandler, ValidationError } from '../../../utils/errorHandler';
 import { criarNotificacao } from '../../../utils/notificacoesHelper';
 import solicitacaoEmergencialService from '../services/SolicitacaoEmergencialService';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,27 @@ async function getSolicitacaoComItens(id: number) {
   `, [id]);
 
   return { ...sol.rows[0], itens: itens.rows };
+}
+
+function publicarSolicitacaoAlterada(
+  action: string,
+  solicitacao: { id?: unknown; escola_id?: unknown; status?: unknown } | null | undefined,
+) {
+  if (!solicitacao?.id) return;
+
+  publishRealtimeEvent({
+    domain: 'solicitacoes_alimentos',
+    action,
+    entityId: Number(solicitacao.id),
+    escolaId: solicitacao.escola_id ? Number(solicitacao.escola_id) : undefined,
+    payload: {
+      status: typeof solicitacao.status === 'string' ? solicitacao.status : null,
+    },
+  });
+}
+
+export function canRespondToSolicitacaoStatus(status: string | null | undefined): boolean {
+  return status === 'pendente' || status === 'parcial';
 }
 
 async function recalcularStatusSolicitacao(solicitacaoId: number, respondidoPor: number) {
@@ -129,6 +151,7 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
     link: '/solicitacoes-alimentos',
   });
 
+  publicarSolicitacaoAlterada('created', resultado);
   res.status(201).json({ success: true, data: resultado });
 });
 
@@ -145,6 +168,7 @@ export const cancelarSolicitacao = asyncHandler(async (req: Request, res: Respon
   if (sol.rows[0].status !== 'pendente') throw new ValidationError('Só é possível cancelar solicitações pendentes');
 
   await db.query('UPDATE solicitacoes SET status = $1, updated_at = NOW() WHERE id = $2', ['cancelada', id]);
+  publicarSolicitacaoAlterada('cancelled', { ...sol.rows[0], status: 'cancelada' });
   res.json({ success: true });
 });
 
@@ -197,16 +221,21 @@ export const aceitarItem = asyncHandler(async (req: Request, res: Response) => {
   const { itemId } = req.params;
 
   const result = await db.query(`
-    UPDATE solicitacoes_itens
+    UPDATE solicitacoes_itens i
     SET status = 'aceito', respondido_por = $1, respondido_em = NOW()
-    WHERE id = $2 AND status = 'pendente'
-    RETURNING *
+    FROM solicitacoes s
+    WHERE i.solicitacao_id = s.id
+      AND i.id = $2
+      AND i.status = 'pendente'
+      AND s.status IN ('pendente', 'parcial')
+    RETURNING i.*
   `, [user.id, itemId]);
 
   if (result.rows.length === 0) throw new ValidationError('Item não encontrado ou já respondido');
 
   await recalcularStatusSolicitacao(result.rows[0].solicitacao_id, user.id);
   const sol = await getSolicitacaoComItens(result.rows[0].solicitacao_id);
+  publicarSolicitacaoAlterada('updated', sol);
   res.json({ success: true, data: sol });
 });
 
@@ -219,6 +248,18 @@ export const analisarItem = asyncHandler(async (req: Request, res: Response) => 
 export const aprovarItemEmergencial = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
   const { itemId } = req.params;
+  const sol = await db.query(`
+    SELECT s.status
+    FROM solicitacoes_itens i
+    INNER JOIN solicitacoes s ON s.id = i.solicitacao_id
+    WHERE i.id = $1
+  `, [itemId]);
+
+  if (sol.rows.length === 0) throw new ValidationError('Item nao encontrado');
+  if (!canRespondToSolicitacaoStatus(sol.rows[0].status)) {
+    throw new ValidationError('Nao e possivel responder uma solicitacao cancelada ou concluida');
+  }
+
   const resultado = await solicitacaoEmergencialService.aprovarItemEmergencial(
     Number(itemId),
     {
@@ -230,6 +271,10 @@ export const aprovarItemEmergencial = asyncHandler(async (req: Request, res: Res
     },
     Number(user.id),
   );
+  publicarSolicitacaoAlterada('updated', {
+    id: resultado.analise.item.solicitacao_id,
+    escola_id: resultado.analise.item.escola_id,
+  });
   res.json({ success: true, data: resultado });
 });
 
@@ -238,8 +283,12 @@ export const aprovarTudo = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
   const { id } = req.params;
 
-  const sol = await db.query('SELECT id FROM solicitacoes WHERE id = $1', [id]);
+  const sol = await db.query('SELECT id, status FROM solicitacoes WHERE id = $1', [id]);
   if (sol.rows.length === 0) throw new ValidationError('Solicitação não encontrada');
+
+  if (!canRespondToSolicitacaoStatus(sol.rows[0].status)) {
+    throw new ValidationError('Nao e possivel aprovar uma solicitacao cancelada ou concluida');
+  }
 
   await db.query(`
     UPDATE solicitacoes_itens
@@ -249,6 +298,7 @@ export const aprovarTudo = asyncHandler(async (req: Request, res: Response) => {
 
   await recalcularStatusSolicitacao(Number(id), user.id);
   const resultado = await getSolicitacaoComItens(Number(id));
+  publicarSolicitacaoAlterada('updated', resultado);
   res.json({ success: true, data: resultado });
 });
 
@@ -261,15 +311,20 @@ export const recusarItem = asyncHandler(async (req: Request, res: Response) => {
   if (!justificativa?.trim()) throw new ValidationError('Justificativa é obrigatória para recusar');
 
   const result = await db.query(`
-    UPDATE solicitacoes_itens
+    UPDATE solicitacoes_itens i
     SET status = 'recusado', justificativa_recusa = $1, respondido_por = $2, respondido_em = NOW()
-    WHERE id = $3 AND status = 'pendente'
-    RETURNING *
+    FROM solicitacoes s
+    WHERE i.solicitacao_id = s.id
+      AND i.id = $3
+      AND i.status = 'pendente'
+      AND s.status IN ('pendente', 'parcial')
+    RETURNING i.*
   `, [justificativa.trim(), user.id, itemId]);
 
   if (result.rows.length === 0) throw new ValidationError('Item não encontrado ou já respondido');
 
   await recalcularStatusSolicitacao(result.rows[0].solicitacao_id, user.id);
   const sol = await getSolicitacaoComItens(result.rows[0].solicitacao_id);
+  publicarSolicitacaoAlterada('updated', sol);
   res.json({ success: true, data: sol });
 });

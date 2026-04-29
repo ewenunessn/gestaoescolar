@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyComprovanteCreated,
   applyDeliveryAccepted,
+  applyDeliveryPhotoUploaded,
   classifySyncError,
   getOutboxSummary,
   getSyncableOperations,
@@ -84,6 +86,38 @@ test('delivery accepted keeps operation open until comprovante is created', () =
 
   assert.equal(updated.status, 'comprovante_pending');
   assert.equal(updated.historicoId, 99);
+});
+
+test('comprovante creation keeps photo operations open until upload is confirmed', () => {
+  const updated = applyComprovanteCreated(
+    {
+      ...baseOperation,
+      status: 'comprovante_pending',
+      historicoId: 99,
+      comprovanteData: {
+        ...baseOperation.comprovanteData!,
+        foto_local_uri: 'file:///tmp/mercadoria.jpg',
+        foto_content_type: 'image/jpeg',
+        foto_size_bytes: 1234,
+      },
+    },
+    55,
+  );
+
+  assert.equal(updated.status, 'foto_pending');
+  assert.equal(updated.comprovanteId, 55);
+});
+
+test('photo upload confirmation marks the operation as synced', () => {
+  const updated = applyDeliveryPhotoUploaded({
+    ...baseOperation,
+    status: 'foto_pending',
+    historicoId: 99,
+    comprovanteId: 55,
+  });
+
+  assert.equal(updated.status, 'synced');
+  assert.ok(updated.fotoUploadedAt);
 });
 
 test('sync error classification separates retryable server errors from action errors', () => {

@@ -1,5 +1,7 @@
 # Foto de Comprovante de Entrega no Cloudflare Implementation Plan
 
+> Superseded em 2026-04-29 pela migracao para Supabase Storage no plano `docs/superpowers/plans/2026-04-29-foto-comprovante-supabase-storage.md`. O codigo atual usa Supabase Storage; este arquivo fica apenas como historico do plano original.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Registrar uma foto unica da mercadoria por comprovante de entrega, armazenando a imagem no Cloudflare R2 por 180 dias e mantendo no banco somente metadados.

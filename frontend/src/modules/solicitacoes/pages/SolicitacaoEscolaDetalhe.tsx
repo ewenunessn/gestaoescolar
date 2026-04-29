@@ -24,6 +24,7 @@ import {
   listarTodasSolicitacoes, analisarItem, aprovarItemEmergencial, recusarItem,
   Solicitacao, SolicitacaoItem, AnaliseSolicitacaoItem,
 } from "../../../services/solicitacoesAlimentos";
+import { getSolicitacaoItemStatusView } from "../../../services/solicitacoesAlimentosStatus";
 import {
   formatDateBR,
   formatQty,
@@ -40,13 +41,6 @@ const STATUS_SOL: Record<string, { label: string; color: 'warning' | 'info' | 's
   cancelada: { label: 'Cancelada', color: 'error'   },
 };
 
-const STATUS_ITEM: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' }> = {
-  pendente: { label: 'Pendente', color: 'warning' },
-  aceito:   { label: 'Aceito',   color: 'success' },
-  contemplado: { label: 'Contemplado', color: 'success' },
-  recusado: { label: 'Recusado', color: 'error'   },
-};
-
 function SolicitacaoCard({
   sol,
   onAnalisar,
@@ -59,7 +53,10 @@ function SolicitacaoCard({
   const [expanded, setExpanded] = useState(() => getSolicitacaoDefaultExpanded(sol.status));
   const s = STATUS_SOL[sol.status] ?? { label: sol.status, color: 'default' as const };
   const itemSummary = summarizeSolicitacaoItems(sol.itens);
-  const pendingCount = sol.itens.filter((item) => item.status === 'pendente').length;
+  const podeResponder = sol.status === 'pendente' || sol.status === 'parcial';
+  const pendingCount = podeResponder
+    ? sol.itens.filter((item) => item.status === 'pendente').length
+    : 0;
 
   return (
     <Paper
@@ -111,7 +108,7 @@ function SolicitacaoCard({
       <Collapse in={expanded} unmountOnExit>
         <Box sx={{ px: 2, py: 1 }}>
           {sol.itens.map((item: SolicitacaoItem) => {
-            const si = STATUS_ITEM[item.status] ?? { label: item.status, color: 'default' as const };
+            const si = getSolicitacaoItemStatusView(item.status, sol.status);
             return (
               <Box
                 key={item.id}
@@ -143,7 +140,7 @@ function SolicitacaoCard({
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem' }}>
                   {getItemDecisionText(item)}
                 </Typography>
-                {item.status === 'pendente' && (
+                {podeResponder && item.status === 'pendente' && (
                   <Box sx={{ display: 'flex', gap: 0.75, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
                     <Button
                       size="small"

@@ -8,6 +8,11 @@ import {
   marcarTodasLidas as apiMarcarTodas,
   deletarNotificacao as apiDeletar,
 } from '../services/notificacoes';
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from '../services/realtime';
 
 interface NotificacoesCtx {
   notificacoes: Notificacao[];
@@ -54,11 +59,20 @@ export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [navigate]);
 
-  // Polling a cada 30s
   useEffect(() => {
     recarregar();
-    const interval = setInterval(recarregar, 30_000);
-    return () => clearInterval(interval);
+  }, [recarregar]);
+
+  useEffect(() => {
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, { domains: ['notificacoes'] })) {
+        recarregar();
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
   }, [recarregar]);
 
   const marcarLida = async (id: number) => {

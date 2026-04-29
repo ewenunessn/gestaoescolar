@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import EstoqueCentralModel from "../models/EstoqueCentral";
 import estoqueLedgerService from "../services/estoqueLedgerService";
 import estoqueProjectionService from "../services/estoqueProjectionService";
+import { publishRealtimeEvent } from "../../../services/realtimeEvents";
 
 function parsePositiveNumber(value: unknown): number {
   const parsed = Number(value);
@@ -60,6 +61,19 @@ function mapLegacyMovimentacaoRow(item: any) {
 
 function isMissingRelationError(error: any): boolean {
   return error?.code === "42P01" || String(error?.message || "").includes("does not exist");
+}
+
+function publicarEstoqueCentralAlterado(
+  action: string,
+  produtoId: number,
+  payload?: Record<string, unknown>,
+) {
+  publishRealtimeEvent({
+    domain: "estoque_central",
+    action,
+    entityId: produtoId,
+    payload,
+  });
 }
 
 class EstoqueCentralController {
@@ -123,6 +137,11 @@ class EstoqueCentralController {
         usuario_nome_snapshot: req.user?.nome,
       });
 
+      publicarEstoqueCentralAlterado("updated", produto_id, {
+        tipo_movimentacao: "entrada",
+        movimentacao_id: movimentacao.id,
+      });
+
       return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
       return res.status(400).json({ error: error.message });
@@ -181,6 +200,11 @@ class EstoqueCentralController {
         usuario_nome_snapshot: req.user?.nome,
       });
 
+      publicarEstoqueCentralAlterado("updated", produto_id, {
+        tipo_movimentacao: "saida",
+        movimentacao_id: movimentacao.id,
+      });
+
       return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
       const status = error.message?.includes("Saldo insuficiente") ? 400 : 500;
@@ -209,6 +233,11 @@ class EstoqueCentralController {
         usuario_nome_snapshot: req.user?.nome,
       });
 
+      publicarEstoqueCentralAlterado("updated", produto_id, {
+        tipo_movimentacao: "ajuste",
+        movimentacao_id: movimentacao.id,
+      });
+
       return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
       return res.status(400).json({ error: error.message });
@@ -234,6 +263,20 @@ class EstoqueCentralController {
         referencia_id: req.body.referencia_id ? Number(req.body.referencia_id) : undefined,
         usuario_id: req.user?.id,
         usuario_nome_snapshot: req.user?.nome,
+      });
+
+      publicarEstoqueCentralAlterado("updated", produto_id, {
+        tipo_movimentacao: "transferencia",
+        escola_id,
+      });
+      publishRealtimeEvent({
+        domain: "estoque_escolar",
+        action: "updated",
+        entityId: produto_id,
+        escolaId: escola_id,
+        payload: {
+          tipo_movimentacao: "transferencia",
+        },
       });
 
       return res.status(201).json({ success: true, data });

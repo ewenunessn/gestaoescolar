@@ -42,6 +42,7 @@ import {
 } from "../../../services/estoqueCentralService";
 import { produtoService } from "../../../services/produtos";
 import { useToast } from "../../../hooks/useToast";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 
 const EstoqueMovimentacoes: React.FC = () => {
   const { produto_id } = useParams<{ produto_id: string }>();
@@ -61,9 +62,9 @@ const EstoqueMovimentacoes: React.FC = () => {
     }
   }, [produto_id]);
 
-  const carregarDados = async () => {
+  const carregarDados = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const produtoIdNum = parseInt(produto_id!);
       
       const [movimentacoesData, produtoData] = await Promise.all([
@@ -77,9 +78,15 @@ const EstoqueMovimentacoes: React.FC = () => {
       console.error("Erro ao carregar dados:", error);
       showToast("error", "error");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ["estoque_central"],
+    entityId: produto_id ? Number(produto_id) : null,
+    onRefresh: () => void carregarDados(false),
+  });
 
   // Filtrar movimentações
   const movimentacoesFiltradas = movimentacoes.filter(mov => {
@@ -318,12 +325,12 @@ const EstoqueMovimentacoes: React.FC = () => {
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="body2" color="text.secondary">
-                    {formatarQuantidade(movimentacao.quantidade_anterior, produto.unidade)}
+                    {formatarQuantidade(movimentacao.quantidade_anterior ?? 0, produto.unidade)}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="body2" fontWeight="bold">
-                    {formatarQuantidade(movimentacao.quantidade_posterior, produto.unidade)}
+                    {formatarQuantidade(movimentacao.quantidade_posterior ?? 0, produto.unidade)}
                   </Typography>
                 </TableCell>
                 <TableCell>

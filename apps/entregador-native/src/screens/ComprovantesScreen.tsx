@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, Alert, Image } from 'react-native';
 import { Text, Card, ActivityIndicator, Divider, IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../api/client';
+import { obterFotoComprovante } from '../api/rotas';
 import OfflineIndicator from '../components/OfflineIndicator';
 import { useOffline } from '../contexts/OfflineContext';
 import { obterDataAtual, formatarDataBR } from '../utils/dateUtils';
@@ -20,6 +21,7 @@ interface Comprovante {
   data_entrega: string;
   observacao?: string;
   assinatura_base64?: string;
+  foto_local_uri?: string;
   total_itens: number;
   itens: Array<{
     produto_nome: string;
@@ -44,6 +46,8 @@ const getOfflineComprovanteStatus = (status: DeliveryOutboxStatus): string => {
       return 'Erro de sincronizacao. Precisa de acao.';
     case 'comprovante_pending':
       return 'Comprovante aguardando envio';
+    case 'foto_pending':
+      return 'Foto aguardando envio';
     default:
       return '';
   }
@@ -54,6 +58,8 @@ export default function ComprovantesScreen({ route, navigation }: any) {
   const [comprovantes, setComprovantes] = useState<Comprovante[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [fotoUrls, setFotoUrls] = useState<Record<number, string>>({});
+  const [fotoErros, setFotoErros] = useState<Record<number, string>>({});
   const { syncVersion } = useOffline();
 
   useEffect(() => {
@@ -194,8 +200,36 @@ export default function ComprovantesScreen({ route, navigation }: any) {
     }
   };
 
-  const toggleExpand = (id: number) => {
-    setExpandedId(expandedId === id ? null : id);
+  const carregarFotoComprovante = async (comprovante: Comprovante) => {
+    const comprovanteId = comprovante.id;
+    if (fotoUrls[comprovanteId] || fotoErros[comprovanteId]) {
+      return;
+    }
+
+    if (comprovante.foto_local_uri) {
+      setFotoUrls((current) => ({ ...current, [comprovanteId]: comprovante.foto_local_uri! }));
+      return;
+    }
+
+    if (comprovanteId < 0) {
+      setFotoErros((current) => ({ ...current, [comprovanteId]: 'Foto aguardando envio' }));
+      return;
+    }
+
+    try {
+      const foto = await obterFotoComprovante(comprovanteId);
+      setFotoUrls((current) => ({ ...current, [comprovanteId]: foto.url }));
+    } catch {
+      setFotoErros((current) => ({ ...current, [comprovanteId]: 'Foto nao encontrada ou expirada' }));
+    }
+  };
+
+  const toggleExpand = (comprovante: Comprovante) => {
+    const next = expandedId === comprovante.id ? null : comprovante.id;
+    setExpandedId(next);
+    if (next !== null) {
+      carregarFotoComprovante(comprovante);
+    }
   };
 
   if (loading) {
@@ -245,7 +279,7 @@ export default function ComprovantesScreen({ route, navigation }: any) {
                 <IconButton
                   icon={expandedId === item.id ? 'chevron-up' : 'chevron-down'}
                   size={24}
-                  onPress={() => toggleExpand(item.id)}
+                  onPress={() => toggleExpand(item)}
                 />
               </View>
 
@@ -290,6 +324,23 @@ export default function ComprovantesScreen({ route, navigation }: any) {
                       <Text style={styles.observacao}>{item.observacao}</Text>
                     </View>
                   )}
+
+                  <View style={styles.section}>
+                    <Text variant="labelMedium" style={styles.sectionTitle}>
+                      Foto da mercadoria
+                    </Text>
+                    {fotoUrls[item.id] ? (
+                      <Image
+                        source={{ uri: fotoUrls[item.id] }}
+                        style={styles.fotoMercadoria}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={styles.observacao}>
+                        {fotoErros[item.id] || 'Carregando foto...'}
+                      </Text>
+                    )}
+                  </View>
 
                   {item.assinatura_base64 && (
                     <View style={styles.section}>
@@ -432,6 +483,12 @@ const styles = StyleSheet.create({
   assinatura: {
     width: 200,
     height: 100,
+  },
+  fotoMercadoria: {
+    width: '100%',
+    height: 220,
+    borderRadius: 8,
+    backgroundColor: '#e5e7eb',
   },
   empty: {
     alignItems: 'center',

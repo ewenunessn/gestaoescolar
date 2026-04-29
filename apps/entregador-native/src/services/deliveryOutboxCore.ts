@@ -8,6 +8,7 @@ export type DeliveryOutboxStatus =
   | 'failed_retryable'
   | 'failed_needs_action'
   | 'comprovante_pending'
+  | 'foto_pending'
   | 'synced';
 
 type LegacyDeliveryOutboxStatus = DeliveryOutboxStatus | 'failed';
@@ -24,6 +25,9 @@ export interface DeliveryComprovanteData {
   unidade?: string;
   lote?: string;
   batch_id?: string;
+  foto_local_uri?: string;
+  foto_content_type?: 'image/jpeg';
+  foto_size_bytes?: number;
 }
 
 export interface DeliveryOutboxOperation {
@@ -37,6 +41,8 @@ export interface DeliveryOutboxOperation {
   lastAttemptAt?: number;
   lastError?: string;
   historicoId?: number;
+  comprovanteId?: number;
+  fotoUploadedAt?: string;
   comprovanteData?: DeliveryComprovanteData;
 }
 
@@ -112,6 +118,8 @@ export function normalizeOutboxOperations(rawOperations: unknown[]): DeliveryOut
         lastAttemptAt: operation.lastAttemptAt ? Number(operation.lastAttemptAt) : undefined,
         lastError,
         historicoId: operation.historicoId ? Number(operation.historicoId) : undefined,
+        comprovanteId: operation.comprovanteId ? Number(operation.comprovanteId) : undefined,
+        fotoUploadedAt: operation.fotoUploadedAt ? String(operation.fotoUploadedAt) : undefined,
         comprovanteData: operation.comprovanteData,
       };
     })
@@ -141,7 +149,7 @@ export function getOutboxSummary(
         return summary;
       }
 
-      if (operation.status === 'comprovante_pending') {
+      if (operation.status === 'comprovante_pending' || operation.status === 'foto_pending') {
         summary.comprovantePendingOperations += 1;
       }
 
@@ -170,6 +178,10 @@ export function getSyncableOperations(
 
     if (operation.status === 'comprovante_pending') {
       return !!operation.historicoId && !!operation.comprovanteData;
+    }
+
+    if (operation.status === 'foto_pending') {
+      return !!operation.comprovanteId && !!operation.comprovanteData?.foto_local_uri && !operation.fotoUploadedAt;
     }
 
     return operation.status === 'syncing' && isStaleSyncingOperation(operation, now);
@@ -226,10 +238,41 @@ export function applyDeliveryAccepted(
   };
 }
 
-export function applyComprovanteCreated(operation: DeliveryOutboxOperation): DeliveryOutboxOperation {
+export function applyComprovanteCreated(
+  operation: DeliveryOutboxOperation,
+  comprovanteId?: number,
+): DeliveryOutboxOperation {
+  const resolvedComprovanteId = comprovanteId || operation.comprovanteId;
+  if (!resolvedComprovanteId) {
+    return {
+      ...operation,
+      status: 'failed_retryable',
+      lastError: 'Servidor criou o comprovante sem retornar o ID.',
+    };
+  }
+
+  if (operation.comprovanteData?.foto_local_uri) {
+    return {
+      ...operation,
+      status: 'foto_pending',
+      comprovanteId: resolvedComprovanteId,
+      lastError: undefined,
+    };
+  }
+
   return {
     ...operation,
     status: 'synced',
+    comprovanteId: resolvedComprovanteId,
+    lastError: undefined,
+  };
+}
+
+export function applyDeliveryPhotoUploaded(operation: DeliveryOutboxOperation): DeliveryOutboxOperation {
+  return {
+    ...operation,
+    status: 'synced',
+    fotoUploadedAt: new Date().toISOString(),
     lastError: undefined,
   };
 }
@@ -378,9 +421,11 @@ export function buildPendingComprovanteDrafts(
     return {
       id: -stableNumericId(group.map((operation) => operation.id).join('|')),
       numero_comprovante:
-        worstStatus === 'comprovante_pending'
-          ? 'Comprovante aguardando envio'
-          : 'Entrega aguardando sincronizacao',
+        worstStatus === 'foto_pending'
+          ? 'Foto aguardando envio'
+          : worstStatus === 'comprovante_pending'
+            ? 'Comprovante aguardando envio'
+            : 'Entrega aguardando sincronizacao',
       escola_nome: firstComprovante.escola_nome || `Escola ${firstComprovante.escola_id}`,
       nome_quem_entregou: firstComprovante.nome_quem_entregou,
       nome_quem_recebeu: firstComprovante.nome_quem_recebeu,
@@ -427,6 +472,7 @@ function chooseWorstStatus(statuses: DeliveryOutboxStatus[]): DeliveryOutboxStat
   if (statuses.includes('failed_retryable')) return 'failed_retryable';
   if (statuses.includes('syncing')) return 'syncing';
   if (statuses.includes('pending')) return 'pending';
+  if (statuses.includes('foto_pending')) return 'foto_pending';
   if (statuses.includes('comprovante_pending')) return 'comprovante_pending';
   return 'synced';
 }

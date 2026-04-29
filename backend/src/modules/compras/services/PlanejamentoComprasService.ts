@@ -2,6 +2,25 @@
 import db from '../../../database';
 import { toNum } from '../../../utils/typeHelpers';
 import { JobService } from '../../../services/jobService';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
+
+function publicarGuiaPlanejamentoAlterada(action: string, guiaId: number, payload?: Record<string, unknown>) {
+  publishRealtimeEvent({
+    domain: 'guias',
+    action,
+    entityId: guiaId,
+    payload,
+  });
+}
+
+function publicarPedidoPlanejamentoAlterado(action: string, pedidoId: number, payload?: Record<string, unknown>) {
+  publishRealtimeEvent({
+    domain: 'compras',
+    action,
+    entityId: pedidoId,
+    payload,
+  });
+}
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 interface Periodo {
@@ -879,6 +898,11 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
 
     await client.query('COMMIT');
 
+    publicarPedidoPlanejamentoAlterado('created', pedido_id, {
+      numero,
+      origem: 'planejamento_periodo',
+    });
+
     return { status: 200, data: {
       pedidos_criados: [{
         pedido_id,
@@ -1457,6 +1481,12 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
       demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))
     ).size;
 
+    publicarGuiaPlanejamentoAlterada('generated', guia_id, {
+      competencia: competenciaMesAno,
+      total_itens: totalItens,
+      total_escolas: totalEscolas,
+    });
+
     return { status: 200, data: {
       guias_criadas: [{
         guia_id,
@@ -1929,6 +1959,16 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
 
     await client.query('COMMIT');
 
+    publicarPedidoPlanejamentoAlterado('created', pedido_id, {
+      numero,
+      guia_id,
+      origem: 'guia_demanda',
+    });
+    publicarGuiaPlanejamentoAlterada('pedido_generated', guia_id, {
+      pedido_id,
+      numero,
+    });
+
     return { status: 200, data: {
       pedidos_criados: [{
         pedido_id,
@@ -2219,6 +2259,16 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     const totalItens = itensInseridos;
 
     await client.query('COMMIT');
+    const totalEscolas = new Set(
+      demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))
+    ).size;
+    publicarGuiaPlanejamentoAlterada('generated', guia_id, {
+      competencia: competenciaMesAno,
+      total_itens: totalItens,
+      total_escolas: totalEscolas,
+      job_id: jobId,
+    });
+
     await JobService.atualizarStatus(jobId, 'concluido', {
       progresso: 100,
       resultado: {
@@ -2228,7 +2278,7 @@ async function processarGeracaoGuiasBackground(jobId: number) {
           periodos,
           total_produtos: todosProdutoIds.length,
           total_itens: totalItens,
-          total_escolas: new Set(demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))).size,
+          total_escolas: totalEscolas,
         }],
         erros: erros.map(m => ({ motivo: m })),
         total_criadas: 1,
@@ -2607,6 +2657,18 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     const valorTotal = toNum(pedidoAtualizado.rows[0]?.valor_total, 0);
 
     await client.query('COMMIT');
+
+    publicarPedidoPlanejamentoAlterado('created', pedido_id, {
+      numero,
+      guia_id,
+      origem: 'guia_demanda',
+      job_id: jobId,
+    });
+    publicarGuiaPlanejamentoAlterada('pedido_generated', guia_id, {
+      pedido_id,
+      numero,
+      job_id: jobId,
+    });
     
     await JobService.atualizarStatus(jobId, 'concluido', {
       progresso: 100,

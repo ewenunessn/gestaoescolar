@@ -2,6 +2,7 @@ import { Router } from 'express';
 import EntregaController from '../controllers/EntregaController';
 import HistoricoEntregaController from '../controllers/HistoricoEntregaController';
 import ComprovanteEntregaController from '../controllers/ComprovanteEntregaController';
+import ComprovanteFotoController from '../controllers/ComprovanteFotoController';
 import { authenticateToken } from '../../../middleware/authMiddleware';
 import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
@@ -30,6 +31,7 @@ router.get('/comprovantes', requireLeitura('entregas'), ComprovanteEntregaContro
 router.get('/comprovantes/:id', requireLeitura('entregas'), ComprovanteEntregaController.buscarPorId);
 router.get('/comprovantes/numero/:numero', requireLeitura('entregas'), ComprovanteEntregaController.buscarPorNumero);
 router.get('/comprovantes/escola/:escolaId', requireLeitura('entregas'), ComprovanteEntregaController.listarPorEscola);
+router.get('/comprovantes/:id/foto', requireLeitura('entregas'), ComprovanteFotoController.obterFoto);
 
 // Rotas de ESCRITA - Entregas
 router.post('/itens/:itemId/confirmar', requireEscrita('entregas'), EntregaController.confirmarEntrega);
@@ -41,6 +43,8 @@ router.delete('/historico/:id', requireEscrita('entregas'), HistoricoEntregaCont
 // Rotas de ESCRITA - Comprovantes
 router.post('/comprovantes', requireEscrita('entregas'), ComprovanteEntregaController.criar);
 router.post('/comprovantes/cancelar-item', requireEscrita('entregas'), ComprovanteEntregaController.cancelarItem);
+router.post('/comprovantes/:id/foto/upload-url', requireEscrita('entregas'), ComprovanteFotoController.solicitarUploadUrl);
+router.post('/comprovantes/:id/foto/confirmar', requireEscrita('entregas'), ComprovanteFotoController.confirmarUpload);
 router.delete('/comprovantes/:id', requireEscrita('entregas'), ComprovanteEntregaController.cancelar);
 router.delete('/comprovantes/:id/excluir', requireEscrita('entregas'), ComprovanteEntregaController.excluir);
 router.get('/comprovantes/:id/cancelamentos', requireLeitura('entregas'), ComprovanteEntregaController.buscarCancelamentos);

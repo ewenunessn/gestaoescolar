@@ -29,6 +29,7 @@ import { useUnidadesMedida } from "../../../hooks/queries/useUnidadesMedidaQueri
 import api from "../../../services/api";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { PerformanceMonitor } from "../../../utils/performanceMonitor";
+import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
 
 interface EscolaGuia {
   id: number;
@@ -425,9 +426,9 @@ const GuiaDemandaDetalhe: React.FC = () => {
     }
   };
 
-  const loadGuiaDetalhes = async () => {
+  const loadGuiaDetalhes = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       
       const guiaData = await PerformanceMonitor.measureAsync('Buscar Guia', () =>
         guiaService.buscarGuia(Number(guiaId))
@@ -453,9 +454,17 @@ const GuiaDemandaDetalhe: React.FC = () => {
     } catch (error) {
       console.error('Erro ao carregar detalhes da guia:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ['guias'],
+    entityId: guiaId ? Number(guiaId) : undefined,
+    onRefresh: () => {
+      loadGuiaDetalhes(false);
+    },
+  });
 
   const getMesNome = (mes: number) => {
     const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];

@@ -1,21 +1,22 @@
-# Foto de Comprovante de Entrega no Cloudflare
+# Foto de Comprovante de Entrega no Supabase Storage
 
 Data: 2026-04-28
+Atualizado: 2026-04-29
 
 ## Contexto
 
-O app `entregador-native` ja permite selecionar itens de uma escola, informar quem entregou, informar quem recebeu e finalizar a entrega. O fluxo atual tambem cria comprovantes, suporta operacao offline por outbox e sincroniza as entregas pendentes quando a conexao volta.
+O app `entregador-native` permite selecionar itens de uma escola, informar quem entregou, informar quem recebeu e finalizar a entrega. O fluxo tambem cria comprovantes, suporta operacao offline por outbox e sincroniza as entregas pendentes quando a conexao volta.
 
-A nova necessidade e registrar uma foto da mercadoria entregue como evidencia do comprovante, sem armazenar a imagem no banco de dados. O storage externo sera Cloudflare R2 ou servico compativel com S3. A foto deve expirar depois de 180 dias.
+A necessidade e registrar uma foto unica da mercadoria entregue como evidencia do comprovante, sem armazenar a imagem no banco de dados. O storage externo sera Supabase Storage no plano gratuito. A foto deve ser considerada expirada depois de 180 dias.
 
 ## Decisoes
 
 - Cada comprovante tera no maximo uma foto da mercadoria.
 - A imagem nao sera persistida em base64 nem em coluna binaria no banco.
-- O banco salvara apenas metadados da foto e a chave do objeto no storage.
-- O upload sera direto do app para o Cloudflare por URL assinada gerada pelo backend.
-- A foto expirara apos 180 dias por regra de lifecycle do bucket.
-- O banco tambem registrara `expires_at` para a interface saber quando a foto deve ser considerada expirada.
+- O banco salvara apenas metadados da foto, a chave/caminho do objeto no Supabase Storage e `expires_at`.
+- O upload sera direto do app para Supabase Storage por URL/token assinado gerado pelo backend.
+- O backend usara `SUPABASE_SERVICE_ROLE_KEY`; essa chave nunca sera exposta ao app.
+- O banco registrara `expires_at` para a interface saber quando a foto deve ser considerada expirada.
 - O fluxo offline guardara temporariamente o URI local da foto no aparelho ate a sincronizacao concluir.
 
 ## Fluxo
@@ -25,8 +26,8 @@ A nova necessidade e registrar uma foto da mercadoria entregue como evidencia do
 3. Antes de finalizar, o app exige uma foto unica da mercadoria do comprovante.
 4. O app confirma as entregas dos itens e obtem os `historico_id`.
 5. O app cria o comprovante agrupando os itens.
-6. Com o `comprovante_id`, o app pede ao backend uma URL assinada para upload da foto.
-7. O app envia a foto diretamente ao Cloudflare R2 usando a URL assinada.
+6. Com o `comprovante_id`, o app pede ao backend uma URL/token assinado para upload da foto.
+7. O app envia a foto diretamente ao Supabase Storage usando a URL/token assinado.
 8. O app informa ao backend que o upload foi concluido.
 9. O backend salva os metadados da foto vinculados ao comprovante.
 
@@ -34,15 +35,16 @@ No modo offline, os passos 4 a 9 ficam pendentes na outbox. O app guarda o URI l
 
 ## Backend
 
-O backend tera uma camada de storage para Cloudflare R2 usando API compativel com S3. As credenciais ficam em variaveis de ambiente e nunca sao expostas ao app.
+O backend tera uma camada de storage para Supabase Storage. As credenciais ficam em variaveis de ambiente e nunca sao expostas ao app.
 
-Novos endpoints propostos:
+Endpoints:
 
 - `POST /entregas/comprovantes/:id/foto/upload-url`
   - valida permissao de escrita em entregas;
   - verifica se o comprovante existe;
-  - gera uma chave de objeto previsivel para auditoria, por exemplo `entregas/comprovantes/{comprovanteId}/{uuid}.jpg`;
-  - retorna URL assinada de curta duracao, `storage_key`, headers obrigatorios e `expires_at`.
+  - gera uma chave de objeto, por exemplo `entregas/comprovantes/{comprovanteId}/{uuid}.jpg`;
+  - cria URL/token assinado de upload no Supabase Storage;
+  - retorna `upload_url`, `upload_token`, `upload_path`, `storage_key`, headers obrigatorios e `expires_at`.
 - `POST /entregas/comprovantes/:id/foto/confirmar`
   - valida permissao de escrita em entregas;
   - confirma que a chave pertence ao comprovante;
@@ -52,11 +54,11 @@ Novos endpoints propostos:
   - valida permissao de leitura;
   - retorna uma URL assinada de leitura se a foto existir e ainda nao estiver expirada.
 
-O backend nao recebera o binario da foto no fluxo normal. Ele so emitira URLs assinadas e registrara metadata.
+O backend nao recebera o binario da foto no fluxo normal. Ele so emitira URLs/tokens assinados e registrara metadata.
 
 ## Banco de Dados
 
-Criar uma tabela separada, por exemplo `comprovante_fotos`, para evitar misturar imagem e comprovante:
+A tabela `comprovante_fotos` guarda:
 
 - `id`
 - `comprovante_id`
@@ -74,21 +76,21 @@ Regras:
 - `comprovante_id` deve ser unico enquanto a foto estiver ativa, garantindo uma foto por comprovante.
 - `storage_key` deve ser unico.
 - `expires_at` sera `uploaded_at + interval '180 days'`.
-- A exclusao fisica da imagem fica com o lifecycle do Cloudflare; o banco pode manter o registro historico como expirado.
+- A exclusao fisica no Supabase deve ser feita por rotina de limpeza baseada em `expires_at`, quando necessario. O banco pode manter o registro historico como expirado.
 
 ## App Entregador
 
-Na tela `EscolaDetalheScreen`, a etapa de revisao ganhara a acao de tirar foto. O app deve mostrar um preview simples e permitir refazer antes de finalizar.
+Na tela `EscolaDetalheScreen`, a etapa de revisao exige tirar foto. O app mostra preview simples e permite refazer antes de finalizar.
 
-O pacote `expo-camera` ja existe no app e pode ser usado para capturar a foto. A imagem deve ser enviada como JPEG e limitada a 5 MB. Se for necessario adicionar compressao/redimensionamento, o app deve usar uma dependencia propria para isso, como `expo-image-manipulator`, em vez de enviar fotos grandes diretamente.
+O pacote `expo-camera` e usado para capturar a foto. A imagem deve ser enviada como JPEG e limitada a 5 MB.
 
 No fluxo online:
 
 - captura foto;
 - confirma itens;
 - cria comprovante;
-- solicita URL assinada;
-- faz upload para R2;
+- solicita URL/token assinado;
+- faz upload para Supabase Storage;
 - confirma metadata no backend.
 
 No fluxo offline:
@@ -101,37 +103,36 @@ No fluxo offline:
 
 ## Visualizacao
 
-As telas de comprovantes devem mostrar se existe foto anexada. Ao abrir detalhes, o app ou web solicita uma URL assinada de leitura e renderiza a imagem enquanto ela ainda estiver valida.
+As telas de comprovantes mostram a foto anexada. Ao abrir detalhes, o app ou web solicita uma URL assinada de leitura e renderiza a imagem enquanto ela ainda estiver valida.
 
-Quando a foto estiver expirada, a interface deve mostrar estado claro de expiracao, mantendo os dados textuais do comprovante.
+Quando a foto estiver expirada, a interface mostra estado claro de expiracao, mantendo os dados textuais do comprovante.
 
 ## Seguranca
 
-- URLs assinadas de upload e leitura devem expirar em poucos minutos.
-- O app nao recebe credenciais do Cloudflare.
+- URLs assinadas de leitura devem expirar em poucos minutos.
+- URLs assinadas de upload do Supabase sao temporarias e vinculadas ao caminho gerado.
+- O app nao recebe credenciais do Supabase.
 - O backend valida permissao antes de gerar qualquer URL.
-- O backend valida tipo de arquivo e tamanho maximo antes de gerar URL de upload.
+- O backend valida tipo de arquivo e tamanho maximo antes de gerar URL/token de upload.
 - A confirmacao de upload so aceita `storage_key` gerada para aquele comprovante.
 
 ## Configuracao
 
 Variaveis de ambiente esperadas:
 
-- `CLOUDFLARE_R2_ACCOUNT_ID`
-- `CLOUDFLARE_R2_ACCESS_KEY_ID`
-- `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
-- `CLOUDFLARE_R2_BUCKET`
-- `CLOUDFLARE_R2_PUBLIC_BASE_URL` ou endpoint interno equivalente, se necessario
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET`
 - `DELIVERY_PHOTO_RETENTION_DAYS=180`
 - `DELIVERY_PHOTO_MAX_BYTES=5242880`
 
-O bucket deve ter lifecycle rule para remover objetos em `entregas/comprovantes/` depois de 180 dias.
+O bucket do Supabase deve existir antes do uso. Para manter a expiracao fisica, configurar uma rotina de limpeza que remova objetos em `entregas/comprovantes/` quando o registro correspondente em `comprovante_fotos.expires_at` estiver vencido.
 
 ## Erros e Retentativas
 
 - Falha ao capturar foto: o app permite tentar novamente.
-- Falha ao gerar URL assinada: a operacao fica pendente se o app estiver offline ou se houver erro temporario.
-- Falha no upload para R2: a outbox reenvia depois.
+- Falha ao gerar URL/token assinado: a operacao fica pendente se o app estiver offline ou se houver erro temporario.
+- Falha no upload para Supabase Storage: a outbox reenvia depois.
 - Upload concluido, mas confirmacao de metadata falhou: a outbox reenvia a confirmacao usando a mesma `storage_key`, sem criar uma nova foto.
 - Falha permanente de validacao, tamanho ou permissao: a outbox marca como acao necessaria.
 - Comprovante criado sem foto por falha temporaria: o status do comprovante indica foto pendente ate sincronizar.
@@ -144,6 +145,7 @@ Testes de backend:
 - gerar metadata com expiracao de 180 dias;
 - rejeitar content type invalido;
 - rejeitar confirmacao de chave que nao pertence ao comprovante;
+- gerar URL/token de upload no Supabase;
 - retornar URL de leitura apenas para foto ativa.
 
 Testes de app:
@@ -158,6 +160,5 @@ Testes de app:
 
 - Armazenar multiplas fotos por comprovante.
 - Salvar imagem em base64 no banco.
-- Migrar as assinaturas existentes para Cloudflare.
 - Criar galeria publica de fotos.
 - Implementar OCR, reconhecimento de imagem ou validacao automatica do conteudo fotografado.

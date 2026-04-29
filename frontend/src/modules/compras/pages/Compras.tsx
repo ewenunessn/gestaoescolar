@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 import { useToast } from "../../../hooks/useToast";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
@@ -68,9 +69,9 @@ const PedidosPage = () => {
   const [dialogGerarDaGuia, setDialogGerarDaGuia] = useState(false);
 
   // Carregar pedidos (toast não é dependência para evitar loop infinito)
-  const loadPedidos = useCallback(async () => {
+  const loadPedidos = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await pedidosService.listar({
         status: filters.status !== 'todos' ? filters.status : undefined,
         data_inicio: filters.data_from || undefined,
@@ -83,13 +84,18 @@ const PedidosPage = () => {
       toast.error('Erro ao carregar pedidos. Tente novamente.');
       setPedidos([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [filters.status, filters.data_from, filters.data_to]); // Removido toast das dependências
 
   useEffect(() => {
     loadPedidos();
   }, [loadPedidos]);
+
+  useRealtimeRefresh({
+    domains: ["compras"],
+    onRefresh: () => void loadPedidos(false),
+  });
 
   // Filtrar pedidos
   const pedidosFiltrados = useMemo(() => {

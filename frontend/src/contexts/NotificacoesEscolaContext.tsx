@@ -8,6 +8,11 @@ import {
   marcarTodasLidas as apiMarcarTodas,
   deletarNotificacao as apiDeletar,
 } from '../services/notificacoes';
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from '../services/realtime';
 
 interface NotificacoesEscolaCtx {
   notificacoes: Notificacao[];
@@ -53,11 +58,20 @@ export const NotificacoesEscolaProvider: React.FC<{ children: React.ReactNode }>
     }
   }, [navigate]);
 
-  // Polling a cada 60s (escola não precisa de tempo real agressivo)
   useEffect(() => {
     recarregar();
-    const interval = setInterval(recarregar, 60_000);
-    return () => clearInterval(interval);
+  }, [recarregar]);
+
+  useEffect(() => {
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, { domains: ['notificacoes'] })) {
+        recarregar();
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
   }, [recarregar]);
 
   const marcarLida = async (id: number) => {

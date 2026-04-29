@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import db from "../../../database";
 import estoqueLedgerService from "../services/estoqueLedgerService";
 import estoqueProjectionService from "../services/estoqueProjectionService";
+import { publishRealtimeEvent } from "../../../services/realtimeEvents";
 
 const DEFAULT_STOCK_MODE = {
   modo_operacao: "hibrido",
@@ -147,6 +148,17 @@ export async function registrarMovimentacao(req: Request, res: Response) {
     });
 
     const quantidadePosterior = await estoqueLedgerService.getCurrentBalance("escola", produtoId, escolaId);
+
+    publishRealtimeEvent({
+      domain: "estoque_escolar",
+      action: "updated",
+      entityId: produtoId,
+      escolaId,
+      payload: {
+        tipo_movimentacao: tipoMovimentacao,
+        quantidade_posterior: quantidadePosterior,
+      },
+    });
 
     return res.status(201).json({
       success: true,

@@ -34,3 +34,10 @@ test('delivered item history does not expose cancellation or reversal action', (
   assert.doesNotMatch(source, /onPress=\{\(\) => cancelarEntrega/);
   assert.doesNotMatch(source, /O estoque sera estornado/i);
 });
+
+test('delivery review stores a required merchandise photo in comprovante outbox data', () => {
+  assert.match(source, /fotoMercadoria/);
+  assert.match(source, /Informe uma foto da mercadoria entregue/);
+  assert.match(source, /foto_local_uri:\s*fotoMercadoria\.uri/);
+  assert.match(source, /foto_content_type:\s*'image\/jpeg'/);
+});

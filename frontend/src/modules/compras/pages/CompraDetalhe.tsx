@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, IconButton, Table, TableBody, TableCell, TableContainer,
@@ -31,6 +32,7 @@ const formatarNumero = (n: number) => parseFloat(n.toString()).toString();
 
 export default function PedidoDetalhe() {
   const { id } = useParams<{ id: string }>();
+  const compraId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -59,7 +61,11 @@ export default function PedidoDetalhe() {
     try {
       const pdfMake = await initPdfMake();
       let instituicao = null;
-      try { instituicao = await buscarInstituicao(); } catch {}
+      try {
+        instituicao = await buscarInstituicao();
+      } catch {
+        instituicao = null;
+      }
 
       // Carregar programações de todos os itens
       const progsMap: Record<number, any[]> = {};
@@ -298,12 +304,21 @@ export default function PedidoDetalhe() {
   }, [pedido]);
   useEffect(() => { if (pedido?.id) verificarConsumo(); }, [pedido?.id]);
 
-  const carregarPedido = async () => {
+  useRealtimeRefresh({
+    domains: ["compras"],
+    entityId: Number.isFinite(compraId) ? compraId : null,
+    onRefresh: () => {
+      void carregarPedido(false);
+      if (pedido?.id) void verificarConsumo();
+    },
+  });
+
+  const carregarPedido = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setPedido(await pedidosService.buscarPorId(Number(id)));
     } catch { setErro('Erro ao carregar pedido'); }
-    finally { setLoading(false); }
+    finally { if (showLoading) setLoading(false); }
   };
 
   const verificarConsumo = async () => {

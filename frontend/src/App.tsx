@@ -3,6 +3,7 @@ import { ConfigProvider } from "./contexts/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { QueryProvider } from "./providers/QueryProvider";
+import { RealtimeProvider } from "./providers/RealtimeProvider";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { createAppTheme } from './theme/theme';
@@ -27,9 +28,11 @@ export default function App({ routerConfig }: AppProps) {
     <ErrorBoundary>
       <AuthProvider>
         <QueryProvider>
-          <CustomThemeProvider>
-            <AppWithTheme routerConfig={routerConfig} />
-          </CustomThemeProvider>
+          <RealtimeProvider>
+            <CustomThemeProvider>
+              <AppWithTheme routerConfig={routerConfig} />
+            </CustomThemeProvider>
+          </RealtimeProvider>
         </QueryProvider>
       </AuthProvider>
     </ErrorBoundary>

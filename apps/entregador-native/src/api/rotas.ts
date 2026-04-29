@@ -122,3 +122,41 @@ export async function cancelarEntregaItem(historicoEntregaId: number, motivo?: s
   });
   return data;
 }
+
+export interface ComprovanteFotoUploadUrl {
+  upload_url: string;
+  upload_path?: string;
+  upload_token?: string;
+  storage_key: string;
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface ComprovanteFotoReadUrl {
+  url: string;
+  expires_at: string;
+  uploaded_at?: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+export async function solicitarFotoComprovanteUploadUrl(
+  comprovanteId: number,
+  dados: { content_type: 'image/jpeg'; size_bytes: number },
+): Promise<ComprovanteFotoUploadUrl> {
+  const { data } = await api.post(`/entregas/comprovantes/${comprovanteId}/foto/upload-url`, dados);
+  return data;
+}
+
+export async function confirmarFotoComprovanteUpload(
+  comprovanteId: number,
+  dados: { storage_key: string },
+): Promise<{ foto: unknown }> {
+  const { data } = await api.post(`/entregas/comprovantes/${comprovanteId}/foto/confirmar`, dados);
+  return data;
+}
+
+export async function obterFotoComprovante(comprovanteId: number): Promise<ComprovanteFotoReadUrl> {
+  const { data } = await api.get(`/entregas/comprovantes/${comprovanteId}/foto`);
+  return data;
+}

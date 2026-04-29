@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import EntregaModel from '../models/Entrega';
+import { publishRealtimeEvent } from '../../../services/realtimeEvents';
 import {
   asyncHandler,
   ValidationError,
@@ -228,6 +229,18 @@ class EntregaController {
         item,
         historico_id: item.historico_id
       });
+      publishRealtimeEvent({
+        domain: 'entregas',
+        action: 'confirmed',
+        entityId: Number(itemId),
+        escolaId: Number(item.escola_id),
+      });
+      publishRealtimeEvent({
+        domain: 'estoque_escolar',
+        action: 'updated',
+        entityId: Number(item.produto_id),
+        escolaId: Number(item.escola_id),
+      });
     } catch (error) {
       console.error('❌ Erro ao confirmar entrega:', error);
       
@@ -255,6 +268,18 @@ class EntregaController {
       res.json({
         message: 'Entrega cancelada com sucesso',
         item
+      });
+      publishRealtimeEvent({
+        domain: 'entregas',
+        action: 'cancelled',
+        entityId: Number(itemId),
+        escolaId: Number(item.escola_id),
+      });
+      publishRealtimeEvent({
+        domain: 'estoque_escolar',
+        action: 'updated',
+        entityId: Number(item.produto_id),
+        escolaId: Number(item.escola_id),
       });
     } catch (error) {
       console.error('Erro ao cancelar entrega:', error);

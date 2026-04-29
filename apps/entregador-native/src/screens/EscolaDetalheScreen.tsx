@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CameraView, Camera } from 'expo-camera';
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
 import { handleAxiosError, API_URL } from '../api/client';
 import OfflineIndicator from '../components/OfflineIndicator';
@@ -9,6 +10,8 @@ import { useOffline } from '../contexts/OfflineContext';
 import { cacheService } from '../services/cacheService';
 import { createDeliveryBatchId, loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
 import { mergeItemsWithOutbox, type OfflineItemFields } from '../services/deliveryOutboxCore';
+import { getDeliveryReviewBlocker } from '../services/deliveryPhotoReview';
+import { getLocalPhotoBlob } from '../services/deliveryPhotoUpload';
 import { saveSchoolItemsSnapshot } from '../services/deliveryProjectionStore';
 import { upsertRouteSchoolProjectionSnapshot } from '../services/deliveryRouteProjectionStore';
 import { SCHOOL_ITEMS_REFRESH_MS, shouldRefreshCache } from '../services/deliverySyncPolicy';
@@ -39,6 +42,8 @@ const getOfflineStatusLabel = (status?: OfflineItemFields['offline_status']): st
       return 'Erro de sincronizacao. Precisa de acao.';
     case 'comprovante_pending':
       return 'Entrega enviada. Comprovante pendente.';
+    case 'foto_pending':
+      return 'Comprovante criado. Foto pendente.';
     default:
       return '';
   }
@@ -85,6 +90,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const [nomeEntregador, setNomeEntregador] = useState('');
   const [observacao, setObservacao] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [cameraAberta, setCameraAberta] = useState(false);
+  const [fotoMercadoria, setFotoMercadoria] = useState<{ uri: string; sizeBytes: number } | null>(null);
+  const cameraRef = useRef<CameraView | null>(null);
 
   const { isOnline, addOperation, syncPendingOperations, syncVersion } = useOffline();
 
@@ -298,13 +306,19 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   };
 
   const finalizarEntrega = async () => {
-    if (!nomeRecebedor.trim()) {
-      Alert.alert('Atenção', 'Informe o nome de quem recebeu a entrega');
+    const blocker = getDeliveryReviewBlocker({
+      nomeRecebedor,
+      nomeEntregador,
+      fotoUri: fotoMercadoria?.uri,
+    });
+
+    if (blocker) {
+      Alert.alert('Atenção', blocker);
       return;
     }
 
-    if (!nomeEntregador.trim()) {
-      Alert.alert('Atenção', 'Informe o nome de quem entregou');
+    if (!fotoMercadoria) {
+      Alert.alert('Atenção', 'Informe uma foto da mercadoria entregue');
       return;
     }
 
@@ -337,6 +351,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           unidade: item.unidade,
           lote: item.lote,
           batch_id: deliveryBatchId,
+          foto_local_uri: fotoMercadoria.uri,
+          foto_content_type: 'image/jpeg' as const,
+          foto_size_bytes: fotoMercadoria.sizeBytes,
         };
 
         if (clientOperationId) {
@@ -400,6 +417,37 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     } catch (err) {
       Alert.alert('Erro', `Erro ao finalizar entrega: ${handleAxiosError(err)}`);
       setSalvando(false);
+    }
+  };
+
+  const abrirCamera = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Câmera bloqueada', 'Permita o uso da câmera para registrar a foto da entrega.');
+      return;
+    }
+
+    setCameraAberta(true);
+  };
+
+  const tirarFotoMercadoria = async () => {
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({
+        quality: 0.7,
+        base64: false,
+        skipProcessing: false,
+      });
+
+      if (!photo?.uri) {
+        Alert.alert('Erro', 'Não foi possível capturar a foto.');
+        return;
+      }
+
+      const blob = await getLocalPhotoBlob(photo.uri);
+      setFotoMercadoria({ uri: photo.uri, sizeBytes: blob.size });
+      setCameraAberta(false);
+    } catch (err) {
+      Alert.alert('Erro', `Erro ao capturar a foto: ${handleAxiosError(err)}`);
     }
   };
 
@@ -535,6 +583,22 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     );
   }
 
+  if (cameraAberta) {
+    return (
+      <View style={styles.cameraContainer}>
+        <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
+        <View style={styles.cameraActions}>
+          <Button mode="outlined" onPress={() => setCameraAberta(false)} textColor="#fff">
+            Cancelar
+          </Button>
+          <Button mode="contained" onPress={tirarFotoMercadoria}>
+            Tirar foto
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   // Tela de sucesso
   if (etapa === 'sucesso') {
     return (
@@ -623,6 +687,24 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
               numberOfLines={3}
               style={styles.input}
             />
+
+            <View style={styles.fotoSection}>
+              <Text variant="titleSmall" style={styles.sectionTitle}>
+                Foto da mercadoria *
+              </Text>
+              {fotoMercadoria ? (
+                <View>
+                  <Image source={{ uri: fotoMercadoria.uri }} style={styles.fotoPreview} />
+                  <Button mode="outlined" onPress={abrirCamera} style={styles.input}>
+                    Refazer foto
+                  </Button>
+                </View>
+              ) : (
+                <Button mode="contained-tonal" onPress={abrirCamera} style={styles.input}>
+                  Tirar foto da mercadoria
+                </Button>
+              )}
+            </View>
 
             <View style={styles.botoesRevisao}>
               <Button
@@ -850,6 +932,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  cameraPreview: {
+    flex: 1,
+  },
+  cameraActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 16,
+    backgroundColor: '#111',
+  },
   header: {
     margin: 12,
     marginBottom: 0,
@@ -1074,6 +1170,17 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   input: {
+    marginBottom: 12,
+  },
+  fotoSection: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  fotoPreview: {
+    width: '100%',
+    height: 220,
+    borderRadius: 8,
+    backgroundColor: '#e5e7eb',
     marginBottom: 12,
   },
   botoesRevisao: {

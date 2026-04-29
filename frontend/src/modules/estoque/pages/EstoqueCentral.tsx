@@ -30,6 +30,7 @@ import RuleFolderRounded from "@mui/icons-material/RuleFolderRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 
 import PageContainer from "../../../components/PageContainer";
+import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 import { useToast } from "../../../hooks/useToast";
 import { listarEscolas } from "../../../services/escolas";
 import {
@@ -146,9 +147,9 @@ const EstoqueCentralPage: React.FC = () => {
     observacao: "",
   });
 
-  const carregarDados = async () => {
+  const carregarDados = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [posicoesResult, movimentacoesResult, alertasResult, escolasResult] =
         await Promise.allSettled([
           listarPosicaoCentral(true),
@@ -175,13 +176,18 @@ const EstoqueCentralPage: React.FC = () => {
       setMovimentacoes([]);
       setAlertas([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
     void carregarDados();
   }, []);
+
+  useRealtimeRefresh({
+    domains: ["estoque_central"],
+    onRefresh: () => void carregarDados(false),
+  });
 
   const posicoesFiltradas = useMemo(() => {
     const termo = searchTerm.trim().toLowerCase();

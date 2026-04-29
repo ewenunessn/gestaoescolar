@@ -32,6 +32,11 @@ import {
   type EstoqueEscolarMovimentacao,
 } from "../../../services/estoqueEscolarService";
 import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from "../../../services/realtime";
+import {
   CategoryPill,
   CompactActionButton,
   CompactMetricsStrip,
@@ -170,6 +175,25 @@ const EstoqueEscolar: React.FC = () => {
     }
 
     void carregarDados(Number(escolaId));
+  }, [escolaId]);
+
+  useEffect(() => {
+    if (!escolaId) {
+      return;
+    }
+
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, {
+        domains: ["estoque_escolar"],
+        escolaId: Number(escolaId),
+      })) {
+        void carregarDados(Number(escolaId));
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
   }, [escolaId]);
 
   const categorias = useMemo(() => {

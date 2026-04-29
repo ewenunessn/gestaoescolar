@@ -32,6 +32,11 @@ import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from "../types";
 import { entregaService } from "../services/entregaService";
 import ViewTabs from "../../../components/ViewTabs";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from "../../../services/realtime";
 
 interface ItemSelecionado extends ItemEntrega {
   selecionado: boolean;
@@ -126,6 +131,25 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (etapa !== 'selecao') {
+      return;
+    }
+
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, {
+        domains: ['entregas', 'estoque_escolar'],
+        escolaId: escola.id,
+      })) {
+        carregarItens();
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+  }, [escola.id, etapa, filtros]);
   const formatarQuantidade = (valor: number | string): string => {
     const num = typeof valor === 'string' ? parseFloat(valor) : valor;
     if (Number.isInteger(num)) return num.toString();

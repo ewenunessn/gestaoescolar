@@ -97,6 +97,8 @@ export default function ComprovantesEntrega() {
   // Modal de detalhes
   const [comprovanteDetalhes, setComprovanteDetalhes] = useState<Comprovante | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [fotoComprovanteUrl, setFotoComprovanteUrl] = useState<string | null>(null);
+  const [fotoComprovanteErro, setFotoComprovanteErro] = useState<string | null>(null);
 
   useEffect(() => {
     setPageTitle('Comprovantes de Entrega');
@@ -178,14 +180,29 @@ export default function ComprovantesEntrega() {
       const response = await api.get(`/entregas/comprovantes/${id}`);
       setComprovanteDetalhes(response.data);
       setModalAberto(true);
+      carregarFotoComprovante(id);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao carregar detalhes');
+    }
+  };
+
+  const carregarFotoComprovante = async (id: number) => {
+    setFotoComprovanteUrl(null);
+    setFotoComprovanteErro(null);
+
+    try {
+      const response = await api.get(`/entregas/comprovantes/${id}/foto`);
+      setFotoComprovanteUrl(response.data.url);
+    } catch {
+      setFotoComprovanteErro('Foto nao encontrada ou expirada');
     }
   };
 
   const fecharModal = () => {
     setModalAberto(false);
     setComprovanteDetalhes(null);
+    setFotoComprovanteUrl(null);
+    setFotoComprovanteErro(null);
   };
 
   const imprimirDireto = async (id: number) => {
@@ -682,6 +699,33 @@ export default function ComprovantesEntrega() {
                       </Typography>
                     </Grid>
                   )}
+
+                  <Grid item xs={12}>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Foto da mercadoria
+                      </Typography>
+                      {fotoComprovanteUrl ? (
+                        <Box
+                          component="img"
+                          src={fotoComprovanteUrl}
+                          alt="Foto da mercadoria entregue"
+                          sx={{
+                            width: '100%',
+                            maxHeight: 360,
+                            objectFit: 'cover',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          {fotoComprovanteErro || 'Carregando foto...'}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid>
                   
                   <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />

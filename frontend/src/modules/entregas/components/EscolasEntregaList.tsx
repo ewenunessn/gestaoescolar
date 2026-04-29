@@ -42,6 +42,11 @@ import { formatarQuantidade } from "../../../utils/formatters";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 import { initPdfMake, buildPdfDoc, buildQrFooter, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import api from "../../../services/api";
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from "../../../services/realtime";
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
@@ -138,6 +143,18 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, { domains: ['entregas', 'estoque_escolar'] })) {
+        carregarDados();
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+  }, [filtros]);
 
   const getStatusColor = (percentual: number) => {
     const valor = Number(percentual);

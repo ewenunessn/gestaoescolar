@@ -29,6 +29,7 @@ import {
   listarMinhasSolicitacoes, criarSolicitacao, cancelarSolicitacao,
   Solicitacao, NovoItemData,
 } from "../../../services/solicitacoesAlimentos";
+import { getSolicitacaoItemStatusView } from "../../../services/solicitacoesAlimentosStatus";
 import { produtoService, Produto } from "../../../services/produtoService";
 import CardapioSemanalPortal from "../components/CardapioSemanalPortal";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
@@ -581,18 +582,23 @@ export default function PortalEscola() {
                     <TableCell sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontSize: '0.8rem' }}>{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                        {s.itens.map(item => (
-                          <Typography key={item.id} variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Chip
-                              label={item.status === 'pendente' ? 'Pend.' : item.status === 'aceito' ? 'Aceito' : 'Recusado'}
-                              color={item.status === 'pendente' ? 'warning' : item.status === 'aceito' ? 'success' : 'error'}
-                              size="small"
-                              sx={{ fontSize: '0.6rem', height: 16, borderRadius: '3px' }}
-                            />
+                        {s.itens.map(item => {
+                          const itemStatus = getSolicitacaoItemStatusView(item.status, s.status);
+                          const itemStatusLabel = itemStatus.label === 'Pendente' ? 'Pend.' : itemStatus.label;
+
+                          return (
+                            <Typography key={item.id} variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Chip
+                                label={itemStatusLabel}
+                                color={itemStatus.color}
+                                size="small"
+                                sx={{ fontSize: '0.6rem', height: 16, borderRadius: '3px' }}
+                              />
                             {item.nome_produto} — {item.quantidade} {item.unidade}
-                            {item.justificativa_recusa && <Typography component="span" variant="caption" color="error.main"> ({item.justificativa_recusa})</Typography>}
-                          </Typography>
-                        ))}
+                              {item.justificativa_recusa && <Typography component="span" variant="caption" color="error.main"> ({item.justificativa_recusa})</Typography>}
+                            </Typography>
+                          );
+                        })}
                       </Box>
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{s.observacao || '—'}</TableCell>

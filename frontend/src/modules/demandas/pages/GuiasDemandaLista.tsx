@@ -51,6 +51,7 @@ import {
 import { listarCardapiosDisponiveis, CardapioDisponivel } from "../../../services/demanda";
 import { DataTable } from "../../../components/DataTable";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
 
 interface Competencia {
   mes: number;
@@ -121,18 +122,25 @@ const GuiasDemandaLista: React.FC = () => {
     loadCompetencias();
   }, []);
 
-  const loadCompetencias = async () => {
+  const loadCompetencias = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const data = await guiaService.listarCompetencias();
       setCompetencias(data);
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       toast.error('Erro ao carregar guias de demanda');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ['guias'],
+    onRefresh: () => {
+      loadCompetencias(false);
+    },
+  });
 
   const getMesNome = (mes: number) => {
     const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

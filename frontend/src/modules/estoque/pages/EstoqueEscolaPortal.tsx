@@ -36,6 +36,11 @@ import {
   type EstoqueEscolarItem,
   type EstoqueEscolarMovimentacao,
 } from "../../../services/estoqueEscolarService";
+import {
+  REALTIME_BROWSER_EVENT,
+  RealtimeEvent,
+  shouldRefreshForRealtimeEvent,
+} from "../../../services/realtime";
 import StockSummaryCards from "../components/StockSummaryCards";
 import { StockActionPanel } from "../components/StockActionPanel";
 import { StockMovementDialog } from "../components/StockMovementDialog";
@@ -106,6 +111,25 @@ export default function EstoqueEscolaPortal() {
     if (escolaId) {
       void carregarDados(escolaId);
     }
+  }, [escolaId]);
+
+  useEffect(() => {
+    if (!escolaId) {
+      return;
+    }
+
+    const handleRealtime = (event: Event) => {
+      const realtimeEvent = (event as CustomEvent<RealtimeEvent>).detail;
+      if (shouldRefreshForRealtimeEvent(realtimeEvent, {
+        domains: ["estoque_escolar"],
+        escolaId,
+      })) {
+        void carregarDados(escolaId);
+      }
+    };
+
+    window.addEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
+    return () => window.removeEventListener(REALTIME_BROWSER_EVENT, handleRealtime);
   }, [escolaId]);
 
   const categorias = useMemo(() => {

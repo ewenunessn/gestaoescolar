@@ -1,7 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { confirmarEntregaItem, type ConfirmarEntregaData } from '../api/rotas';
+import {
+  confirmarEntregaItem,
+  confirmarFotoComprovanteUpload,
+  solicitarFotoComprovanteUploadUrl,
+  type ConfirmarEntregaData,
+} from '../api/rotas';
 import { API_URL } from '../api/client';
 import {
   enqueueDeliveryOperation,
@@ -11,6 +16,7 @@ import {
 import {
   applyComprovanteCreated,
   applyDeliveryAccepted,
+  applyDeliveryPhotoUploaded,
   applySyncError,
   getOutboxSummary,
   getSyncableOperations,
@@ -18,6 +24,7 @@ import {
   type DeliveryComprovanteData,
   type DeliveryOutboxOperation,
 } from '../services/deliveryOutboxCore';
+import { uploadDeliveryPhotoToSignedUrl } from '../services/deliveryPhotoUpload';
 import { syncRemoteDeliveryChanges } from '../services/deliveryRemoteChanges';
 
 interface OfflineContextData {
@@ -144,12 +151,29 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           );
 
           try {
-            await criarComprovanteOffline(currentGroup);
-            operations = replaceOperations(operations, currentGroup.map(applyComprovanteCreated));
+            const comprovanteId =
+              currentGroup.find((operation) => operation.comprovanteId)?.comprovanteId ||
+              await criarComprovanteOffline(currentGroup);
+            const groupAfterComprovante = currentGroup.map((operation) =>
+              applyComprovanteCreated(operation, comprovanteId || undefined),
+            );
+
+            operations = replaceOperations(operations, groupAfterComprovante);
+            operations = await saveDeliveryOutboxOperations(operations);
+            applyOperationsState(operations);
+
+            const fotoPendingGroup = groupAfterComprovante.filter((operation) => operation.status === 'foto_pending');
+            if (fotoPendingGroup.length > 0) {
+              await sincronizarFotoComprovanteOffline(fotoPendingGroup);
+              operations = replaceOperations(operations, fotoPendingGroup.map(applyDeliveryPhotoUploaded));
+            }
           } catch (error) {
+            const failedGroup = currentGroup.map(
+              (operation) => operations.find((candidate) => candidate.id === operation.id) || operation,
+            );
             operations = replaceOperations(
               operations,
-              currentGroup.map((operation) => applySyncError(operation, error, Date.now())),
+              failedGroup.map((operation) => applySyncError(operation, error, Date.now())),
             );
           }
 
@@ -281,12 +305,12 @@ function groupComprovanteOperations(
   return Array.from(groups.values());
 }
 
-async function criarComprovanteOffline(operations: DeliveryOutboxOperation[]): Promise<void> {
+async function criarComprovanteOffline(operations: DeliveryOutboxOperation[]): Promise<number | null> {
   const firstOperation = operations[0];
   const firstComprovante = firstOperation.comprovanteData;
 
   if (!firstComprovante) {
-    return;
+    return null;
   }
 
   const tokenData = await AsyncStorage.getItem('token');
@@ -331,6 +355,37 @@ async function criarComprovanteOffline(operations: DeliveryOutboxOperation[]): P
 
     throw buildFetchError(response.status, body);
   }
+
+  const body = await response.json();
+  return Number(body?.id || body?.comprovante?.id || 0) || null;
+}
+
+async function sincronizarFotoComprovanteOffline(operations: DeliveryOutboxOperation[]): Promise<void> {
+  const operationWithPhoto = operations.find(
+    (operation) => operation.comprovanteId && operation.comprovanteData?.foto_local_uri,
+  );
+  const comprovanteId = operationWithPhoto?.comprovanteId;
+  const foto = operationWithPhoto?.comprovanteData;
+
+  if (!comprovanteId || !foto?.foto_local_uri || !foto.foto_content_type || !foto.foto_size_bytes) {
+    return;
+  }
+
+  const uploadTarget = await solicitarFotoComprovanteUploadUrl(comprovanteId, {
+    content_type: foto.foto_content_type,
+    size_bytes: foto.foto_size_bytes,
+  });
+
+  await uploadDeliveryPhotoToSignedUrl({
+    localUri: foto.foto_local_uri,
+    uploadUrl: uploadTarget.upload_url,
+    token: uploadTarget.upload_token,
+    headers: uploadTarget.headers,
+  });
+
+  await confirmarFotoComprovanteUpload(comprovanteId, {
+    storage_key: uploadTarget.storage_key,
+  });
 }
 
 function buildFetchError(status: number, data: unknown): Error {

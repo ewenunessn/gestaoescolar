@@ -40,6 +40,7 @@ import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { formatarQuantidade } from "../../../utils/formatters";
 import api from "../../../services/api";
+import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
 
 // Função para converter siglas de unidades em nomes completos
 const getUnidadeCompleta = (sigla: string): string => {
@@ -117,7 +118,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     return () => {
       setBackPath(null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guiaId]);
 
   useEffect(() => {
@@ -128,12 +128,11 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     } else {
       setPageTitle('Itens da Escola');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escola, guia]);
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const guiaData = await guiaService.buscarGuia(Number(guiaId));
       setGuia(guiaData);
       
@@ -158,9 +157,18 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useRealtimeRefresh({
+    domains: ['guias'],
+    entityId: guiaId ? Number(guiaId) : undefined,
+    escolaId: escolaId ? Number(escolaId) : undefined,
+    onRefresh: () => {
+      loadData(false);
+    },
+  });
 
   const handleOpenModal = (item?: GuiaProdutoEscola) => {
     if (item) {
