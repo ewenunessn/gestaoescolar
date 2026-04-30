@@ -1,0 +1,3565 @@
+{
+  "generated_at": "2026-04-29T00:00:00-03:00",
+  "modules": [
+    {
+      "name": "abastecimento",
+      "path": "frontend/src/modules/abastecimento",
+      "purpose": "Visao operacional consolidada do ciclo de abastecimento: guias de demanda, compras/pedidos, entregas e documentos.",
+      "primary_files": [
+        "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+        "frontend/src/modules/abastecimento/status.ts"
+      ],
+      "functions": [
+        {
+          "name": "getAbastecimentoStatus",
+          "file": "frontend/src/modules/abastecimento/status.ts",
+          "params": [
+            "group: keyof typeof ABASTECIMENTO_STATUS",
+            "value: string | null | undefined"
+          ],
+          "returns": "{ label: string; color: string }",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "formatCurrency",
+          "file": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "params": [
+            "value: number | undefined"
+          ],
+          "returns": "string",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "formatDate",
+          "file": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "params": [
+            "value: string | undefined"
+          ],
+          "returns": "string",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Abastecimento",
+          "file": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "params": [],
+          "returns": "React component",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "carregarResumo",
+          "file": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "params": [],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "GuiaResumo",
+          "fields": [
+            { "name": "guia_id", "type": "number", "required": true },
+            { "name": "mes", "type": "number", "required": true },
+            { "name": "ano", "type": "number", "required": true },
+            { "name": "guia_nome", "type": "string", "required": false },
+            { "name": "guia_status", "type": "string", "required": false },
+            { "name": "total_itens", "type": "number", "required": false },
+            { "name": "total_escolas", "type": "number", "required": false },
+            { "name": "qtd_pendente", "type": "number", "required": false },
+            { "name": "qtd_entregue", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "PedidoResumo",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "numero", "type": "string", "required": true },
+            { "name": "status", "type": "string", "required": false },
+            { "name": "valor_total", "type": "number", "required": false },
+            { "name": "total_itens", "type": "number", "required": false },
+            { "name": "data_pedido", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EntregaResumo",
+          "fields": [
+            { "name": "total_escolas", "type": "number", "required": true },
+            { "name": "total_itens", "type": "number", "required": true },
+            { "name": "itens_entregues", "type": "number", "required": true },
+            { "name": "itens_pendentes", "type": "number", "required": true },
+            { "name": "percentual_entregue", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "O fluxo operacional exibido segue a ordem: guias de demanda, compras/pedidos, entregas, romaneio/comprovantes.",
+          "location": "frontend/src/modules/abastecimento/status.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "A tela limita guias recentes aos 5 primeiros registros retornados pela API.",
+          "location": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "A tela limita pedidos recentes aos 5 primeiros registros retornados pela API.",
+          "location": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Falhas em uma fonte de dados nao impedem exibicao das demais fontes carregadas.",
+          "location": "frontend/src/modules/abastecimento/pages/Abastecimento.tsx",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "guias",
+        "compras",
+        "entregas",
+        "rotas",
+        "programacao"
+      ],
+      "algorithms": [
+        {
+          "name": "Carregamento tolerante a falha parcial",
+          "description": "Usa Promise.allSettled para carregar guias, pedidos e estatisticas de entrega em paralelo e tratar sucesso/erro de cada fonte separadamente.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Agregacao de metricas operacionais",
+          "description": "Calcula totais de guias, itens, pedidos, valor total, pendencias e percentual de entrega com useMemo.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "cardapios",
+      "path": "backend/src/modules/cardapios; frontend/src/modules/cardapios",
+      "purpose": "Gerenciar cardapios mensais por modalidade, composicao de dias com refeicoes, preparacoes, per capita, ficha tecnica e calculo de custos.",
+      "primary_files": [
+        "backend/src/modules/cardapios/controllers/cardapioController.ts",
+        "backend/src/modules/cardapios/controllers/refeicaoController.ts",
+        "backend/src/modules/cardapios/controllers/modalidadeController.ts",
+        "backend/src/modules/cardapios/models/RefeicaoProduto.ts",
+        "frontend/src/modules/cardapios/pages/CardapiosModalidade.tsx",
+        "frontend/src/modules/cardapios/pages/CardapioCalendario.tsx",
+        "frontend/src/modules/cardapios/pages/CardapioDetalhe.tsx",
+        "frontend/src/modules/cardapios/pages/CardapioPublico.tsx",
+        "frontend/src/services/cardapiosModalidade.ts"
+      ],
+      "functions": [
+        {
+          "name": "listarCardapiosModalidade",
+          "file": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarCardapioModalidade",
+          "file": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "adicionarRefeicaoDia",
+          "file": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "calcularCustoCardapio",
+          "file": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "duplicarRefeicao",
+          "file": "backend/src/modules/cardapios/controllers/refeicaoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buscarFichaTecnica",
+          "file": "backend/src/modules/cardapios/controllers/refeicaoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "adicionarRefeicaoProduto",
+          "file": "backend/src/modules/cardapios/controllers/refeicaoProdutoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "CardapioModalidade",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "mes", "type": "number", "required": true },
+            { "name": "ano", "type": "number", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "modalidades_ids", "type": "number[]", "required": true },
+            { "name": "nutricionista_id", "type": "number", "required": false },
+            { "name": "periodo_id", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Refeicao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "descricao", "type": "string", "required": false },
+            { "name": "categoria", "type": "string", "required": false },
+            { "name": "modo_preparo", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "RefeicaoProduto",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "refeicao_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "per_capita", "type": "number", "required": true },
+            { "name": "tipo_medida", "type": "'gramas' | 'mg'", "required": true },
+            { "name": "per_capita_por_modalidade", "type": "Array<{ modalidade_id: number; per_capita: number }>", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Modalidade",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "categoria_financeira_id", "type": "number", "required": true },
+            { "name": "valor_repasse", "type": "number", "required": true },
+            { "name": "parcelas", "type": "number", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Criacao de cardapio exige modalidades_ids, nome, mes e ano.",
+          "location": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "A mesma preparacao nao pode ser adicionada duas vezes no mesmo dia e tipo de refeicao; violacao unica 23505 retorna erro 400.",
+          "location": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Per capita aceita tipo_medida gramas ou mg, com limites 10000 gramas e 100000 mg.",
+          "location": "backend/src/modules/cardapios/controllers/refeicaoProdutoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Duplicar refeicao copia dados da preparacao, produtos e ajustes de per capita por modalidade em transacao.",
+          "location": "backend/src/modules/cardapios/controllers/refeicaoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Custo do cardapio usa alunos vigentes por modalidade na competencia do cardapio e calcula custo por aluno a partir de per capita, fator de correcao, peso de embalagem e preco unitario.",
+          "location": "backend/src/modules/cardapios/controllers/cardapioController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "produtos",
+        "contratos",
+        "fornecedores",
+        "escolas",
+        "nutricao",
+        "sistema"
+      ],
+      "algorithms": [
+        {
+          "name": "Calculo de custo do cardapio",
+          "description": "Agrupa refeicoes por dia/modalidade, converte per capita liquido em bruto via fator de correcao e calcula custo por aluno e totais.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Duplicacao transacional de refeicao",
+          "description": "Copia refeicao, produtos e ajustes por modalidade com BEGIN/COMMIT/ROLLBACK.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Calculo nutricional por porcao",
+          "description": "Ficha tecnica calcula nutrientes por porcao a partir de valores por 100g e quantidade liquida.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "compras",
+      "path": "backend/src/modules/compras; frontend/src/modules/compras",
+      "purpose": "Gerenciar pedidos/compras, itens, planejamento de demanda, geracao de pedidos por guia e programacao de entregas por escola.",
+      "primary_files": [
+        "backend/src/modules/compras/controllers/compraController.ts",
+        "backend/src/modules/compras/controllers/planejamentoComprasController.ts",
+        "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+        "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+        "backend/src/modules/compras/models/Compra.ts",
+        "backend/src/modules/compras/models/CompraItem.ts",
+        "frontend/src/modules/compras/pages/Compras.tsx",
+        "frontend/src/modules/compras/pages/CompraForm.tsx",
+        "frontend/src/modules/compras/pages/CompraDetalhe.tsx",
+        "frontend/src/services/planejamentoCompras.ts",
+        "frontend/src/services/programacaoEntrega.ts"
+      ],
+      "functions": [
+        {
+          "name": "criarCompra",
+          "file": "backend/src/modules/compras/controllers/compraController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarCompra",
+          "file": "backend/src/modules/compras/controllers/compraController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarStatusCompra",
+          "file": "backend/src/modules/compras/controllers/compraController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "converterDemandaParaCompra",
+          "file": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "params": ["quantidade_demanda: number", "produto: { peso_distribuicao_g?: number; unidade_distribuicao?: string }"],
+          "returns": "ConversaoCompra",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "salvarProgramacoes",
+          "file": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "mesclarItens",
+          "file": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Pedido",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "numero", "type": "string", "required": true },
+            { "name": "data_pedido", "type": "Date|string", "required": true },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "valor_total", "type": "number", "required": true },
+            { "name": "usuario_criacao_id", "type": "number", "required": true },
+            { "name": "competencia_mes_ano", "type": "string", "required": false },
+            { "name": "guia_id", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "PedidoItem",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "pedido_id", "type": "number", "required": true },
+            { "name": "contrato_produto_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "preco_unitario", "type": "number", "required": true },
+            { "name": "valor_total", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ConversaoCompra",
+          "fields": [
+            { "name": "quantidade_compra", "type": "number", "required": true },
+            { "name": "unidade_compra", "type": "string", "required": true },
+            { "name": "quantidade_kg", "type": "number", "required": true },
+            { "name": "quantidade_distribuicao", "type": "number", "required": false },
+            { "name": "unidade_distribuicao", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ProgramacaoEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "pedido_item_id", "type": "number", "required": true },
+            { "name": "data_entrega", "type": "string", "required": true },
+            { "name": "observacoes", "type": "string", "required": false },
+            { "name": "escolas", "type": "ProgramacaoEscola[]", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Criacao/edicao de compra valida produto de contrato ativo, contrato ativo e quantidade positiva antes de inserir itens.",
+          "location": "backend/src/modules/compras/controllers/compraController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Valor total do pedido e a soma dos valores totais dos itens.",
+          "location": "backend/src/modules/compras/controllers/compraController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Salvar programacoes recalcula quantidade do item, valor do item e valor total do pedido.",
+          "location": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Conversao de demanda para compra arredonda quantidade de compra para cima com Math.ceil.",
+          "location": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "contratos",
+        "produtos",
+        "guias",
+        "escolas",
+        "entregas",
+        "estoque"
+      ],
+      "algorithms": [
+        {
+          "name": "Criacao transacional de compra",
+          "description": "Valida itens e contratos, calcula total, insere pedido e itens em transacao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Conversao de demanda para compra",
+          "description": "Normaliza quantidade em unidade de distribuicao e kg, com arredondamento de compra para cima.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Programacao por escola",
+          "description": "Distribui quantidade do item por escola e recalcula totais do item e pedido.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "contratos",
+      "path": "backend/src/modules/contratos; frontend/src/modules/contratos; frontend/src/modules/fornecedores",
+      "purpose": "Gerenciar contratos, fornecedores, produtos contratados e saldos por modalidade/categoria financeira.",
+      "primary_files": [
+        "backend/src/modules/contratos/controllers/contratoController.ts",
+        "backend/src/modules/contratos/controllers/contratoProdutoController.ts",
+        "backend/src/modules/contratos/controllers/fornecedorController.ts",
+        "backend/src/modules/contratos/controllers/saldoContratosModalidadesController.ts",
+        "backend/src/modules/contratos/models/Contrato.ts",
+        "backend/src/modules/contratos/models/ContratoProduto.ts",
+        "backend/src/modules/contratos/models/Fornecedor.ts",
+        "frontend/src/modules/contratos/pages/Contratos.tsx",
+        "frontend/src/modules/contratos/pages/NovoContrato.tsx",
+        "frontend/src/modules/contratos/pages/ContratoDetalhe.tsx",
+        "frontend/src/modules/contratos/pages/SaldoContratosModalidades.tsx"
+      ],
+      "functions": [
+        {
+          "name": "removerContrato",
+          "file": "backend/src/modules/contratos/controllers/contratoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarContratoProduto",
+          "file": "backend/src/modules/contratos/controllers/contratoProdutoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "removerContratoProduto",
+          "file": "backend/src/modules/contratos/controllers/contratoProdutoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "verificarRelacionamentosFornecedor",
+          "file": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "registrarConsumoModalidade",
+          "file": "backend/src/modules/contratos/controllers/saldoContratosModalidadesController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Contrato",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "numero", "type": "string", "required": true },
+            { "name": "fornecedor_id", "type": "number", "required": true },
+            { "name": "data_inicio", "type": "Date|string", "required": true },
+            { "name": "data_fim", "type": "Date|string", "required": true },
+            { "name": "valor_total", "type": "number", "required": true },
+            { "name": "status", "type": "'ativo' | 'inativo' | 'suspenso' | 'finalizado'", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ContratoProduto",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "contrato_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "preco_unitario", "type": "number", "required": true },
+            { "name": "quantidade_contratada", "type": "number", "required": true },
+            { "name": "marca", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Fornecedor",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "cnpj", "type": "string", "required": true },
+            { "name": "email", "type": "string", "required": false },
+            { "name": "tipo_fornecedor", "type": "string", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "SaldoContratoModalidade",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "contrato_produto_id", "type": "number", "required": true },
+            { "name": "modalidade_id", "type": "number", "required": true },
+            { "name": "quantidade_inicial", "type": "number", "required": true },
+            { "name": "quantidade_consumida", "type": "number", "required": true },
+            { "name": "quantidade_disponivel", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Contrato nao pode ser excluido se possuir produtos ativos associados.",
+          "location": "backend/src/modules/contratos/controllers/contratoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Produto nao pode ser duplicado dentro do mesmo contrato.",
+          "location": "backend/src/modules/contratos/controllers/contratoProdutoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Produto contratado usado em pedidos nao pode ser excluido.",
+          "location": "backend/src/modules/contratos/controllers/contratoProdutoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Consumo por modalidade exige quantidade positiva e saldo suficiente.",
+          "location": "backend/src/modules/contratos/controllers/saldoContratosModalidadesController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "produtos",
+        "compras",
+        "modalidades",
+        "escolas"
+      ],
+      "algorithms": [
+        {
+          "name": "Calculo de saldo de produto contratado",
+          "description": "Saldo e quantidade_contratada menos soma das quantidades em pedido_itens.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Consumo reversivel por modalidade",
+          "description": "Incrementa quantidade_consumida no saldo e registra historico; exclusao do historico reverte o consumo.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "demandas",
+      "path": "backend/src/modules/demandas; frontend/src/modules/demandas",
+      "purpose": "Gerenciar demandas formais de escolas/oficios e apoiar operacoes de guias de demanda, geracao e ajustes de itens.",
+      "primary_files": [
+        "backend/src/modules/demandas/models/demandaModel.ts",
+        "backend/src/modules/demandas/controllers/demandaController.ts",
+        "backend/src/modules/demandas/routes/demandaRoutes.ts",
+        "frontend/src/modules/demandas/pages/DemandasLista.tsx",
+        "frontend/src/modules/demandas/pages/GuiasDemandaLista.tsx",
+        "frontend/src/modules/demandas/pages/GuiaDemandaDetalhe.tsx",
+        "frontend/src/modules/demandas/pages/GuiaDemandaProdutoItens.tsx",
+        "frontend/src/modules/demandas/utils/guiaProdutoAjuste.ts"
+      ],
+      "functions": [
+        {
+          "name": "demandaModel.listar",
+          "file": "backend/src/modules/demandas/models/demandaModel.ts",
+          "params": ["filtros?: object"],
+          "returns": "Promise<DemandaDetalhada[]>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "listarCardapiosDisponiveis",
+          "file": "backend/src/modules/demandas/controllers/demandaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "applyBulkQuantityAdjustment",
+          "file": "frontend/src/modules/demandas/utils/guiaProdutoAjuste.ts",
+          "params": ["rows: GuiaProdutoAjusteRow[]", "selectedIds: Set<number>", "adjustment: BulkQuantityAdjustment"],
+          "returns": "GuiaProdutoAjusteRow[]",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buildChangedItemUpdates",
+          "file": "frontend/src/modules/demandas/utils/guiaProdutoAjuste.ts",
+          "params": ["rows: GuiaProdutoAjusteRow[]", "originalRows: GuiaProdutoAjusteRow[]"],
+          "returns": "ChangedItemUpdate[]",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Demanda",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": false },
+            { "name": "escola_nome", "type": "string", "required": true },
+            { "name": "numero_oficio", "type": "string", "required": true },
+            { "name": "data_solicitacao", "type": "string", "required": true },
+            { "name": "data_semead", "type": "string", "required": false },
+            { "name": "objeto", "type": "string", "required": true },
+            { "name": "descricao_itens", "type": "string", "required": true },
+            { "name": "status", "type": "'pendente' | 'enviado_semead' | 'atendido' | 'nao_atendido'", "required": true },
+            { "name": "dias_solicitacao", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "GuiaProdutoAjusteRow",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escola_nome", "type": "string", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "quantidade_demanda", "type": "number", "required": false },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "data_entrega", "type": "string|null", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "dias_solicitacao e calculado conforme data_semead e data_resposta_semead.",
+          "location": "backend/src/modules/demandas/models/demandaModel.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Cardapios disponiveis filtram por competencia quando mes/ano sao informados; caso contrario filtram pelo periodo do usuario.",
+          "location": "backend/src/modules/demandas/controllers/demandaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Ajuste em massa de quantidade nao permite resultado negativo.",
+          "location": "frontend/src/modules/demandas/utils/guiaProdutoAjuste.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Payload de atualizacao de item da guia inclui apenas campos alterados.",
+          "location": "frontend/src/modules/demandas/utils/guiaProdutoAjuste.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "guias",
+        "cardapios",
+        "escolas",
+        "unidades",
+        "compras"
+      ],
+      "algorithms": [
+        {
+          "name": "Calculo de dias de solicitacao",
+          "description": "Calcula diferenca de datas no SQL usando data_semead, data_resposta_semead e CURRENT_DATE.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Ajuste em massa de itens de guia",
+          "description": "Aplica set/add/percent em linhas selecionadas, arredonda e gera updates minimos.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "entregas",
+      "path": "backend/src/modules/entregas; frontend/src/modules/entregas; apps/entregador-native",
+      "purpose": "Executar entregas por rota/escola a partir de itens de guias, com historico, estoque, comprovantes, fotos e sincronizacao offline.",
+      "primary_files": [
+        "backend/src/modules/entregas/models/Entrega.ts",
+        "backend/src/modules/entregas/models/HistoricoEntrega.ts",
+        "backend/src/modules/entregas/models/ComprovanteEntrega.ts",
+        "backend/src/modules/entregas/models/ComprovanteFoto.ts",
+        "backend/src/modules/entregas/models/Rota.ts",
+        "backend/src/modules/entregas/models/entregaIdempotency.ts",
+        "backend/src/modules/entregas/routes/entregaRoutes.ts",
+        "backend/src/modules/entregas/routes/rotaRoutes.ts",
+        "apps/entregador-native/src/contexts/OfflineContext.tsx",
+        "apps/entregador-native/src/services/deliveryOutboxCore.ts"
+      ],
+      "functions": [
+        {
+          "name": "EntregaModel.confirmarEntrega",
+          "file": "backend/src/modules/entregas/models/Entrega.ts",
+          "params": ["itemId: number", "dados: ConfirmarEntregaData"],
+          "returns": "Promise<ItemEntrega & { historico_id?: number }>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EntregaModel.cancelarEntrega",
+          "file": "backend/src/modules/entregas/models/Entrega.ts",
+          "params": ["itemId: number"],
+          "returns": "Promise<ItemEntrega>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ComprovanteEntregaModel.criar",
+          "file": "backend/src/modules/entregas/models/ComprovanteEntrega.ts",
+          "params": ["dados: CriarComprovanteData"],
+          "returns": "Promise<ComprovanteEntregaRecord>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ComprovanteFotoController.solicitarUploadUrl",
+          "file": "backend/src/modules/entregas/controllers/ComprovanteFotoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "syncPendingOperations",
+          "file": "apps/entregador-native/src/contexts/OfflineContext.tsx",
+          "params": [],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "normalizeQrFilter",
+          "file": "apps/entregador-native/src/utils/qrFilter.ts",
+          "params": ["raw: string | Record<string, any>"],
+          "returns": "EntregaQrFilter | null",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "ItemEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "guia_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "quantidade_total_entregue", "type": "number", "required": false },
+            { "name": "saldo_pendente", "type": "number", "required": false },
+            { "name": "para_entrega", "type": "boolean", "required": true },
+            { "name": "entrega_confirmada", "type": "boolean", "required": true },
+            { "name": "status", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "HistoricoEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "guia_produto_escola_id", "type": "number", "required": true },
+            { "name": "quantidade_entregue", "type": "number", "required": true },
+            { "name": "nome_quem_entregou", "type": "string", "required": true },
+            { "name": "nome_quem_recebeu", "type": "string", "required": true },
+            { "name": "client_operation_id", "type": "string|null", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ComprovanteEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "numero_comprovante", "type": "string", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "nome_quem_entregou", "type": "string", "required": true },
+            { "name": "nome_quem_recebeu", "type": "string", "required": true },
+            { "name": "total_itens", "type": "number", "required": true },
+            { "name": "status", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "DeliveryOutboxOperation",
+          "fields": [
+            { "name": "id", "type": "string", "required": true },
+            { "name": "itemId", "type": "number", "required": true },
+            { "name": "data", "type": "ConfirmarEntregaData", "required": true },
+            { "name": "status", "type": "DeliveryOutboxStatus", "required": true },
+            { "name": "historicoId", "type": "number", "required": false },
+            { "name": "comprovanteId", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Confirmacao de entrega nao pode exceder saldo pendente e deve registrar movimento de estoque.",
+          "location": "backend/src/modules/entregas/models/Entrega.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "client_operation_id torna confirmacoes offline idempotentes e nao pode ser reaproveitado em outro item.",
+          "location": "backend/src/modules/entregas/models/entregaIdempotency.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Historico recalcula status do item como parcial ou entregue conforme soma entregue.",
+          "location": "backend/src/modules/entregas/models/HistoricoEntrega.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Foto de comprovante aceita somente JPEG e uma foto enviada nao pode ser substituida.",
+          "location": "backend/src/modules/entregas/models/ComprovanteFoto.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Uma escola nao pode estar associada a duas rotas simultaneamente.",
+          "location": "backend/src/modules/entregas/models/Rota.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "guias",
+        "estoque",
+        "escolas",
+        "produtos",
+        "usuarios",
+        "Supabase Storage",
+        "AWS S3"
+      ],
+      "algorithms": [
+        {
+          "name": "Confirmacao transacional de entrega",
+          "description": "Bloqueia item, valida idempotencia e saldo, registra ledger, cria historico e recalcula status.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Sincronizacao offline em fases",
+          "description": "Outbox confirma entregas, cria comprovantes, envia fotos e aplica mudancas remotas por cursor.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Upload assinado de foto de comprovante",
+          "description": "Valida JPEG/tamanho, gera storage_key, cria pendencia, assina upload e confirma storage_key.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "escolas",
+      "path": "backend/src/modules/escolas; backend/src/modules/guias/controllers/escolaModalidadeController.ts; frontend/src/modules/escolas",
+      "purpose": "Gerenciar cadastro de escolas, associacoes escola-modalidade, historico de alunos por modalidade e portal restrito da escola.",
+      "primary_files": [
+        "backend/src/modules/escolas/routes/escolaRoutes.ts",
+        "backend/src/modules/escolas/controllers/escolaController.ts",
+        "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+        "backend/src/modules/guias/controllers/escolaModalidadeController.ts",
+        "backend/src/modules/guias/services/escolaModalidadeHistoricoService.ts",
+        "frontend/src/services/escolas.ts",
+        "frontend/src/modules/escolas/pages/Escolas.tsx",
+        "frontend/src/modules/escolas/pages/EscolaDetalhes.tsx",
+        "frontend/src/modules/escolas/pages/GerenciarAlunosModalidades.tsx",
+        "frontend/src/modules/escolas/pages/PortalEscola.tsx"
+      ],
+      "functions": [
+        {
+          "name": "listarEscolas",
+          "file": "backend/src/modules/escolas/controllers/escolaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarEscolaModalidade",
+          "file": "backend/src/modules/guias/controllers/escolaModalidadeController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "registrarHistoricoAlunoModalidade",
+          "file": "backend/src/modules/guias/services/escolaModalidadeHistoricoService.ts",
+          "params": ["client: Queryable", "input: RegistrarHistoricoAlunoModalidadeInput"],
+          "returns": "Promise<Record<string, any>>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "gerarRelatorioAlunosModalidades",
+          "file": "backend/src/modules/guias/services/escolaModalidadeHistoricoService.ts",
+          "params": ["filters: FiltrosRelatorioAlunosHistorico"],
+          "returns": "Promise<RelatorioAlunosHistorico>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "getDashboardEscola",
+          "file": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Escola",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "codigo", "type": "string", "required": false },
+            { "name": "endereco", "type": "string", "required": false },
+            { "name": "municipio", "type": "string", "required": false },
+            { "name": "nome_gestor", "type": "string", "required": false },
+            { "name": "administracao", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EscolaModalidade",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "modalidade_id", "type": "number", "required": true },
+            { "name": "quantidade_alunos", "type": "number", "required": true },
+            { "name": "escola_nome", "type": "string", "required": false },
+            { "name": "modalidade_nome", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "HistoricoAlunosModalidades",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "modalidade_id", "type": "number", "required": true },
+            { "name": "quantidade_alunos", "type": "number", "required": true },
+            { "name": "quantidade_anterior", "type": "number|null", "required": false },
+            { "name": "operacao", "type": "'create' | 'update' | 'delete' | 'bootstrap'", "required": true },
+            { "name": "vigente_de", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Portal da escola exige usuario autenticado com escola_id associado.",
+          "location": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Quantidade de alunos por modalidade deve ser nao negativa; zero remove o vinculo.",
+          "location": "backend/src/modules/guias/controllers/escolaModalidadeController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Mudancas reais em alunos por modalidade registram historico com vigencia e usuario.",
+          "location": "backend/src/modules/guias/services/escolaModalidadeHistoricoService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Relatorio retroativo seleciona a ultima versao historica ate data_referencia.",
+          "location": "backend/src/modules/guias/services/escolaModalidadeHistoricoService.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "modalidades",
+        "guias",
+        "cardapios",
+        "entregas",
+        "usuarios",
+        "cacheService"
+      ],
+      "algorithms": [
+        {
+          "name": "Upsert escola-modalidade com historico",
+          "description": "Cria, atualiza ou remove vinculo conforme quantidade, registrando historico somente quando ha mudanca real.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Relatorio historico de alunos",
+          "description": "Usa DISTINCT ON para obter ultima versao por escola/modalidade ate a data de referencia e agrega totais.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "estoque",
+      "path": "backend/src/modules/estoque; frontend/src/modules/estoque; apps/estoque-escolar-mobile",
+      "purpose": "Controlar estoque central e escolar por ledger de eventos, com projecoes de saldo, transferencias, alertas, historico e app mobile de gestor.",
+      "primary_files": [
+        "backend/src/modules/estoque/routes/estoqueCentralRoutes.ts",
+        "backend/src/modules/estoque/routes/estoqueEscolarRoutes.ts",
+        "backend/src/modules/estoque/controllers/EstoqueCentralController.ts",
+        "backend/src/modules/estoque/controllers/estoqueEscolarController.ts",
+        "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+        "backend/src/modules/estoque/services/estoqueProjectionService.ts",
+        "backend/src/modules/estoque/services/estoqueSchemaService.ts",
+        "frontend/src/services/estoqueCentralService.ts",
+        "frontend/src/services/estoqueEscolarService.ts",
+        "apps/estoque-escolar-mobile/src/services/api.ts",
+        "apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts"
+      ],
+      "functions": [
+        {
+          "name": "EstoqueLedgerService.registrarMovimentacaoCentral",
+          "file": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "params": ["input: BuildCentralMovementInput"],
+          "returns": "Promise<StockEventRow>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EstoqueLedgerService.registrarMovimentacaoEscolar",
+          "file": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "params": ["input: BuildSchoolMovementInput"],
+          "returns": "Promise<StockEventRow>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EstoqueLedgerService.registrarTransferenciaParaEscola",
+          "file": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "params": ["input: RegisterTransferInput"],
+          "returns": "Promise<RegisterTransferResult>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EstoqueProjectionService.listarSaldoCentral",
+          "file": "backend/src/modules/estoque/services/estoqueProjectionService.ts",
+          "params": ["options?: { mostrarTodos?: boolean }"],
+          "returns": "Promise<CentralStockProjectionRow[]>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EstoqueProjectionService.listarSaldoEscolar",
+          "file": "backend/src/modules/estoque/services/estoqueProjectionService.ts",
+          "params": ["escolaId: number"],
+          "returns": "Promise<SchoolStockProjectionRow[]>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "useSyncManager.addToSync",
+          "file": "apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts",
+          "params": ["type: 'entrada' | 'saida' | 'ajuste'", "data: any"],
+          "returns": "Promise<string>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "StockEvent",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escopo", "type": "'central' | 'escola'", "required": true },
+            { "name": "escola_id", "type": "number", "required": false },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "tipo_evento", "type": "StockEventType", "required": true },
+            { "name": "origem", "type": "StockEventOrigin", "required": true },
+            { "name": "quantidade_delta", "type": "number", "required": true },
+            { "name": "quantidade_absoluta", "type": "number", "required": false },
+            { "name": "referencia_tipo", "type": "string", "required": false },
+            { "name": "referencia_id", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "CentralStockProjectionRow",
+          "fields": [
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "produto_nome", "type": "string", "required": true },
+            { "name": "quantidade_total", "type": "number", "required": true },
+            { "name": "quantidade_disponivel", "type": "number", "required": true },
+            { "name": "quantidade_reservada", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "SchoolStockProjectionRow",
+          "fields": [
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "produto_nome", "type": "string", "required": true },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "quantidade_atual", "type": "number", "required": true },
+            { "name": "data_ultima_atualizacao", "type": "string|null", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "MobileSyncItem",
+          "fields": [
+            { "name": "id", "type": "string", "required": true },
+            { "name": "type", "type": "'entrada' | 'saida' | 'ajuste'", "required": true },
+            { "name": "data", "type": "any", "required": true },
+            { "name": "timestamp", "type": "number", "required": true },
+            { "name": "tentativas", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Saldo atual e a soma de quantidade_delta em estoque_eventos.",
+          "location": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Saidas central/escola nao podem deixar saldo negativo.",
+          "location": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Ajuste grava delta calculado a partir da quantidade absoluta desejada.",
+          "location": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Transferencia para escola cria evento negativo no central e positivo na escola.",
+          "location": "backend/src/modules/estoque/services/estoqueLedgerService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Quantidade reservada central vem de itens de guias abertas pendentes/programadas/parciais.",
+          "location": "backend/src/modules/estoque/services/estoqueProjectionService.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "produtos",
+        "unidades_medida",
+        "escolas",
+        "guias",
+        "entregas",
+        "recebimentos",
+        "usuarios",
+        "realtimeEvents"
+      ],
+      "algorithms": [
+        {
+          "name": "Ledger de eventos de estoque",
+          "description": "Registra eventos imutaveis e deriva saldos por soma de deltas.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Transferencia central-escola atomica",
+          "description": "Valida saldo central e insere dois eventos na mesma transacao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Fila offline mobile",
+          "description": "Armazena movimentos pendentes, processa em lotes quando online e controla tentativas.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "faturamento",
+      "path": "backend/src/modules/faturamentos; frontend/src/modules/faturamento",
+      "purpose": "Gerenciar faturamentos de pedidos de compra, alocando itens por modalidade, contrato e fornecedor, com controle de consumo.",
+      "primary_files": [
+        "backend/src/modules/faturamentos/routes/faturamentoRoutes.ts",
+        "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+        "frontend/src/services/faturamento.ts",
+        "frontend/src/services/faturamentos.ts",
+        "frontend/src/types/faturamento.ts",
+        "frontend/src/modules/faturamento/pages/FaturamentosCompra.tsx",
+        "frontend/src/modules/faturamento/pages/FaturamentoModalidades.tsx",
+        "frontend/src/modules/faturamento/pages/FaturamentoDetalhe.tsx"
+      ],
+      "functions": [
+        {
+          "name": "criarFaturamento",
+          "file": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarFaturamento",
+          "file": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "obterResumoFaturamento",
+          "file": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "registrarConsumoItem",
+          "file": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Faturamento",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "pedido_id", "type": "number", "required": true },
+            { "name": "data_faturamento", "type": "string", "required": true },
+            { "name": "status", "type": "'gerado' | 'consumido' | 'cancelado'", "required": true },
+            { "name": "valor_total", "type": "number", "required": false },
+            { "name": "observacoes", "type": "string", "required": false },
+            { "name": "usuario_id", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "FaturamentoItem",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "faturamento_pedido_id", "type": "number", "required": true },
+            { "name": "pedido_item_id", "type": "number", "required": true },
+            { "name": "modalidade_id", "type": "number", "required": true },
+            { "name": "quantidade_alocada", "type": "number", "required": true },
+            { "name": "preco_unitario", "type": "number", "required": true },
+            { "name": "consumo_registrado", "type": "boolean", "required": true },
+            { "name": "data_consumo", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Faturamento pode ser criado vazio, mas o array de itens deve existir.",
+          "location": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Criar faturamento nao deve alterar status do pedido.",
+          "location": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Quantidade alocada por pedido_item nao pode exceder quantidade disponivel considerando outros faturamentos.",
+          "location": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Status consumido exige que todos os itens estejam com consumo_registrado=true.",
+          "location": "backend/src/modules/faturamentos/controllers/faturamentoController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "compras",
+        "contratos",
+        "fornecedores",
+        "modalidades",
+        "produtos",
+        "usuarios"
+      ],
+      "algorithms": [
+        {
+          "name": "Validacao de alocacao de faturamento",
+          "description": "Calcula quantidade ja alocada por pedido_item e rejeita alocacao acima do disponivel.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Recalculo de status por consumo",
+          "description": "Conta itens consumidos e define status como consumido apenas quando todos foram consumidos.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Resumo por contrato e modalidade",
+          "description": "Agrupa itens do faturamento por contrato, modalidade e produto acumulando quantidade e valor.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "faturamentos",
+      "status": "analyzed",
+      "purpose": "Alias tecnico/backend canonico do dominio faturamento, expondo rota /api/faturamentos e permissoes faturamentos.",
+      "primary_files": [
+        "backend/src/modules/faturamentos/routes/faturamentoRoutes.ts",
+        "backend/src/modules/faturamentos/controllers/faturamentoController.ts"
+      ],
+      "functions": [
+        {
+          "name": "faturamentoRoutes",
+          "file": "backend/src/modules/faturamentos/routes/faturamentoRoutes.ts",
+          "params": ["router: Express.Router"],
+          "returns": "Express router",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "AliasFaturamentos",
+          "fields": [
+            { "name": "api_base_path", "type": "\"/api/faturamentos\"", "required": true },
+            { "name": "permission_resource", "type": "\"faturamentos\"", "required": true },
+            { "name": "domain_alias", "type": "\"faturamento\"", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Nao ha segundo dominio independente; regras de negocio e entidades estao documentadas no modulo faturamento.",
+          "location": "backend/src/modules/faturamentos/routes/faturamentoRoutes.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "faturamento"
+      ],
+      "algorithms": [],
+      "complexity": "low"
+    },
+    {
+      "name": "fornecedores",
+      "status": "analyzed",
+      "purpose": "Cadastro e classificacao de fornecedores usados por contratos, compras, faturamento, recebimentos e PNAE.",
+      "primary_files": [
+        "backend/src/modules/contratos/routes/fornecedorRoutes.ts",
+        "backend/src/modules/contratos/controllers/fornecedorController.ts",
+        "backend/src/modules/contratos/models/Fornecedor.ts",
+        "frontend/src/services/fornecedores.ts",
+        "frontend/src/hooks/queries/useFornecedorQueries.ts",
+        "frontend/src/modules/fornecedores/pages/Fornecedores.tsx",
+        "frontend/src/modules/fornecedores/pages/FornecedorDetalhe.tsx",
+        "frontend/src/modules/fornecedores/pages/ItensFornecedor.tsx",
+        "frontend/src/components/ConfirmacaoExclusaoFornecedor.tsx",
+        "frontend/src/components/ImportacaoFornecedores.tsx"
+      ],
+      "functions": [
+        {
+          "name": "listarFornecedores",
+          "file": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarFornecedor",
+          "file": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "editarFornecedor",
+          "file": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "verificarRelacionamentosFornecedor",
+          "file": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Fornecedor",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "cnpj", "type": "string", "required": true },
+            { "name": "email", "type": "string", "required": false },
+            { "name": "endereco", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "tipo_fornecedor", "type": "string", "required": false },
+            { "name": "dap_caf", "type": "string", "required": false },
+            { "name": "data_validade_dap", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "RelacionamentosFornecedor",
+          "fields": [
+            { "name": "fornecedor", "type": "string", "required": true },
+            { "name": "podeExcluir", "type": "boolean", "required": true },
+            { "name": "totalContratos", "type": "number", "required": true },
+            { "name": "contratosAtivos", "type": "number", "required": true },
+            { "name": "contratos", "type": "array", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Escrita de fornecedores exige permissao requireEscrita('fornecedores'); leitura exige apenas usuario autenticado.",
+          "location": "backend/src/modules/contratos/routes/fornecedorRoutes.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "podeExcluir e verdadeiro somente quando contratosAtivos === 0.",
+          "location": "backend/src/modules/contratos/controllers/fornecedorController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Campos DAP/CAF sao exibidos na UI somente para tipos de agricultura familiar, cooperativa AF ou associacao AF.",
+          "location": "frontend/src/modules/fornecedores/pages/Fornecedores.tsx",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "contratos",
+        "compras",
+        "faturamento",
+        "recebimentos",
+        "cardapios",
+        "sistema",
+        "usuarios"
+      ],
+      "algorithms": [
+        {
+          "name": "Verificacao de exclusao por relacionamentos",
+          "description": "Conta contratos ativos e totais, lista contratos relacionados e informa se a UI deve permitir exclusao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Filtros locais de fornecedores",
+          "description": "React Query carrega lista completa e aplica busca/status/cidade/tipo no cliente.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Validacao local de importacao",
+          "description": "Processa CSV/Excel no navegador, valida documento, email e CEP e separa linhas por valido/aviso/erro.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "guias",
+      "status": "analyzed",
+      "purpose": "Guias de demanda por competencia, itens por produto/escola, geracao por demanda e base para compras, entregas e estoque.",
+      "primary_files": [
+        "backend/src/modules/guias/routes/guiaRoutes.ts",
+        "backend/src/modules/guias/controllers/guiaController.ts",
+        "backend/src/modules/guias/controllers/guiaDemandaGenerationController.ts",
+        "backend/src/modules/guias/models/Guia.ts",
+        "backend/src/modules/guias/services/GuiaDemandaGenerationService.ts",
+        "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+        "frontend/src/services/guiaService.ts",
+        "frontend/src/services/guiaDemandaGenerationService.ts",
+        "frontend/src/services/itemGuiaService.ts"
+      ],
+      "functions": [
+        {
+          "name": "listarCompetencias",
+          "file": "backend/src/modules/guias/models/Guia.ts",
+          "params": [],
+          "returns": "Promise<any[]>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "adicionarProdutoGuia",
+          "file": "backend/src/modules/guias/models/Guia.ts",
+          "params": ["data: CreateGuiaProdutoEscolaData"],
+          "returns": "Promise<GuiaProdutoEscola>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "gerarGuiasDemanda",
+          "file": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "params": ["reqBody: any", "usuarioId: number"],
+          "returns": "Promise<{status:number,data:any}>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "iniciarGeracaoGuias",
+          "file": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "params": ["reqBody: any", "usuarioId: number"],
+          "returns": "Promise<{status:number,data:any}>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Guia",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "mes", "type": "number", "required": true },
+            { "name": "ano", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": false },
+            { "name": "observacao", "type": "string", "required": false },
+            { "name": "status", "type": "'aberta' | 'fechada' | 'cancelada'", "required": true },
+            { "name": "competencia_mes_ano", "type": "string", "required": false },
+            { "name": "codigo_guia", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "GuiaProdutoEscola",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "guia_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "quantidade_demanda", "type": "number", "required": false },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "para_entrega", "type": "boolean", "required": true },
+            { "name": "status", "type": "'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial'", "required": false },
+            { "name": "data_entrega", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Geracao por demanda usa uma unica guia por competencia_mes_ano e regenera os itens apagando os anteriores.",
+          "location": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Produtos pereciveis geram linhas por periodo; nao pereciveis sao agregados por produto/escola.",
+          "location": "backend/src/modules/compras/services/PlanejamentoComprasService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Adicao/remocao por produto/escola exige guia aberta.",
+          "location": "backend/src/modules/guias/controllers/guiaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Status exibido do item e calculado por quantidade_total_entregue antes de preservar status programada/cancelado.",
+          "location": "backend/src/modules/guias/models/Guia.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "demandas",
+        "cardapios",
+        "escolas",
+        "produtos",
+        "compras",
+        "entregas",
+        "estoque",
+        "rotas",
+        "usuarios"
+      ],
+      "algorithms": [
+        {
+          "name": "Geracao de guia por demanda",
+          "description": "Normaliza competencia, calcula demanda por periodo, cria/reusa guia, separa pereciveis e nao pereciveis e insere itens em lote.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Snapshot de escola em item de guia",
+          "description": "Captura nome, endereco, municipio, total de alunos e modalidades vigentes para preservar historico da guia.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Romaneio filtrado",
+          "description": "Lista itens com data de entrega filtrando por data, escola, rotas e status, excluindo cancelados por padrao.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "nutricao",
+      "status": "analyzed",
+      "purpose": "Cadastro nutricional, grupos de ingredientes, busca TACO, ajustes de per capita e calculos nutricionais/custo de refeicoes.",
+      "primary_files": [
+        "backend/src/modules/nutricao/routes/nutricionistaRoutes.ts",
+        "backend/src/modules/nutricao/controllers/nutricionistaController.ts",
+        "backend/src/modules/nutricao/routes/gruposIngredientesRoutes.ts",
+        "backend/src/modules/nutricao/controllers/gruposIngredientesController.ts",
+        "backend/src/modules/nutricao/routes/tacoRoutes.ts",
+        "backend/src/modules/nutricao/controllers/tacoController.ts",
+        "backend/src/modules/nutricao/routes/refeicaoCalculosRoutes.ts",
+        "backend/src/modules/nutricao/controllers/refeicaoCalculosController.ts",
+        "backend/src/modules/nutricao/controllers/refeicaoIngredientesController.ts",
+        "backend/src/modules/nutricao/routes/refeicaoProdutoModalidadeRoutes.ts",
+        "backend/src/modules/nutricao/controllers/refeicaoProdutoModalidadeController.ts"
+      ],
+      "functions": [
+        {
+          "name": "criarNutricionista",
+          "file": "backend/src/modules/nutricao/controllers/nutricionistaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "salvarItensGrupo",
+          "file": "backend/src/modules/nutricao/controllers/gruposIngredientesController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "calcularValoresNutricionais",
+          "file": "backend/src/modules/nutricao/controllers/refeicaoCalculosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "calcularCusto",
+          "file": "backend/src/modules/nutricao/controllers/refeicaoCalculosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Nutricionista",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "crn", "type": "string", "required": true },
+            { "name": "crn_regiao", "type": "string", "required": true },
+            { "name": "cpf", "type": "string", "required": false },
+            { "name": "email", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "GrupoIngrediente",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "descricao", "type": "string", "required": false },
+            { "name": "itens", "type": "array", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "RefeicaoProdutoModalidade",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "refeicao_produto_id", "type": "number", "required": true },
+            { "name": "modalidade_id", "type": "number", "required": true },
+            { "name": "per_capita_ajustado", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Nutricionista exige nome, crn e crn_regiao; crn/cpf duplicados retornam erro de negocio.",
+          "location": "backend/src/modules/nutricao/controllers/nutricionistaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Nutricionista nao pode ser excluido se houver cardapios vinculados.",
+          "location": "backend/src/modules/nutricao/controllers/nutricionistaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Salvar itens de grupo substitui integralmente os itens anteriores em transacao.",
+          "location": "backend/src/modules/nutricao/controllers/gruposIngredientesController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Calculos usam per capita liquido/pronto e aplicam fator_correcao apenas para custo bruto.",
+          "location": "backend/src/modules/nutricao/controllers/refeicaoCalculosController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "cardapios",
+        "produtos",
+        "contratos",
+        "modalidades",
+        "refeicoes",
+        "usuarios"
+      ],
+      "algorithms": [
+        {
+          "name": "Calculo nutricional por per capita",
+          "description": "Soma nutrientes por proporcao de 100g e divide por rendimento_porcoes.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Calculo de custo por embalagem",
+          "description": "Busca contrato ativo, calcula quantidade bruta por fator de correcao e multiplica pela proporcao da embalagem.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Per capita efetivo por modalidade",
+          "description": "Usa COALESCE do ajuste por modalidade com per capita padrao da refeicao.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "portal-escola",
+      "status": "analyzed",
+      "purpose": "Portal autenticado para usuarios vinculados a uma escola, com dashboard, cardapios, solicitacoes, comprovantes, estoque e alunos.",
+      "primary_files": [
+        "backend/src/modules/escolas/routes/escolaPortalRoutes.ts",
+        "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+        "frontend/src/modules/portal-escola/pages/PortalEscolaHome.tsx",
+        "frontend/src/modules/portal-escola/pages/CardapioPage.tsx",
+        "frontend/src/modules/portal-escola/pages/SolicitacoesPage.tsx",
+        "frontend/src/modules/portal-escola/pages/ComprovantesPage.tsx",
+        "frontend/src/modules/portal-escola/pages/AlunosPage.tsx",
+        "frontend/src/modules/portal-escola/components/CardapioSemanalPortal.tsx",
+        "frontend/src/hooks/useUserRole.ts",
+        "frontend/src/routes/AppRouter.tsx"
+      ],
+      "functions": [
+        {
+          "name": "getDashboardEscola",
+          "file": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "getCardapiosSemana",
+          "file": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "getComprovantesEscola",
+          "file": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "listarMinhasSolicitacoes",
+          "file": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "PortalDashboardEscola",
+          "fields": [
+            { "name": "escola", "type": "Escola", "required": true },
+            { "name": "modalidades", "type": "array", "required": true },
+            { "name": "totalAlunos", "type": "number", "required": true },
+            { "name": "estatisticas", "type": "object", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "PortalComprovante",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "numero_comprovante", "type": "string", "required": true },
+            { "name": "data_entrega", "type": "string", "required": true },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "itens", "type": "array", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Todas as consultas do portal exigem user.escola_id e filtram dados pela escola do token.",
+          "location": "backend/src/modules/escolas/controllers/escolaPortalController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Usuario com escola_id e nao admin e redirecionado automaticamente para /portal-escola.",
+          "location": "frontend/src/routes/AppRouter.tsx",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Solicitacao da escola so pode ser cancelada pela propria escola enquanto status for pendente.",
+          "location": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "usuarios",
+        "escolas",
+        "cardapios",
+        "guias",
+        "entregas",
+        "solicitacoes",
+        "estoque",
+        "produtos"
+      ],
+      "algorithms": [
+        {
+          "name": "Isolamento por escola no portal",
+          "description": "Usa escola_id do JWT em todas as queries backend para restringir dados ao usuario da escola.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Cardapio semanal da escola",
+          "description": "Calcula semana segunda-domingo e retorna refeicoes de cardapios vinculados as modalidades atuais da escola.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Solicitacao de alimentos da escola",
+          "description": "Cria solicitacao vinculada a user.escola_id, normaliza itens e publica notificacao/realtime.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "produtos",
+      "status": "analyzed",
+      "purpose": "Cadastro mestre de produtos/alimentos com unidade, fatores de preparo, peso de embalagem, composicao nutricional e suporte a importacao/exportacao.",
+      "primary_files": [
+        "backend/src/modules/produtos/routes/produtoRoutes.ts",
+        "backend/src/modules/produtos/controllers/produtoController.ts",
+        "backend/src/modules/unidades/routes/unidadeMedidaRoutes.ts",
+        "backend/src/modules/unidades/controllers/unidadeMedidaController.ts",
+        "backend/src/services/unidadesMedidaService.ts",
+        "frontend/src/modules/produtos/pages/Produtos.tsx",
+        "frontend/src/modules/produtos/pages/ProdutoDetalhe.tsx",
+        "frontend/src/services/produtos.ts",
+        "frontend/src/hooks/queries/useProdutoQueries.ts",
+        "frontend/src/types/produto.ts",
+        "frontend/src/utils/produtoImportUtils.ts"
+      ],
+      "functions": [
+        {
+          "name": "listarProdutos",
+          "file": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarProduto",
+          "file": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "editarProduto",
+          "file": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buscarComposicaoNutricional",
+          "file": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "salvarComposicaoNutricional",
+          "file": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "converterUnidade",
+          "file": "backend/src/services/unidadesMedidaService.ts",
+          "params": ["quantidade: number", "unidadeOrigemId: number", "unidadeDestinoId: number", "pesoEmbalagem?: number"],
+          "returns": "Promise<number>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Produto",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "tipo_processamento", "type": "string", "required": false },
+            { "name": "categoria", "type": "string", "required": false },
+            { "name": "perecivel", "type": "boolean", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "estoque_minimo", "type": "number", "required": false },
+            { "name": "fator_correcao", "type": "number|string", "required": true },
+            { "name": "indice_coccao", "type": "number|string", "required": true },
+            { "name": "unidade_medida_id", "type": "number", "required": false },
+            { "name": "peso", "type": "number|string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ComposicaoNutricional",
+          "fields": [
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "calorias", "type": "number", "required": false },
+            { "name": "proteinas", "type": "number", "required": false },
+            { "name": "carboidratos", "type": "number", "required": false },
+            { "name": "gorduras", "type": "number", "required": false },
+            { "name": "fibras", "type": "number", "required": false },
+            { "name": "sodio", "type": "number", "required": false },
+            { "name": "vitamina_a", "type": "number", "required": false },
+            { "name": "vitamina_c", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "UnidadeMedida",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "codigo", "type": "string", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "tipo", "type": "string", "required": true },
+            { "name": "fator_conversao_base", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Criacao exige nome e valida tipo_processamento contra lista fixa.",
+          "location": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Fator de correcao deve ser maior ou igual a 1.0 e indice de coccao maior que 0.",
+          "location": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Escrita em produtos exige requireEscrita('produtos'); leitura exige apenas usuario autenticado.",
+          "location": "backend/src/modules/produtos/routes/produtoRoutes.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Composicao nutricional e unica por produto e pode ser criada vazia ao consultar.",
+          "location": "backend/src/modules/produtos/controllers/produtoController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "unidades",
+        "taco",
+        "contratos",
+        "cardapios",
+        "guias",
+        "estoque",
+        "solicitacoes",
+        "faturamentos"
+      ],
+      "algorithms": [
+        {
+          "name": "Normalizacao numerica",
+          "description": "Converte strings com virgula/ponto para numero e trata vazio como null.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Deteccao de schema nutricional",
+          "description": "Inspeciona colunas de produto_composicao_nutricional para operar com schema novo ou antigo.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Conversao de unidades",
+          "description": "Converte via unidade base quando ha fatores fixos e exige peso de embalagem para unidades variaveis.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Importacao incremental",
+          "description": "Frontend compara nome do produto localmente e executa POST ou PUT item a item.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "programacao",
+      "status": "analyzed",
+      "purpose": "Programar entregas de itens de pedido por data e escola, ajustar programacoes em matriz e ajustar quantidades de guias de demanda.",
+      "primary_files": [
+        "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+        "backend/src/modules/compras/routes/compraRoutes.ts",
+        "frontend/src/services/programacaoEntrega.ts",
+        "frontend/src/modules/programacao/pages/ProgramacaoEntregaScreen.tsx",
+        "frontend/src/modules/programacao/pages/AjusteProgramacoesScreen.tsx",
+        "frontend/src/modules/programacao/pages/AjusteGuiaDemandaScreen.tsx",
+        "backend/migrations/20260314_add_pedido_programacao_escolas.sql"
+      ],
+      "functions": [
+        {
+          "name": "listarProgramacoes",
+          "file": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "salvarProgramacoes",
+          "file": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "mesclarItens",
+          "file": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "PedidoItemProgramacao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "pedido_item_id", "type": "number", "required": true },
+            { "name": "data_entrega", "type": "string/date", "required": true },
+            { "name": "observacoes", "type": "string", "required": false },
+            { "name": "quantidade_total", "type": "number", "required": false },
+            { "name": "escolas", "type": "array", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ProgramacaoEscola",
+          "fields": [
+            { "name": "id", "type": "number", "required": false },
+            { "name": "programacao_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "quantidade", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "AjusteGuiaDemandaGrupo",
+          "fields": [
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "produto_nome", "type": "string", "required": true },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "data_entrega", "type": "string|null", "required": false },
+            { "name": "escolas", "type": "array", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Salvar programacoes substitui escolas de cada programacao e recalcula quantidade, data prevista e valores do item/pedido em transacao.",
+          "location": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Apenas quantidades positivas por escola sao persistidas em pedido_item_programacao_escolas.",
+          "location": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Mesclagem exige itens do mesmo pedido e mesmo produto; o primeiro id e o destino.",
+          "location": "backend/src/modules/compras/controllers/programacaoEntregaController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "compras",
+        "pedidos",
+        "escolas",
+        "guias",
+        "produtos",
+        "realtime",
+        "faturamentos",
+        "recebimentos"
+      ],
+      "algorithms": [
+        {
+          "name": "Recalculo total por programacao",
+          "description": "Soma todas as quantidades por escola, sincroniza pedido_itens.quantidade e menor data_entrega.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Ajuste matricial",
+          "description": "Representa ate 5 colunas selecionadas como mapas coluna/escola/quantidade com deltas contra valores originais.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Mesclagem por escola",
+          "description": "Agrega quantidades por escola de varios itens e cria programacao consolidada no item destino.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "recebimentos",
+      "status": "analyzed",
+      "purpose": "Registrar recebimentos parciais/totais de itens de pedido, atualizar status do pedido e lançar entrada no estoque central.",
+      "primary_files": [
+        "backend/src/modules/recebimentos/routes/recebimentoRoutes.ts",
+        "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+        "backend/src/migrations/20260304_create_recebimentos.sql",
+        "apps/entregador-native/src/api/recebimentos.ts",
+        "apps/entregador-native/src/screens/RecebimentosScreen.tsx",
+        "apps/entregador-native/src/screens/RecebimentoFornecedoresScreen.tsx",
+        "apps/entregador-native/src/screens/RecebimentoItensScreen.tsx",
+        "backend/src/modules/estoque/services/estoqueIntegracaoService.ts"
+      ],
+      "functions": [
+        {
+          "name": "listarPedidosPendentes",
+          "file": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "listarFornecedoresPedido",
+          "file": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "listarItensFornecedor",
+          "file": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "registrarRecebimento",
+          "file": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buildRecebimentoCentralEvent",
+          "file": "backend/src/modules/estoque/services/estoqueIntegracaoService.ts",
+          "params": ["input: RecebimentoCentralInput"],
+          "returns": "StockEventInput",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Recebimento",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "pedido_id", "type": "number", "required": true },
+            { "name": "pedido_item_id", "type": "number", "required": true },
+            { "name": "quantidade_recebida", "type": "number", "required": true },
+            { "name": "data_recebimento", "type": "string/date", "required": true },
+            { "name": "observacoes", "type": "string", "required": false },
+            { "name": "usuario_id", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ItemPedidoRecebimento",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "produto_nome", "type": "string", "required": true },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "quantidade_recebida", "type": "number", "required": true },
+            { "name": "saldo_pendente", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Quantidade recebida deve ser maior que zero e nao pode exceder saldo pendente do item.",
+          "location": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Recebimento parcial deixa pedido como recebido_parcial; todos os itens completos deixam pedido concluido.",
+          "location": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Registrar recebimento cria evento de estoque central na mesma transacao.",
+          "location": "backend/src/modules/recebimentos/controllers/recebimentoController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "pedidos",
+        "compras",
+        "contratos",
+        "fornecedores",
+        "produtos",
+        "unidades",
+        "usuarios",
+        "estoque",
+        "realtime"
+      ],
+      "algorithms": [
+        {
+          "name": "Calculo de saldo pendente",
+          "description": "Saldo = pedido_itens.quantidade - SUM(recebimentos.quantidade_recebida).",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Atualizacao de status do pedido",
+          "description": "Conta itens completos e decide entre recebido_parcial e concluido.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Integracao estoque central",
+          "description": "Cria evento ledger central com tipo_evento recebimento_central e origem recebimento.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "rotas",
+      "status": "analyzed",
+      "purpose": "Gerenciar rotas de entrega, escolas vinculadas por ordem de visita, planejamentos por guia/rota e evidencias/status por escola.",
+      "primary_files": [
+        "backend/src/modules/entregas/routes/rotaRoutes.ts",
+        "backend/src/modules/entregas/controllers/RotaController.ts",
+        "backend/src/modules/entregas/models/Rota.ts",
+        "backend/src/migrations/20241216_create_rotas_entregas.sql",
+        "frontend/src/modules/rotas/pages/GestaoRotas.tsx",
+        "frontend/src/modules/escolas/pages/GerenciarEscolasRota.tsx",
+        "frontend/src/modules/entregas/services/rotaService.ts",
+        "frontend/src/modules/entregas/types/rota.ts",
+        "apps/entregador-native/src/api/rotas.ts",
+        "apps/entregador-native/src/screens/RotasScreen.tsx",
+        "apps/entregador-native/src/screens/RotaDetalheScreen.tsx"
+      ],
+      "functions": [
+        {
+          "name": "listarRotas",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarRota",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "adicionarEscolaRota",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarOrdemEscolas",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarPlanejamentoAvancado",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarStatusEscola",
+          "file": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "RotaEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "descricao", "type": "string", "required": false },
+            { "name": "cor", "type": "string", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "total_escolas", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "RotaEscola",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "rota_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "ordem", "type": "number", "required": true },
+            { "name": "observacao", "type": "string", "required": false },
+            { "name": "escola_nome", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "PlanejamentoEntrega",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "guia_id", "type": "number", "required": true },
+            { "name": "rota_id", "type": "number", "required": true },
+            { "name": "data_planejada", "type": "string/date", "required": false },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "responsavel", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EntregaEscolaStatus",
+          "fields": [
+            { "name": "planejamento_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "observacao", "type": "string", "required": false },
+            { "name": "foto_url", "type": "string", "required": false },
+            { "name": "assinatura", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Criacao de rota exige nome; cor padrao e #1976d2 e ativo padrao e true.",
+          "location": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Uma escola nao pode estar associada a qualquer outra rota existente antes de ser adicionada.",
+          "location": "backend/src/modules/entregas/models/Rota.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Quando ordem nao e enviada, a escola recebe MAX(ordem)+1 dentro da rota.",
+          "location": "backend/src/modules/entregas/models/Rota.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Planejamento e unico por guia_id e rota_id.",
+          "location": "backend/src/migrations/20241216_create_rotas_entregas.sql",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Status por escola aceita apenas pendente, entregue ou nao_entregue.",
+          "location": "backend/src/modules/entregas/controllers/RotaController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "entregas",
+        "escolas",
+        "guias",
+        "romaneio",
+        "apps/entregador-native",
+        "AWS S3"
+      ],
+      "algorithms": [
+        {
+          "name": "Ordenacao de escolas da rota",
+          "description": "Frontend reordena por drag-and-drop e backend atualiza cada ordem em transacao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Planejamento avancado",
+          "description": "Cria um planejamento por rota selecionada para a mesma guia; itens selecionados sao preservados apenas como observacao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Projecao mobile de pendencias",
+          "description": "App entregador combina offline bundle, filtro QR Code, projecao local e outbox para exibir rotas/escolas com pendencias.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "sistema",
+      "status": "analyzed",
+      "purpose": "Infraestrutura funcional transversal: permissoes por modulo, configuracao institucional, periodos, calendario letivo, dashboard, PNAE, notificacoes, disparos e realtime.",
+      "primary_files": [
+        "backend/src/routes/registerApiRoutes.ts",
+        "backend/src/modules/sistema/routes/permissoesRoutes.ts",
+        "backend/src/modules/sistema/controllers/permissoesController.ts",
+        "backend/src/middleware/permissionMiddleware.ts",
+        "backend/src/modules/sistema/routes/instituicao.ts",
+        "backend/src/modules/sistema/controllers/instituicaoController.ts",
+        "backend/src/modules/sistema/routes/periodosRoutes.ts",
+        "backend/src/modules/sistema/controllers/periodosController.ts",
+        "backend/src/modules/sistema/routes/calendarioLetivoRoutes.ts",
+        "backend/src/modules/sistema/routes/notificacoesRoutes.ts",
+        "backend/src/modules/sistema/routes/disparosNotificacaoRoutes.ts",
+        "backend/src/modules/sistema/routes/realtimeRoutes.ts",
+        "frontend/src/routes/AppRouter.tsx",
+        "frontend/src/components/PermissionGuard.tsx",
+        "frontend/src/hooks/useUserPermissions.ts",
+        "frontend/src/modules/sistema/pages/GerenciamentoPeriodos.tsx",
+        "frontend/src/modules/sistema/pages/DisparosNotificacao.tsx"
+      ],
+      "functions": [
+        {
+          "name": "listarModulos",
+          "file": "backend/src/modules/sistema/controllers/permissoesController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "definirPermissoesUsuario",
+          "file": "backend/src/modules/sistema/controllers/permissoesController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "requireLeitura",
+          "file": "backend/src/middleware/permissionMiddleware.ts",
+          "params": ["moduloSlug: string"],
+          "returns": "Express middleware",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "obterPeriodoAtivo",
+          "file": "backend/src/modules/sistema/controllers/periodosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buscarInstituicao",
+          "file": "backend/src/modules/sistema/controllers/instituicaoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarDisparo",
+          "file": "backend/src/modules/sistema/controllers/disparosNotificacaoController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Modulo",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "slug", "type": "string", "required": true },
+            { "name": "ordem", "type": "number", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "NivelPermissao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "slug", "type": "string", "required": true },
+            { "name": "nivel", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "PeriodoSistema",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "ano", "type": "number", "required": true },
+            { "name": "data_inicio", "type": "date", "required": true },
+            { "name": "data_fim", "type": "date", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "fechado", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Instituicao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "logo_url", "type": "string", "required": false },
+            { "name": "pdf_templates", "type": "json", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "DisparoNotificacao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "titulo", "type": "string", "required": true },
+            { "name": "mensagem", "type": "string", "required": true },
+            { "name": "alvo", "type": "string", "required": true },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "total_enviado", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Admin e system admin bypassam guards de frontend e middlewares de permissao.",
+          "location": "frontend/src/components/PermissionGuard.tsx; backend/src/middleware/permissionMiddleware.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Permissao direta do usuario sobrescreve permissao herdada da funcao no frontend.",
+          "location": "frontend/src/hooks/useUserPermissions.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Periodo ativo nao pode ser ocultado, fechado ou deletado; periodo fechado nao pode ser ativado.",
+          "location": "backend/src/modules/sistema/controllers/periodosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Se nao existir instituicao ativa, buscarInstituicao cria registro padrao Secretaria Municipal de Educacao.",
+          "location": "backend/src/modules/sistema/controllers/instituicaoController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Disparo de notificacao e processado imediatamente e cria notificacoes para usuarios de escola do alvo.",
+          "location": "backend/src/modules/sistema/controllers/disparosNotificacaoController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "usuarios",
+        "tenants",
+        "escolas",
+        "modalidades",
+        "pedidos",
+        "guias",
+        "cardapios",
+        "solicitacoes",
+        "cache",
+        "jwt"
+      ],
+      "algorithms": [
+        {
+          "name": "Resolucao de permissao",
+          "description": "Verifica admin/system admin, permissao direta, permissao por funcao e cacheia por usuario/modulo por 5 minutos.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Selecao de periodo efetivo",
+          "description": "Prioriza periodo selecionado no usuario; se ausente, usa periodo global ativo.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Processamento de disparo",
+          "description": "Seleciona usuarios por alvo, insere notificacoes e atualiza status/total do disparo.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "solicitacoes",
+      "status": "analyzed",
+      "purpose": "Gerenciar solicitacoes de alimentos feitas por escolas, respostas da secretaria e atendimento emergencial por guias.",
+      "primary_files": [
+        "backend/src/modules/solicitacoes/routes/solicitacoesAlimentosRoutes.ts",
+        "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+        "backend/src/modules/solicitacoes/services/SolicitacaoEmergencialService.ts",
+        "backend/migrations/migrar-solicitacoes-itens.js",
+        "backend/src/migrations/20260426_solicitacoes_emergenciais.sql",
+        "frontend/src/services/solicitacoesAlimentos.ts",
+        "frontend/src/services/solicitacoesAlimentosStatus.ts",
+        "frontend/src/modules/portal-escola/pages/SolicitacoesPage.tsx",
+        "frontend/src/modules/solicitacoes/pages/SolicitacoesAlimentos.tsx",
+        "frontend/src/modules/solicitacoes/pages/SolicitacaoEscolaDetalhe.tsx"
+      ],
+      "functions": [
+        {
+          "name": "criarSolicitacao",
+          "file": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "cancelarSolicitacao",
+          "file": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "recalcularStatusSolicitacao",
+          "file": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "params": ["solicitacaoId: number", "respondidoPor: number"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "analisarItem",
+          "file": "backend/src/modules/solicitacoes/services/SolicitacaoEmergencialService.ts",
+          "params": ["itemId: number"],
+          "returns": "Promise<AnaliseSolicitacao>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "aprovarItemEmergencial",
+          "file": "backend/src/modules/solicitacoes/services/SolicitacaoEmergencialService.ts",
+          "params": ["itemId: number", "payload: AprovarPayload", "usuarioId: number"],
+          "returns": "Promise<{ analise; guia_item?; atendimento_tipo }>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Solicitacao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "observacao", "type": "string", "required": false },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "respondido_por", "type": "number", "required": false },
+            { "name": "respondido_em", "type": "string/date", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "SolicitacaoItem",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "solicitacao_id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": false },
+            { "name": "nome_produto", "type": "string", "required": true },
+            { "name": "quantidade", "type": "number", "required": true },
+            { "name": "unidade", "type": "string", "required": true },
+            { "name": "status", "type": "string", "required": true },
+            { "name": "atendimento_tipo", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "AnaliseSolicitacaoItem",
+          "fields": [
+            { "name": "estoque_central", "type": "object", "required": true },
+            { "name": "estoque_escola", "type": "object", "required": true },
+            { "name": "cobertura_guias", "type": "object", "required": true },
+            { "name": "quantidade_sugerida", "type": "number", "required": true },
+            { "name": "atendimento_sugerido", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Criacao exige usuario com escola_id, itens nao vazios, produto cadastrado ativo e quantidade positiva.",
+          "location": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Escola so cancela solicitacao propria enquanto status for pendente.",
+          "location": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Respostas so sao permitidas para solicitacao pendente ou parcial.",
+          "location": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Recusar item exige justificativa nao vazia.",
+          "location": "backend/src/modules/solicitacoes/controllers/solicitacoesAlimentosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Aprovacao emergencial valida cobertura de guias, estoque central disponivel, quantidade aprovada e data prevista.",
+          "location": "backend/src/modules/solicitacoes/services/SolicitacaoEmergencialService.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "portal-escola",
+        "escolas",
+        "usuarios",
+        "produtos",
+        "unidades",
+        "estoque",
+        "guias",
+        "notificacoes",
+        "realtime"
+      ],
+      "algorithms": [
+        {
+          "name": "Recalculo de status da solicitacao",
+          "description": "Deriva status do cabecalho a partir dos status dos itens: pendente, parcial, concluida ou cancelada.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Analise de atendimento emergencial",
+          "description": "Compara quantidade solicitada com cobertura de guias abertas e disponibilidade do estoque central.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Criacao/reuso de guia emergencial",
+          "description": "Reusa Guia Emergencial MM/AAAA aberta ou cria nova guia e soma/insere item em guia_produto_escola.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "unidades",
+      "status": "analyzed",
+      "purpose": "Padronizar unidades de medida e conversoes entre massa, volume e embalagens, preservando snapshots de unidade em produtos, contratos, pedidos e estoque.",
+      "primary_files": [
+        "backend/src/modules/unidades/routes/unidadeMedidaRoutes.ts",
+        "backend/src/modules/unidades/controllers/unidadeMedidaController.ts",
+        "backend/src/services/unidadesMedidaService.ts",
+        "backend/migrations/20260323_criar_tabela_unidades_medida.sql",
+        "backend/migrations/20260323_add_unidades_pedido_itens.sql",
+        "backend/migrations/20260323_add_unidade_to_contrato_produtos.sql",
+        "backend/src/migrations/20260303_add_unidade_to_produtos.sql",
+        "backend/src/migrations/20260304_add_unidade_to_movimentacoes.sql",
+        "frontend/src/services/unidadesMedida.ts",
+        "frontend/src/hooks/queries/useUnidadesMedidaQueries.ts",
+        "frontend/src/components/UnidadeMedidaSelect.tsx",
+        "frontend/src/utils/fatorConversao.ts"
+      ],
+      "functions": [
+        {
+          "name": "listarUnidades",
+          "file": "backend/src/modules/unidades/controllers/unidadeMedidaController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "buscarUnidadeMedida",
+          "file": "backend/src/services/unidadesMedidaService.ts",
+          "params": ["identificador: string | number"],
+          "returns": "Promise<UnidadeMedida | null>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "converterUnidade",
+          "file": "backend/src/services/unidadesMedidaService.ts",
+          "params": ["quantidade: number", "unidadeOrigemId: number", "unidadeDestinoId: number", "pesoEmbalagem?: number"],
+          "returns": "Promise<number>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "calcularFatorConversao",
+          "file": "backend/src/services/unidadesMedidaService.ts",
+          "params": ["unidadeOrigemId: number", "unidadeDestinoId: number", "pesoEmbalagem?: number", "pesoProduto?: number"],
+          "returns": "Promise<number>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "normalizarUnidade",
+          "file": "backend/src/services/unidadesMedidaService.ts",
+          "params": ["nomeUnidade: string"],
+          "returns": "Promise<string | null>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "UnidadeMedida",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "codigo", "type": "string", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "tipo", "type": "massa | volume | unidade", "required": true },
+            { "name": "unidade_base_id", "type": "number", "required": false },
+            { "name": "fator_conversao_base", "type": "number", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "UnidadeSnapshotPedido",
+          "fields": [
+            { "name": "pedido_itens.unidade", "type": "string", "required": false },
+            { "name": "pedido_itens.quantidade_kg", "type": "number", "required": false },
+            { "name": "pedido_itens.quantidade_distribuicao", "type": "number", "required": false },
+            { "name": "pedido_itens.unidade_distribuicao", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Conversao so e permitida entre unidades do mesmo tipo.",
+          "location": "backend/src/services/unidadesMedidaService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Conversao com embalagens exige pesoEmbalagem quando uma das unidades nao tem fator fixo.",
+          "location": "backend/src/services/unidadesMedidaService.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Produtos, contratos, pedido_itens e movimentacoes preservam unidade textual para historico e exibicao.",
+          "location": "backend/migrations/20260323_add_unidades_pedido_itens.sql; backend/src/migrations/20260304_add_unidade_to_movimentacoes.sql",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "produtos",
+        "contratos",
+        "compras",
+        "estoque",
+        "guias",
+        "solicitacoes",
+        "faturamento"
+      ],
+      "algorithms": [
+        {
+          "name": "Conversao via unidade base",
+          "description": "Converte quantidade para a unidade base do tipo e depois para a unidade destino usando fator_conversao_base.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Conversao de embalagem",
+          "description": "Usa pesoEmbalagem para converter entre embalagem variavel e unidade fixa.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Normalizacao textual",
+          "description": "Mapeia nomes e codigos legados para codigos padronizados como KG, L, UN, DZ e PCT.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "usuarios",
+      "status": "analyzed",
+      "purpose": "Autenticacao JWT, perfil atual, administracao de usuarios, funcoes, permissoes diretas e verificacao de conflitos de permissao.",
+      "primary_files": [
+        "backend/src/modules/usuarios/routes/userRoutes.ts",
+        "backend/src/modules/usuarios/routes/adminUsuariosRoutes.ts",
+        "backend/src/modules/usuarios/controllers/userController.ts",
+        "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+        "backend/src/modules/usuarios/models/User.ts",
+        "backend/src/middleware/authMiddleware.ts",
+        "backend/src/middleware/devAuthMiddleware.ts",
+        "backend/migrations/20260315_create_funcoes_usuarios.sql",
+        "backend/migrations/20260316_add_periodo_usuario.sql",
+        "backend/migrations/20260317_add_escola_usuarios.sql",
+        "frontend/src/services/auth.ts",
+        "frontend/src/services/adminUsuarios.ts",
+        "frontend/src/modules/sistema/pages/GerenciamentoUsuarios.tsx"
+      ],
+      "functions": [
+        {
+          "name": "login",
+          "file": "backend/src/modules/usuarios/controllers/userController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "getProfile",
+          "file": "backend/src/modules/usuarios/controllers/userController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarUsuario",
+          "file": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "criarFuncao",
+          "file": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "setPermissoesUsuario",
+          "file": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "verificarConflitos",
+          "file": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "params": ["req: Request", "res: Response"],
+          "returns": "Promise<Response|void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Usuario",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "email", "type": "string", "required": true },
+            { "name": "senha", "type": "string", "required": true },
+            { "name": "tipo", "type": "string", "required": true },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "escola_id", "type": "number", "required": false },
+            { "name": "tipo_secretaria", "type": "educacao | escola", "required": false },
+            { "name": "funcao_id", "type": "number", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Funcao",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "descricao", "type": "string", "required": false },
+            { "name": "ativo", "type": "boolean", "required": true },
+            { "name": "permissoes", "type": "FuncaoPermissao[]", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "JwtUsuarioPayload",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "tipo", "type": "string", "required": true },
+            { "name": "email", "type": "string", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "escola_id", "type": "number", "required": false },
+            { "name": "tipo_secretaria", "type": "string", "required": true },
+            { "name": "isSystemAdmin", "type": "boolean", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Login exige email e senha, valida bcrypt e emite JWT com dados de usuario, escola e secretaria.",
+          "location": "backend/src/modules/usuarios/controllers/userController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Rotas /api/admin exigem authenticateToken e usuario admin/systemAdmin.",
+          "location": "backend/src/modules/usuarios/routes/adminUsuariosRoutes.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Usuario de secretaria de escola deve possuir escola_id.",
+          "location": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Administrador nao pode excluir a propria conta.",
+          "location": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Funcoes em uso por usuarios nao podem ser excluidas.",
+          "location": "backend/src/modules/usuarios/controllers/adminUsuariosController.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "sistema",
+        "permissoes",
+        "escolas",
+        "periodos",
+        "tenants",
+        "frontend-auth",
+        "jwt",
+        "bcrypt"
+      ],
+      "algorithms": [
+        {
+          "name": "Autenticacao JWT",
+          "description": "Compara senha bcrypt e assina payload do usuario com expiracao configurada.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Substituicao transacional de permissoes",
+          "description": "Remove permissoes antigas e insere novas para usuarios ou funcoes dentro de transacao.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Verificacao de conflitos",
+          "description": "Combina permissao direta e por funcao, prioriza direta e aplica regras de dependencia entre modulos.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "apps/entregador-native",
+      "status": "analyzed",
+      "purpose": "Aplicativo Expo/React Native para operacao de entregas em campo, com QR Code, cache offline, fila de confirmacoes, comprovantes com foto, recebimentos e estoque central.",
+      "primary_files": [
+        "apps/entregador-native/App.tsx",
+        "apps/entregador-native/src/api/client.ts",
+        "apps/entregador-native/src/api/auth.ts",
+        "apps/entregador-native/src/api/rotas.ts",
+        "apps/entregador-native/src/api/recebimentos.ts",
+        "apps/entregador-native/src/api/estoqueCentral.ts",
+        "apps/entregador-native/src/contexts/OfflineContext.tsx",
+        "apps/entregador-native/src/services/deliveryOutbox.ts",
+        "apps/entregador-native/src/services/deliveryOutboxCore.ts",
+        "apps/entregador-native/src/services/deliveryOfflineBundle.ts",
+        "apps/entregador-native/src/services/deliveryRemoteChanges.ts",
+        "apps/entregador-native/src/services/deliveryPhotoUpload.ts",
+        "apps/entregador-native/src/services/deliveryPhotoLocalFile.ts",
+        "apps/entregador-native/src/screens/HomeScreen.tsx",
+        "apps/entregador-native/src/screens/RotasScreen.tsx",
+        "apps/entregador-native/src/screens/RotaDetalheScreen.tsx",
+        "apps/entregador-native/src/screens/EscolaDetalheScreen.tsx",
+        "apps/entregador-native/src/screens/ComprovantesScreen.tsx"
+      ],
+      "functions": [
+        {
+          "name": "login",
+          "file": "apps/entregador-native/src/api/auth.ts",
+          "params": ["email: string", "senha: string"],
+          "returns": "Promise<LoginResponse>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "normalizeQrFilter",
+          "file": "apps/entregador-native/src/utils/qrFilter.ts",
+          "params": ["raw: string | Record<string, any>"],
+          "returns": "EntregaQrFilter | null",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "applyDeliveryOfflineBundle",
+          "file": "apps/entregador-native/src/services/deliveryOfflineBundle.ts",
+          "params": ["bundle: OfflineEntregaBundle"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "enqueueDeliveryOperation",
+          "file": "apps/entregador-native/src/services/deliveryOutbox.ts",
+          "params": ["itemId: number", "data: ConfirmarEntregaData", "comprovanteData?: DeliveryComprovanteData"],
+          "returns": "Promise<DeliveryOutboxOperation>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "syncPendingOperations",
+          "file": "apps/entregador-native/src/contexts/OfflineContext.tsx",
+          "params": [],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "uploadDeliveryPhotoToSignedUrl",
+          "file": "apps/entregador-native/src/services/deliveryPhotoUpload.ts",
+          "params": ["input: { localUri; uploadUrl; token?; headers }"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "EntregaQrFilter",
+          "fields": [
+            { "name": "escopoRotas", "type": "todas | selecionadas", "required": true },
+            { "name": "rotaIds", "type": "number[] | todas", "required": true },
+            { "name": "dataInicio", "type": "string", "required": true },
+            { "name": "dataFim", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "DeliveryOutboxOperation",
+          "fields": [
+            { "name": "id", "type": "string", "required": true },
+            { "name": "itemId", "type": "number", "required": true },
+            { "name": "status", "type": "DeliveryOutboxStatus", "required": true },
+            { "name": "historicoId", "type": "number", "required": false },
+            { "name": "comprovanteId", "type": "number", "required": false },
+            { "name": "comprovanteData", "type": "DeliveryComprovanteData", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "SchoolItemProjection",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "entrega_confirmada", "type": "boolean", "required": false },
+            { "name": "saldo_pendente", "type": "number", "required": false },
+            { "name": "latest_historico_entrega_date", "type": "string", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Confirmacoes de entrega sao enfileiradas localmente com client_operation_id e sincronizadas depois.",
+          "location": "apps/entregador-native/src/screens/EscolaDetalheScreen.tsx; apps/entregador-native/src/services/deliveryOutbox.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Comprovante offline so avanca quando a confirmacao da entrega retorna historico_id.",
+          "location": "apps/entregador-native/src/services/deliveryOutboxCore.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Foto de mercadoria e obrigatoria na revisao da entrega.",
+          "location": "apps/entregador-native/src/services/deliveryPhotoReview.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "entregas",
+        "rotas",
+        "recebimentos",
+        "estoque",
+        "usuarios",
+        "AsyncStorage",
+        "NetInfo",
+        "Expo Camera",
+        "Expo FileSystem",
+        "Supabase signed upload"
+      ],
+      "algorithms": [
+        {
+          "name": "Sincronizacao offline de entregas",
+          "description": "Processa fila em etapas: confirmar entrega, criar comprovante, subir foto e aplicar mudancas remotas.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Projecao local de pendencias",
+          "description": "Mescla itens do servidor com outbox aberta para calcular saldos, historicos offline e contagens por escola/rota.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Normalizacao de QR",
+          "description": "Aceita aliases curtos e formatos legados para gerar filtro de rotas e periodo.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "apps/estoque-escolar-mobile",
+      "status": "analyzed",
+      "purpose": "Aplicativo Expo/React Native para gestor escolar consultar estoque da escola, movimentar entradas/saidas/ajustes, acompanhar lotes/validade e historico.",
+      "primary_files": [
+        "apps/estoque-escolar-mobile/App.tsx",
+        "apps/estoque-escolar-mobile/src/navigation/AppNavigator.tsx",
+        "apps/estoque-escolar-mobile/src/config/api.ts",
+        "apps/estoque-escolar-mobile/src/services/api.ts",
+        "apps/estoque-escolar-mobile/src/services/gestorEscola.ts",
+        "apps/estoque-escolar-mobile/src/contexts/AuthContext.tsx",
+        "apps/estoque-escolar-mobile/src/hooks/useEstoque.ts",
+        "apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts",
+        "apps/estoque-escolar-mobile/src/screens/LoginGestorScreen.tsx",
+        "apps/estoque-escolar-mobile/src/screens/EstoqueScreen.tsx",
+        "apps/estoque-escolar-mobile/src/screens/HistoricoScreen.tsx",
+        "apps/estoque-escolar-mobile/src/types/index.ts",
+        "apps/estoque-escolar-mobile/src/schemas/validation.ts"
+      ],
+      "functions": [
+        {
+          "name": "autenticarGestor",
+          "file": "apps/estoque-escolar-mobile/src/services/gestorEscola.ts",
+          "params": ["escola_id: number", "codigo_acesso: string"],
+          "returns": "Promise<AuthResponse>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "listarEstoqueEscola",
+          "file": "apps/estoque-escolar-mobile/src/services/api.ts",
+          "params": ["escolaId: number"],
+          "returns": "Promise<ItemEstoqueEscola[]>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "atualizarQuantidadeItem",
+          "file": "apps/estoque-escolar-mobile/src/services/api.ts",
+          "params": ["escolaId: number", "produtoId: number", "movimento: MovimentoEstoque"],
+          "returns": "Promise<ItemEstoqueEscola>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "useEstoque",
+          "file": "apps/estoque-escolar-mobile/src/hooks/useEstoque.ts",
+          "params": ["escolaIdProp?: number"],
+          "returns": "UseEstoqueReturn",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "useSyncManager",
+          "file": "apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts",
+          "params": ["config: Partial<SyncConfig>"],
+          "returns": "sync status and actions",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "SessaoGestor",
+          "fields": [
+            { "name": "escola", "type": "Escola", "required": true },
+            { "name": "token", "type": "string", "required": true },
+            { "name": "codigo_acesso", "type": "string", "required": true },
+            { "name": "timestamp", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "ItemEstoqueEscola",
+          "fields": [
+            { "name": "id", "type": "number", "required": true },
+            { "name": "produto_id", "type": "number", "required": true },
+            { "name": "escola_id", "type": "number", "required": true },
+            { "name": "quantidade_atual", "type": "number", "required": true },
+            { "name": "status_estoque", "type": "string", "required": true },
+            { "name": "lotes", "type": "LoteEstoque[]", "required": false }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "SyncItem",
+          "fields": [
+            { "name": "id", "type": "string", "required": true },
+            { "name": "type", "type": "entrada | saida | ajuste", "required": true },
+            { "name": "data", "type": "any", "required": true },
+            { "name": "tentativas", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "Login do gestor exige escola selecionada e codigo numerico de 6 digitos.",
+          "location": "apps/estoque-escolar-mobile/src/screens/LoginGestorScreen.tsx",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Sessao local do gestor expira em 24 horas.",
+          "location": "apps/estoque-escolar-mobile/src/services/gestorEscola.ts",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Saida de estoque nao deve exceder estoque atual segundo validacao Zod utilitaria.",
+          "location": "apps/estoque-escolar-mobile/src/schemas/validation.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "estoque-escolar",
+        "gestor-escola",
+        "produtos",
+        "usuarios",
+        "AsyncStorage",
+        "React Navigation",
+        "React Native Calendars",
+        "Zod"
+      ],
+      "algorithms": [
+        {
+          "name": "Normalizacao de estoque escolar",
+          "description": "Enriquece cada item com lotes ativos, vencimento proximo, dias para vencimento e flags de lotes criticos/vencidos.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Historico paginado com filtros locais",
+          "description": "Carrega movimentos em paginas de 10 e filtra por produto, tipo e periodo na tela.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Fila generica de sincronizacao",
+          "description": "Persiste operacoes de entrada/saida/ajuste em AsyncStorage e tenta sincronizar por conectividade ou intervalo.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "desktop",
+      "status": "analyzed",
+      "purpose": "Camada Electron do NutriLog: janela desktop, preload seguro, backend local empacotado, downloads nativos, logs e acoes de janela.",
+      "primary_files": [
+        "desktop/main.cjs",
+        "desktop/preload.cjs",
+        "desktop/backend-service.cjs",
+        "desktop/downloads.cjs",
+        "desktop/window-actions.cjs",
+        "desktop/window-appearance.cjs",
+        "desktop/backend-service.test.cjs",
+        "desktop/downloads.test.cjs",
+        "desktop/window-actions.test.cjs",
+        "desktop/window-appearance.test.cjs"
+      ],
+      "functions": [
+        {
+          "name": "createWindow",
+          "file": "desktop/main.cjs",
+          "params": [],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "startBackend",
+          "file": "desktop/backend-service.cjs",
+          "params": ["options"],
+          "returns": "{ process; port; urls; stop }",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "waitForBackendHealth",
+          "file": "desktop/backend-service.cjs",
+          "params": ["healthURL: string", "options"],
+          "returns": "Promise<void>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "saveGeneratedFile",
+          "file": "desktop/downloads.cjs",
+          "params": ["{ BrowserWindow, dialog, fs, sender, payload }"],
+          "returns": "Promise<object>",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "getBrowserWindowAppearanceOptions",
+          "file": "desktop/window-appearance.cjs",
+          "params": ["platform?: string", "mode?: string"],
+          "returns": "BrowserWindow options fragment",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "DesktopShell",
+          "fields": [
+            { "name": "isDesktop", "type": "boolean", "required": true },
+            { "name": "isDev", "type": "boolean", "required": true },
+            { "name": "platform", "type": "string", "required": true },
+            { "name": "apiBaseURL", "type": "string", "required": true },
+            { "name": "healthURL", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "DesktopBackendUrls",
+          "fields": [
+            { "name": "baseURL", "type": "string", "required": true },
+            { "name": "healthURL", "type": "string", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "GeneratedFilePayload",
+          "fields": [
+            { "name": "fileName", "type": "string", "required": false },
+            { "name": "mimeType", "type": "string", "required": false },
+            { "name": "data", "type": "string", "required": false },
+            { "name": "encoding", "type": "base64 | undefined", "required": false }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "No app empacotado, o backend roda localmente em 127.0.0.1 na porta DESKTOP_BACKEND_PORT ou 3131.",
+          "location": "desktop/backend-service.cjs",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "DevTools so pode ser alternado quando o app esta em modo desenvolvimento.",
+          "location": "desktop/main.cjs",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Downloads sempre passam por dialog nativo de salvamento e podem ser cancelados pelo usuario.",
+          "location": "desktop/downloads.cjs",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "electron",
+        "frontend/dist",
+        "backend/dist",
+        "backend/.env",
+        "nutrilog.env",
+        "userData/logs"
+      ],
+      "algorithms": [
+        {
+          "name": "Warmup de backend desktop",
+          "description": "Resolve URLs, inicia child process do backend empacotado, aguarda health e renderiza erro HTML se falhar.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Download nativo",
+          "description": "Intercepta downloads e payloads gerados, escolhe filtros por MIME/extensao e emite eventos para o renderer.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Aparencia cross-platform",
+          "description": "Seleciona titleBarStyle e overlay conforme plataforma e aplica tema light/dark.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "shared",
+      "status": "analyzed",
+      "purpose": "Pacote local de tipos TypeScript compartilhados para contratos de dominio, API, estoque, mobile, tenants e eventos.",
+      "primary_files": [
+        "shared/package.json",
+        "shared/tsconfig.json",
+        "shared/types/index.ts"
+      ],
+      "functions": [
+        {
+          "name": "TenantNotFoundError",
+          "file": "shared/types/index.ts",
+          "params": ["identifier: string"],
+          "returns": "Error subclass",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "TenantInactiveError",
+          "file": "shared/types/index.ts",
+          "params": ["tenantId: string"],
+          "returns": "Error subclass",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "TenantLimitExceededError",
+          "file": "shared/types/index.ts",
+          "params": ["limit: string", "current: number", "max: number"],
+          "returns": "Error subclass",
+          "confidence": "confirmed"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Usuario",
+          "fields": [
+            { "name": "id", "type": "ID", "required": true },
+            { "name": "nome", "type": "string", "required": true },
+            { "name": "email", "type": "string", "required": true },
+            { "name": "tipo", "type": "admin | gestor | escola", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "EstoqueEvento",
+          "fields": [
+            { "name": "escopo", "type": "central | escola", "required": true },
+            { "name": "produto_id", "type": "ID", "required": true },
+            { "name": "tipo_evento", "type": "TipoEventoEstoque", "required": true },
+            { "name": "quantidade_delta", "type": "number", "required": true }
+          ],
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Tenant",
+          "fields": [
+            { "name": "id", "type": "ID", "required": true },
+            { "name": "slug", "type": "string", "required": true },
+            { "name": "settings", "type": "TenantSettings", "required": true },
+            { "name": "limits", "type": "TenantLimits", "required": true }
+          ],
+          "confidence": "confirmed"
+        }
+      ],
+      "business_rules": [
+        {
+          "description": "O pacote compila apenas declaracoes TypeScript e nao foi encontrado como importacao ativa no codigo analisado.",
+          "location": "shared/package.json; busca rg no repositorio",
+          "confidence": "confirmed"
+        },
+        {
+          "description": "Erros multi-tenant carregam code estavel por subclasse.",
+          "location": "shared/types/index.ts",
+          "confidence": "confirmed"
+        }
+      ],
+      "dependencies": [
+        "typescript"
+      ],
+      "algorithms": [
+        {
+          "name": "Modelo de contratos compartilhados",
+          "description": "Centraliza aliases, interfaces e unions para tentar alinhar frontend, backend e mobile.",
+          "confidence": "confirmed"
+        },
+        {
+          "name": "Hierarquia de erros tenant",
+          "description": "Define subclasses de Error com code especifico para cenarios de tenant.",
+          "confidence": "confirmed"
+        }
+      ],
+      "complexity": "low"
+    }
+  ]
+}

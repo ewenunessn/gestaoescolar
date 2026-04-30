@@ -1,0 +1,254 @@
+{
+  "generated_at": "2026-04-29T00:00:00-03:00",
+  "project_root": "C:\\Users\\Ewerton\\Desktop\\Ewerton\\gestaoescolar",
+  "languages": [
+    {
+      "name": "TypeScript",
+      "extensions": [".ts", ".tsx"],
+      "file_count": 617
+    },
+    {
+      "name": "JavaScript",
+      "extensions": [".js", ".cjs"],
+      "file_count": 350
+    },
+    {
+      "name": "SQL",
+      "extensions": [".sql"],
+      "file_count": 172
+    },
+    {
+      "name": "Markdown",
+      "extensions": [".md"],
+      "file_count": 36
+    },
+    {
+      "name": "JSON",
+      "extensions": [".json"],
+      "file_count": 23
+    },
+    {
+      "name": "Kotlin",
+      "extensions": [".kt"],
+      "file_count": 2
+    },
+    {
+      "name": "CSS",
+      "extensions": [".css"],
+      "file_count": 6
+    }
+  ],
+  "primary_language": "TypeScript",
+  "frameworks": [
+    {
+      "name": "React",
+      "version": "^18.2.0",
+      "source": "frontend/package.json"
+    },
+    {
+      "name": "Vite",
+      "version": "^5.2.8",
+      "source": "frontend/package.json"
+    },
+    {
+      "name": "Material UI",
+      "version": "^5.15.14",
+      "source": "frontend/package.json"
+    },
+    {
+      "name": "Express",
+      "version": "^4.18.2",
+      "source": "backend/package.json"
+    },
+    {
+      "name": "Electron",
+      "version": "^37.2.1",
+      "source": "package.json"
+    },
+    {
+      "name": "Expo",
+      "version": "~51.0.0",
+      "source": "apps/entregador-native/package.json"
+    },
+    {
+      "name": "Expo",
+      "version": "~54.0.0",
+      "source": "apps/estoque-escolar-mobile/package.json"
+    },
+    {
+      "name": "React Native",
+      "version": "0.74.2",
+      "source": "apps/entregador-native/package.json"
+    },
+    {
+      "name": "React Native",
+      "version": "0.81.5",
+      "source": "apps/estoque-escolar-mobile/package.json"
+    },
+    {
+      "name": "Jest",
+      "version": "^30.0.4",
+      "source": "backend/package.json"
+    },
+    {
+      "name": "Vitest",
+      "version": "^1.0.4",
+      "source": "frontend/package.json"
+    }
+  ],
+  "package_manager": "npm",
+  "entry_points": [
+    {
+      "path": "package.json",
+      "type": "workspace_manifest"
+    },
+    {
+      "path": "desktop/main.cjs",
+      "type": "desktop_entry"
+    },
+    {
+      "path": "desktop/preload.cjs",
+      "type": "desktop_preload"
+    },
+    {
+      "path": "backend/src/index.ts",
+      "type": "server_entry"
+    },
+    {
+      "path": "backend/src/routes/registerApiRoutes.ts",
+      "type": "api_routes"
+    },
+    {
+      "path": "frontend/src/main.tsx",
+      "type": "frontend_entry"
+    },
+    {
+      "path": "frontend/src/App.tsx",
+      "type": "frontend_app"
+    },
+    {
+      "path": "frontend/src/routes/AppRouter.tsx",
+      "type": "frontend_routes"
+    },
+    {
+      "path": "apps/entregador-native/App.tsx",
+      "type": "mobile_app"
+    },
+    {
+      "path": "apps/entregador-native/index.ts",
+      "type": "mobile_entry"
+    },
+    {
+      "path": "apps/estoque-escolar-mobile/App.tsx",
+      "type": "mobile_app"
+    },
+    {
+      "path": "apps/estoque-escolar-mobile/index.ts",
+      "type": "mobile_entry"
+    },
+    {
+      "path": "shared/types/index.ts",
+      "type": "shared_types"
+    }
+  ],
+  "config_files": [
+    "package.json",
+    "package-lock.json",
+    "backend/package.json",
+    "backend/package-lock.json",
+    "backend/tsconfig.json",
+    "backend/vercel.json",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/tsconfig.json",
+    "frontend/vite.config.ts",
+    "frontend/vitest.config.ts",
+    "frontend/vercel.json",
+    "shared/package.json",
+    "shared/tsconfig.json",
+    "apps/entregador-native/package.json",
+    "apps/entregador-native/package-lock.json",
+    "apps/entregador-native/app.json",
+    "apps/entregador-native/tsconfig.json",
+    "apps/entregador-native/babel.config.js",
+    "apps/estoque-escolar-mobile/package.json",
+    "apps/estoque-escolar-mobile/package-lock.json",
+    "apps/estoque-escolar-mobile/app.json",
+    "apps/estoque-escolar-mobile/eas.json",
+    "apps/estoque-escolar-mobile/tsconfig.json",
+    "apps/estoque-escolar-mobile/metro.config.js",
+    "apps/estoque-escolar-mobile/babel.config.js",
+    "app.json",
+    "eas.json"
+  ],
+  "ci_cd": [
+    ".github/workflows/ci.yml",
+    "backend/vercel.json",
+    "frontend/vercel.json"
+  ],
+  "database_hints": [
+    {
+      "path": "backend/database/schema.sql",
+      "type": "schema"
+    },
+    {
+      "path": "backend/database/setup-local.sql",
+      "type": "local_setup"
+    },
+    {
+      "path": "backend/migrations/",
+      "type": "migrations_dir"
+    },
+    {
+      "path": "backend/src/migrations/",
+      "type": "migrations_dir"
+    },
+    {
+      "path": "backend/src/database/migrations/",
+      "type": "migrations_dir"
+    },
+    {
+      "path": "backend/src/database.ts",
+      "type": "database_client"
+    },
+    {
+      "path": "backend/src/database-vercel.ts",
+      "type": "database_client"
+    },
+    {
+      "path": "backend/src/modules/*/models/",
+      "type": "models_dirs"
+    }
+  ],
+  "test_framework": "Jest, Vitest, Node test runner",
+  "test_file_count": 51,
+  "modules": [
+    "abastecimento",
+    "cardapios",
+    "compras",
+    "contratos",
+    "demandas",
+    "entregas",
+    "escolas",
+    "estoque",
+    "faturamento",
+    "faturamentos",
+    "fornecedores",
+    "guias",
+    "nutricao",
+    "portal-escola",
+    "produtos",
+    "programacao",
+    "recebimentos",
+    "rotas",
+    "sistema",
+    "solicitacoes",
+    "unidades",
+    "usuarios",
+    "apps/entregador-native",
+    "apps/estoque-escolar-mobile",
+    "desktop",
+    "shared"
+  ],
+  "total_files": 1277
+}

@@ -153,3 +153,7 @@ release/
 
 # Local git worktrees
 .worktrees/
+
+# Local agent/user config
+.reversa/config.user.toml
+.kiro/skills/
