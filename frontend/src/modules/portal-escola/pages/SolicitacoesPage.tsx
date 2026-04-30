@@ -26,6 +26,10 @@ import {
   shouldRefreshForRealtimeEvent,
 } from "../../../services/realtime";
 import { getSolicitacaoItemStatusView } from "../../../services/solicitacoesAlimentosStatus";
+import {
+  buildNovoItemSolicitacao,
+  getProdutoUnidadeSolicitacao,
+} from "./SolicitacoesPage.helpers";
 
 export default function SolicitacoesPage() {
   const navigate = useNavigate();
@@ -44,7 +48,6 @@ export default function SolicitacoesPage() {
   // Estados para o formulário de adicionar item
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [quantidade, setQuantidade] = useState<number>(1);
-  const [unidade, setUnidade] = useState<string>('kg');
 
   // Helper para formatar data
   const formatarData = (dataStr: string | null | undefined): string => {
@@ -120,7 +123,6 @@ export default function SolicitacoesPage() {
       setNovaItens([]);
       setProdutoSelecionado(null);
       setQuantidade(1);
-      setUnidade('kg');
       carregarSolicitacoes();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Erro ao criar solicitação');
@@ -139,19 +141,13 @@ export default function SolicitacoesPage() {
       return;
     }
 
-    const novoItem: NovoItemData = {
-      produto_id: produtoSelecionado.id,
-      nome_produto: produtoSelecionado.nome,
-      quantidade,
-      unidade
-    };
+    const novoItem = buildNovoItemSolicitacao(produtoSelecionado, quantidade);
 
     setNovaItens([...novaItens, novoItem]);
     
     // Limpar campos
     setProdutoSelecionado(null);
     setQuantidade(1);
-    setUnidade('kg');
     
     toast.success('Item adicionado à lista');
   };
@@ -381,12 +377,7 @@ export default function SolicitacoesPage() {
                 options={produtos}
                 getOptionLabel={(p) => p.nome}
                 value={produtoSelecionado}
-                onChange={(_, prod) => {
-                  setProdutoSelecionado(prod);
-                  if (prod) {
-                    setUnidade(prod.unidade || 'kg');
-                  }
-                }}
+                onChange={(_, prod) => setProdutoSelecionado(prod)}
                 renderInput={(params) => <TextField {...params} label="Produto" size="small" />}
                 sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' }, minWidth: 0 }}
               />
@@ -402,8 +393,8 @@ export default function SolicitacoesPage() {
               <TextField
                 label="Unidade"
                 size="small"
-                value={unidade}
-                onChange={(e) => setUnidade(e.target.value)}
+                value={produtoSelecionado ? getProdutoUnidadeSolicitacao(produtoSelecionado) : ''}
+                InputProps={{ readOnly: true }}
                 sx={{ width: 100 }}
               />
               <Button
@@ -467,7 +458,6 @@ export default function SolicitacoesPage() {
             setNovaObs('');
             setProdutoSelecionado(null);
             setQuantidade(1);
-            setUnidade('kg');
           }}>
             Cancelar
           </Button>

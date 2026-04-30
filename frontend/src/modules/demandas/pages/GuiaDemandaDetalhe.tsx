@@ -22,7 +22,6 @@ import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog
 import ViewTabs from "../../../components/ViewTabs";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
 import { guiaService } from "../../../services/guiaService";
-import { produtoService } from "../../../services/produtoService";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useUnidadesMedida } from "../../../hooks/queries/useUnidadesMedidaQueries";
@@ -55,6 +54,7 @@ interface ItemGuia {
   status: string;
   data_entrega?: string;
 }
+
 
 const GuiaDemandaDetalhe: React.FC = () => {
   const navigate = useNavigate();
@@ -100,32 +100,9 @@ const GuiaDemandaDetalhe: React.FC = () => {
   }, [unidadesMedida, formEditar.unidadeCodigo]);
 
   // Dialog de edição em lote (todas as escolas de um produto)
-  const [dialogEditarProdutoOpen, setDialogEditarProdutoOpen] = useState(false);
-  const [produtoEditando, setProdutoEditando] = useState<any | null>(null);
-  const [formEditarProduto, setFormEditarProduto] = useState({ unidadeCodigo: '', data_entrega: '' });
-  const [salvandoEdicaoProduto, setSalvandoEdicaoProduto] = useState(false);
-
-  const unidadeIdProdutoSelecionada = useMemo(() => {
-    if (!unidadesMedida || !formEditarProduto.unidadeCodigo) return null;
-    const codigo = formEditarProduto.unidadeCodigo.toUpperCase().trim();
-    return (
-      unidadesMedida.find(u => u.codigo.toUpperCase() === codigo)?.id ??
-      unidadesMedida.find(u => u.nome.toUpperCase() === codigo)?.id ??
-      null
-    );
-  }, [unidadesMedida, formEditarProduto.unidadeCodigo]);
-
   // Dialog: itens de uma escola
   const [dialogItensEscolaOpen, setDialogItensEscolaOpen] = useState(false);
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaGuia | null>(null);
-
-  // Modal adicionar em lote
-  const [openBatchDialog, setOpenBatchDialog] = useState(false);
-  const [batchForm, setBatchForm] = useState({ produtoId: '', unidade: '', data_entrega: new Date().toISOString().split('T')[0] });
-  const [batchQuantidades, setBatchQuantidades] = useState<Record<number, string>>({});
-  const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
-  const [batchSaving, setBatchSaving] = useState(false);
-  const [produtos, setProdutos] = useState<any[]>([]);
 
   // Dialog gerar pedido
   const [dialogGerarPedido, setDialogGerarPedido] = useState(false);
@@ -214,28 +191,15 @@ const GuiaDemandaDetalhe: React.FC = () => {
               onClick={(e) => {
                 e.stopPropagation();
                 const produto = row.original;
-                setProdutoSelecionado({ 
-                  id: produto.produto_id, 
-                  nome: produto.produto_nome, 
-                  data_entrega: produto.data_entrega 
-                });
-                setDialogEscolasOpen(true);
+                const params = new URLSearchParams();
+                if (produto.data_entrega) {
+                  params.set('data_entrega', produto.data_entrega);
+                }
+                const query = params.toString();
+                navigate(`/guias-demanda/${guiaId}/produto/${produto.produto_id}/itens${query ? `?${query}` : ''}`);
               }}
             >
               <VisibilityIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Editar unidade e data em todas as escolas">
-            <IconButton 
-              size="small" 
-              color="default"
-              onClick={(e) => {
-                e.stopPropagation();
-                const produto = row.original;
-                handleAbrirEditarProduto(produto);
-              }}
-            >
-              <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Excluir de todas as escolas">
@@ -298,7 +262,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         </Box>
       ),
     },
-  ], []);
+  ], [navigate, guiaId, itens, toast]);
 
   // Colunas para aba de escolas
   const escolasColumns = useMemo<ColumnDef<EscolaGuia>[]>(() => [
@@ -376,7 +340,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
   useEffect(() => {
     if (guiaId) { 
       loadGuiaDetalhes(); 
-      loadProdutos(); 
       // Mark first tab as loaded
       setTabDataLoaded(prev => ({ ...prev, 0: true }));
     }
@@ -417,14 +380,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
       setPageTitle('Guia de Demanda');
     }
   }, [guia, setPageTitle]);
-
-  const loadProdutos = async () => {
-    try {
-      setProdutos(await produtoService.listar());
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
-    }
-  };
 
   const loadGuiaDetalhes = async (showLoading = true) => {
     try {
@@ -664,50 +619,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
     setItensSelecionados(new Set());
   };
 
-  const handleAbrirEditarProduto = (produto: any) => {
-    setProdutoEditando(produto);
-    setFormEditarProduto({
-      unidadeCodigo: produto.unidade,
-      data_entrega: produto.data_entrega ?? ''
-    });
-    setDialogEditarProdutoOpen(true);
-  };
-
-  const handleSalvarEdicaoProduto = async () => {
-    if (!produtoEditando || !unidadeIdProdutoSelecionada) return;
-
-    const unidade = unidadesMedida?.find(u => u.id === unidadeIdProdutoSelecionada);
-    if (!unidade) return;
-
-    const itensParaEditar = itens.filter(i => {
-      if (i.produto_id !== produtoEditando.produto_id) return false;
-      if (produtoEditando.data_entrega === null) return !i.data_entrega;
-      const dataItem = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
-      return dataItem === produtoEditando.data_entrega;
-    });
-
-    try {
-      setSalvandoEdicaoProduto(true);
-      await Promise.all(
-        itensParaEditar.map(item =>
-          api.put(`/guias/escola/produtos/${item.id}`, {
-            unidade: unidade.codigo,
-            data_entrega: formEditarProduto.data_entrega
-          })
-        )
-      );
-      toast.success(`${itensParaEditar.length} item(ns) atualizado(s) com sucesso`);
-      setDialogEditarProdutoOpen(false);
-      setProdutoEditando(null);
-      loadGuiaDetalhes();
-    } catch (error) {
-      console.error('Erro ao atualizar itens:', error);
-      toast.error('Erro ao atualizar itens');
-    } finally {
-      setSalvandoEdicaoProduto(false);
-    }
-  };
-
   // Matriz consolidada: escolas x produtos
   const matrizConsolidada = useMemo(() => {
     if (!itens.length || !escolasComItens.length) return { produtos: [], matriz: [] };
@@ -807,14 +718,13 @@ const GuiaDemandaDetalhe: React.FC = () => {
   // Toolbar actions para as tabelas
   const toolbarActions = (
     <Box sx={{ display: 'flex', gap: 1 }}>
-      <Button 
-        variant="contained" 
-        startIcon={<AddIcon />} 
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
         size="small"
-        onClick={() => setOpenBatchDialog(true)}
-        sx={{ bgcolor: '#000000', '&:hover': { bgcolor: '#333333' } }}
+        onClick={() => navigate(`/guias-demanda/${guiaId}/adicionar-produto`)}
       >
-        Adicionar para Múltiplas Escolas
+        Adicionar Produto
       </Button>
       <Button 
         variant="contained" 
@@ -840,31 +750,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
     </Button>
   );
 
-  const handleBatchSubmit = async () => {
-    if (!batchForm.produtoId || !batchForm.data_entrega || !guia) return;
-    const payloads = escolas
-      .map(e => ({ escola: e, quantidade: Number(batchQuantidades[e.id] || 0), status: batchStatus[e.id] || 'pendente' }))
-      .filter(p => p.quantidade > 0);
-    if (!payloads.length) return;
-    try {
-      setBatchSaving(true);
-      for (const { escola, quantidade, status } of payloads) {
-        await api.post(`/guias/escola/${escola.id}/produtos`, {
-          produtoId: parseInt(batchForm.produtoId), quantidade,
-          unidade: batchForm.unidade || 'Kg', data_entrega: batchForm.data_entrega,
-          mes_competencia: guia.mes, ano_competencia: guia.ano, status,
-        });
-      }
-      toast.success('Quantidades adicionadas com sucesso!');
-      setOpenBatchDialog(false);
-      setBatchQuantidades({}); setBatchStatus({});
-      loadGuiaDetalhes();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setBatchSaving(false);
-    }
-  };
 
   // ── Resumo otimizado ─────────────────────────────────────────────────────
   const estatisticas = useMemo(() => {
@@ -1222,54 +1107,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         guiaIdInicial={guia?.id}
       />
 
-      {/* Dialog Editar Produto em todas as escolas */}
-      <Dialog open={dialogEditarProdutoOpen} onClose={() => !salvandoEdicaoProduto && setDialogEditarProdutoOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Editar em Todas as Escolas</span>
-            <IconButton size="small" onClick={() => !salvandoEdicaoProduto && setDialogEditarProdutoOpen(false)} disabled={salvandoEdicaoProduto}>
-              <ClearIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            {produtoEditando && (
-              <Typography variant="body2" color="text.secondary">
-                <strong>Produto:</strong> {produtoEditando.produto_nome}
-                {' · '}
-                <strong>{produtoEditando.escolas?.length ?? 0} escola(s)</strong>
-              </Typography>
-            )}
-            <UnidadeMedidaSelect
-              value={unidadeIdProdutoSelecionada}
-              onChange={(id) => {
-                const unidade = unidadesMedida?.find(u => u.id === id);
-                setFormEditarProduto(prev => ({ ...prev, unidadeCodigo: unidade?.codigo ?? '' }));
-              }}
-              label="Unidade de Medida"
-              size="small"
-              disabled={salvandoEdicaoProduto}
-              required
-            />
-            <TextField
-              label="Data de Entrega"
-              type="date"
-              value={formEditarProduto.data_entrega}
-              onChange={e => setFormEditarProduto(prev => ({ ...prev, data_entrega: e.target.value }))}
-              fullWidth
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              disabled={salvandoEdicaoProduto}
-            />
-            {salvandoEdicaoProduto && <LinearProgress />}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogEditarProdutoOpen(false)} disabled={salvandoEdicaoProduto}>Cancelar</Button>
-          <Button onClick={handleSalvarEdicaoProduto} variant="contained" disabled={salvandoEdicaoProduto || !unidadeIdProdutoSelecionada}>Salvar</Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Dialog Editar Item */}
       <Dialog open={dialogEditarOpen} onClose={() => !salvandoEdicao && setDialogEditarOpen(false)} maxWidth="xs" fullWidth>
@@ -1326,66 +1163,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Modal Adicionar em Lote */}
-      <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Adicionar Produto para Múltiplas Escolas</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Selecione um produto e defina as quantidades para cada escola
-            </Typography>
-          </Box>
-          <IconButton size="small" onClick={() => !batchSaving && setOpenBatchDialog(false)} disabled={batchSaving}>
-            <ClearIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Produto</InputLabel>
-              <Select value={batchForm.produtoId} label="Produto" disabled={batchSaving}
-                onChange={e => {
-                  const p = produtos.find(x => x.id === Number(e.target.value));
-                  setBatchForm({ ...batchForm, produtoId: e.target.value as string, unidade: p?.unidade || 'Kg' });
-                }}>
-                {produtos.map(p => <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField label="Data de Entrega" type="date" value={batchForm.data_entrega}
-              onChange={e => setBatchForm({ ...batchForm, data_entrega: e.target.value })}
-              fullWidth size="small" InputLabelProps={{ shrink: true }} disabled={batchSaving} />
-            {batchForm.produtoId && (
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Quantidades por escola:</Typography>
-                <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {escolas.map(e => (
-                    <Box key={e.id} sx={{ display: 'flex', gap: 1.5, mb: 1, alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ flex: 1 }}>{e.nome}</Typography>
-                      <TextField label="Qtd" type="number" size="small"
-                        value={batchQuantidades[e.id] || ''}
-                        onChange={ev => setBatchQuantidades({ ...batchQuantidades, [e.id]: ev.target.value })}
-                        sx={{ width: 90 }} disabled={batchSaving} />
-                      <FormControl size="small" sx={{ width: 120 }}>
-                        <InputLabel>Status</InputLabel>
-                        <Select value={batchStatus[e.id] || 'pendente'} label="Status" disabled={batchSaving}
-                          onChange={ev => setBatchStatus({ ...batchStatus, [e.id]: ev.target.value as string })}>
-                          <MenuItem value="pendente">Disponível p/ Entrega</MenuItem>
-                          <MenuItem value="programada">Aguardando Estoque</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-            {batchSaving && <LinearProgress />}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBatchDialog(false)} disabled={batchSaving}>Cancelar</Button>
-          <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving || !batchForm.produtoId}>Salvar</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
