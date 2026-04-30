@@ -66,6 +66,7 @@ import NotificacoesEscolaMenu from "./NotificacoesEscolaMenu";
 import NotificacoesMenu from "./NotificacoesMenu";
 import { DesktopTitlebarMenu } from "./DesktopTitlebarMenu";
 import { NutriLogLogo } from "./NutriLogLogo";
+import { ROUTE_PERMISSION_SLUGS } from "../routes/permissionSlugs";
 
 const drawerWidth = 248;
 const collapsedDrawerWidth = 78;
@@ -202,7 +203,7 @@ const getMenuConfig = (_cfg: unknown) => [
 const MODULO_SLUGS: Record<string, string> = {
   Dashboard: "dashboard",
   "Visao Geral": "planejamento_compras",
-  "Compras / Pedidos": "pedidos",
+  "Compras / Pedidos": ROUTE_PERMISSION_SLUGS.compras,
   Rotas: "rotas",
   Escolas: "escolas",
   Modalidades: "modalidades",
@@ -210,11 +211,11 @@ const MODULO_SLUGS: Record<string, string> = {
   Nutricionistas: "nutricionistas",
   Fornecedores: "fornecedores",
   Contratos: "contratos",
-  Preparações: "preparacoes",
+  Preparações: ROUTE_PERMISSION_SLUGS.preparacoes,
   "Cardápios": "cardapios",
   "Tipos de Refeição": "tipos_refeicao",
-  "Guias de Demanda": "demandas",
-  Pedidos: "pedidos",
+  "Guias de Demanda": ROUTE_PERMISSION_SLUGS.guiasDemanda,
+  Pedidos: ROUTE_PERMISSION_SLUGS.compras,
   "Saldo Contratos": "saldo_contratos",
   "Dashboard PNAE": "pnae",
   "Gestão de Rotas": "rotas",

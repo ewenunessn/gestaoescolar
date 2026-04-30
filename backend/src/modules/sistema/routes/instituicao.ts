@@ -1,18 +1,24 @@
-import express from 'express';
-import { 
-  buscarInstituicao, 
-  atualizarInstituicao, 
+import { NextFunction, Request, Response, Router } from 'express';
+import {
+  buscarInstituicao,
+  atualizarInstituicao,
   uploadLogoBase64,
   salvarTemplate,
-  upload 
+  upload
 } from '../controllers/instituicaoController';
 import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireEscrita } from '../../../middleware/permissionMiddleware';
 
-const router = express.Router();
+const router = Router();
+const configuracoesWrite = requireEscrita('configuracoes');
+
+export function requireConfiguracoesWrite(req: Request, res: Response, next: NextFunction) {
+  return configuracoesWrite(req, res, next);
+}
 
 router.get('/', authenticateToken, buscarInstituicao);
-router.put('/', authenticateToken, upload.single('logo'), atualizarInstituicao);
-router.post('/logo-base64', authenticateToken, uploadLogoBase64);
-router.put('/templates/:nome', authenticateToken, salvarTemplate);
+router.put('/', authenticateToken, requireConfiguracoesWrite, upload.single('logo'), atualizarInstituicao);
+router.post('/logo-base64', authenticateToken, requireConfiguracoesWrite, uploadLogoBase64);
+router.put('/templates/:nome', authenticateToken, requireConfiguracoesWrite, salvarTemplate);
 
 export default router;

@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: Sistema, Faturamentos e Recebimentos API
+  version: 1.1.0
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      summary: Health check publico do bootstrap Express
+      responses:
+        '200':
+          description: Banco conectado e API operacional
+          content:
+            application/json:
+              example:
+                status: ok
+                database: PostgreSQL
+                dbConnection: connected
+        '500':
+          description: Falha de conexao com banco
+
+  /api/test-db:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Teste autenticado de banco
+      responses:
+        '200': { description: Banco respondeu SELECT de diagnostico }
+
+  /api/events:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Stream realtime por Server-Sent Events
+      description: "Aceita JWT no header `Authorization: Bearer` ou no query param `token` para clientes EventSource."
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+          description: JWT alternativo para clientes que nao conseguem enviar Authorization em SSE.
+      responses:
+        '200':
+          description: Stream `text/event-stream` aberto
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: "event: estoque_escolar\ndata: {\"action\":\"updated\"}\n\n"
+        '401': { description: Token ausente ou invalido }
+
+  /api/dashboard/stats:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Estatisticas do dashboard
+      description: Exige permissao de leitura `dashboard`.
+      responses:
+        '200':
+          description: Estatisticas retornadas
+          content:
+            application/json:
+              example: { escolas: 51, alunos: 16088, solicitacoes: 70, pnae: 0 }
+
+  /api/pnae/dashboard:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Dashboard PNAE
+      responses:
+        '200': { description: Dashboard retornado }
+  /api/pnae/relatorios/agricultura-familiar:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Relatorio agricultura familiar
+      responses:
+        '200': { description: Relatorio retornado }
+  /api/pnae/relatorios:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista relatorios PNAE
+      responses:
+        '200': { description: Relatorios retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Salva relatorio PNAE
+      responses:
+        '201': { description: Relatorio salvo }
+  /api/pnae/per-capita:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista valores per capita
+      responses:
+        '200': { description: Valores retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria valor per capita
+      responses:
+        '201': { description: Valor criado }
+  /api/pnae/per-capita/{id}:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza valor per capita
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Valor atualizado }
+
+  /api/periodos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista periodos
+      responses:
+        '200': { description: Periodos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria periodo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { ano: 2026, nome: "Ano Letivo 2026", data_inicio: "2026-01-01", data_fim: "2026-12-31" }
+      responses:
+        '201': { description: Periodo criado }
+  /api/periodos/ativo:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Obtem periodo ativo
+      responses:
+        '200': { description: Periodo retornado }
+  /api/periodos/selecionar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Seleciona periodo operacional do usuario
+      responses:
+        '200': { description: Periodo selecionado }
+  /api/periodos/{id}:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza periodo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodo atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove periodo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodo removido }
+  /api/periodos/{id}/ativar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Ativa periodo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodo ativado }
+
+  /api/calendario-letivo:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista calendarios letivos
+      responses:
+        '200': { description: Calendarios retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria calendario letivo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              ano_letivo: 2026
+              data_inicio: "2026-02-01"
+              data_fim: "2026-12-20"
+              dias_letivos_obrigatorios: 200
+      responses:
+        '201': { description: Calendario criado }
+  /api/calendario-letivo/ativo:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca calendario letivo ativo
+      responses:
+        '200': { description: Calendario retornado }
+  /api/calendario-letivo/periodo/{periodo_id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca calendario por periodo
+      parameters: [{ name: periodo_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Calendario retornado }
+  /api/calendario-letivo/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca calendario letivo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Calendario retornado }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza calendario letivo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Calendario atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove calendario letivo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Calendario removido }
+  /api/calendario-letivo/{id}/dias-letivos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Calcula dias letivos do calendario
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Dias letivos calculados }
+  /api/calendario-letivo/{calendario_id}/eventos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista eventos do calendario
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Eventos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria evento de calendario
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '201': { description: Evento criado }
+  /api/calendario-letivo/{calendario_id}/eventos/{ano}/{mes}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista eventos por mes
+      parameters:
+        - { name: calendario_id, in: path, required: true, schema: { type: integer } }
+        - { name: ano, in: path, required: true, schema: { type: integer } }
+        - { name: mes, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Eventos retornados }
+  /api/eventos/{id}:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza evento
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Evento atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove evento
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Evento removido }
+  /api/eventos/importar-feriados:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Importa feriados nacionais
+      responses:
+        '201': { description: Feriados importados }
+  /api/calendario-letivo/{calendario_id}/periodos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista periodos avaliativos
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodos avaliativos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria periodo avaliativo
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '201': { description: Periodo avaliativo criado }
+  /api/periodos/{id}/fechar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Fecha periodo avaliativo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodo avaliativo fechado }
+  /api/periodos/{id}/reabrir:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Reabre periodo avaliativo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Periodo avaliativo reaberto }
+  /api/calendario-letivo/{calendario_id}/periodos/gerar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Gera periodos avaliativos automaticamente
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '201': { description: Periodos gerados }
+  /api/calendario-letivo/{calendario_id}/excecoes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista excecoes de dias letivos
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Excecoes retornadas }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Salva excecao de dia letivo
+      parameters: [{ name: calendario_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Excecao salva }
+
+  /api/notificacoes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista notificacoes do usuario autenticado
+      responses:
+        '200': { description: Notificacoes retornadas }
+  /api/notificacoes/marcar-todas-lidas:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Marca todas as notificacoes do usuario como lidas
+      responses:
+        '200': { description: Notificacoes atualizadas }
+  /api/notificacoes/{id}/lida:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Marca notificacao como lida
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Notificacao atualizada }
+  /api/notificacoes/{id}:
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Exclui notificacao do usuario
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Notificacao removida }
+
+  /api/disparos-notificacao:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista disparos de notificacao
+      description: Exige autenticacao e permissao de leitura `notificacoes`.
+      responses:
+        '200': { description: Disparos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria disparo de notificacao
+      description: Exige autenticacao e permissao de escrita `notificacoes`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              alvo: modalidade
+              titulo: Atualizacao operacional
+              mensagem: Verifique os itens pendentes desta semana.
+      responses:
+        '201': { description: Disparo criado }
+
+  /api/instituicao:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca dados da instituicao
+      responses:
+        '200': { description: Instituicao retornada }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza dados da instituicao
+      description: Exige permissao de escrita `configuracoes`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                nome: { type: string }
+                logo: { type: string, format: binary }
+      responses:
+        '200': { description: Instituicao atualizada }
+  /api/instituicao/logo-base64:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza logo institucional em base64
+      description: Exige permissao de escrita `configuracoes`.
+      responses:
+        '200': { description: Logo atualizada }
+  /api/instituicao/templates/{nome}:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza template PDF institucional
+      description: Exige permissao de escrita `configuracoes`.
+      parameters: [{ name: nome, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Template atualizado }
+
+  /api/recebimentos/pedidos-pendentes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista pedidos pendentes para recebimento
+      responses:
+        '200':
+          description: Pedidos retornados
+          content:
+            application/json:
+              example: { success: true, data: [{ id: 501, numero: "PED-2026-501", status: "pendente" }] }
+  /api/recebimentos/registrar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Registra recebimento de item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              pedidoId: 501
+              pedidoItemId: 7001
+              quantidadeRecebida: 100
+              lote: LT-2026-01
+              notaFiscal: NF-3321
+      responses:
+        '200':
+          description: Recebimento registrado
+          content:
+            application/json:
+              example: { success: true, message: "Recebimento registrado e estoque central atualizado" }
+
+  /api/faturamentos:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria faturamento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              pedido_id: 501
+              observacoes: Faturamento abril
+              itens:
+                - { pedido_item_id: 7001, modalidade_id: 3, quantidade_alocada: 100, preco_unitario: 6.9 }
+      responses:
+        '201': { description: Faturamento criado }
+  /api/faturamentos/pedido/{pedidoId}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista faturamentos do pedido
+      parameters: [{ name: pedidoId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Faturamentos retornados }
+  /api/faturamentos/{id}/registrar-consumo:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Registra consumo de todos os itens do faturamento
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Consumo registrado
+          content:
+            application/json:
+              example: { success: true, data: { status: consumido } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

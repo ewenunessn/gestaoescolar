@@ -6,6 +6,7 @@ import LayoutModerno from "../components/LayoutModerno";
 import PermissionGuard from "../components/PermissionGuard";
 import { EscolasProvider } from "../contexts/EscolasContext";
 import { desktopSans } from "../theme/theme";
+import { ROUTE_PERMISSION_SLUGS } from "./permissionSlugs";
 
 // Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
@@ -124,6 +125,8 @@ const DemandasLista = lazy(() => import("../modules/demandas/pages/DemandasLista
 const GuiasDemandaLista = lazy(() => import("../modules/demandas/pages/GuiasDemandaLista"));
 const GuiaDemandaDetalhe = lazy(() => import("../modules/demandas/pages/GuiaDemandaDetalhe"));
 const GuiaDemandaEscolaItens = lazy(() => import("../modules/demandas/pages/GuiaDemandaEscolaItens"));
+const GuiaDemandaProdutoItens = lazy(() => import("../modules/demandas/pages/GuiaDemandaProdutoItens"));
+const GuiaDemandaAdicionarProduto = lazy(() => import("../modules/demandas/pages/GuiaDemandaAdicionarProduto"));
 const AjusteGuiaDemandaScreen = lazy(() => import("../modules/programacao/pages/AjusteGuiaDemandaScreen"));
 
 // Lazy loading - Módulo: entregas
@@ -299,11 +302,11 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
             <Route
               path="/preparacoes"
-              element={<LazyRoute moduloSlug="preparacoes"><Preparacoes /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.preparacoes}><Preparacoes /></LazyRoute>}
             />
             <Route
               path="/preparacoes/:id"
-              element={<LazyRoute moduloSlug="preparacoes"><PreparacaoDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.preparacoes}><PreparacaoDetalhe /></LazyRoute>}
             />
             <Route
               path="/cardapios"
@@ -324,19 +327,27 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
             <Route
               path="/guias-demanda"
-              element={<LazyRoute moduloSlug="demandas"><GuiasDemandaLista /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiasDemandaLista /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId"
-              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiaDemandaDetalhe /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId/escola/:escolaId"
-              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaEscolaItens /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiaDemandaEscolaItens /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda/:guiaId/adicionar-produto"
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiaDemandaAdicionarProduto /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda/:guiaId/produto/:produtoId/itens"
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiaDemandaProdutoItens /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId/ajuste"
-              element={<LazyRoute moduloSlug="demandas"><AjusteGuiaDemandaScreen /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><AjusteGuiaDemandaScreen /></LazyRoute>}
             />
             <Route
               path="/romaneio"
@@ -344,7 +355,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
             <Route
               path="/guias-demanda-old/:id"
-              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><GuiaDemandaDetalhe /></LazyRoute>}
             />
             <Route
               path="/entregas"
@@ -398,25 +409,25 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
 
             {/* Rotas de Compras */}
-            <Route path="/compras" element={<LazyRoute moduloSlug="pedidos"><Compras /></LazyRoute>} />
+            <Route path="/compras" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><Compras /></LazyRoute>} />
             <Route path="/abastecimento" element={<LazyRoute moduloSlug="planejamento_compras"><Abastecimento /></LazyRoute>} />
             <Route path="/compras/planejamento" element={<Navigate to="/guias-demanda" replace />} />
-            <Route path="/compras/novo" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
-            <Route path="/compras/:id/editar" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
-            <Route path="/compras/:id" element={<LazyRoute moduloSlug="pedidos"><CompraDetalhe /></LazyRoute>} />
-            <Route path="/compras/:id/item/:itemId/programacao" element={<LazyRoute moduloSlug="pedidos"><ProgramacaoEntregaScreen /></LazyRoute>} />
-            <Route path="/compras/:id/programacoes-ajuste" element={<LazyRoute moduloSlug="pedidos"><AjusteProgramacoesScreen /></LazyRoute>} />
-            <Route path="/compras/:id/faturamentos" element={<LazyRoute moduloSlug="faturamento"><FaturamentosCompra /></LazyRoute>} />
-            <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute moduloSlug="faturamento"><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
-            <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute moduloSlug="faturamento"><FaturamentoModalidades /></LazyRoute>} />
-            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute moduloSlug="faturamento"><LegacyFaturamentoRedirect /></LazyRoute>} />
-            <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute moduloSlug="faturamento"><FaturamentoDetalhe /></LazyRoute>} />
+            <Route path="/compras/novo" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id/editar" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><CompraDetalhe /></LazyRoute>} />
+            <Route path="/compras/:id/item/:itemId/programacao" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><ProgramacaoEntregaScreen /></LazyRoute>} />
+            <Route path="/compras/:id/programacoes-ajuste" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.compras}><AjusteProgramacoesScreen /></LazyRoute>} />
+            <Route path="/compras/:id/faturamentos" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.faturamentos}><FaturamentosCompra /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.faturamentos}><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.faturamentos}><FaturamentoModalidades /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.faturamentos}><LegacyFaturamentoRedirect /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.faturamentos}><FaturamentoDetalhe /></LazyRoute>} />
 
 
             {/* Rotas de Demandas */}
             <Route
               path="/demandas"
-              element={<LazyRoute moduloSlug="demandas"><DemandasLista /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.guiasDemanda}><DemandasLista /></LazyRoute>}
             />
 
             {/* Rotas do Estoque Central */}
@@ -482,29 +493,29 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             {/* Grupos de Ingredientes */}
             <Route
               path="/grupos-ingredientes"
-              element={<LazyRoute moduloSlug="preparacoes"><GruposIngredientes /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.preparacoes}><GruposIngredientes /></LazyRoute>}
             />
 
             {/* Portal da Escola (secretaria de escola) - Módulo separado */}
             <Route
               path="/portal-escola"
-              element={<LazyRoute moduloSlug="dashboard"><PortalEscolaHome /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.portalEscola}><PortalEscolaHome /></LazyRoute>}
             />
             <Route
               path="/portal-escola/cardapio"
-              element={<LazyRoute moduloSlug="dashboard"><CardapioPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.portalEscola}><CardapioPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/solicitacoes"
-              element={<LazyRoute moduloSlug="dashboard"><SolicitacoesPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.portalEscola}><SolicitacoesPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/comprovantes"
-              element={<LazyRoute moduloSlug="dashboard"><ComprovantesPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.portalEscola}><ComprovantesPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/alunos"
-              element={<LazyRoute moduloSlug="dashboard"><AlunosPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug={ROUTE_PERMISSION_SLUGS.portalEscola}><AlunosPage /></LazyRoute>}
             />
 
             {/* Solicitações de Alimentos (módulo principal) */}

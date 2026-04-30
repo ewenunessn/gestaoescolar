@@ -99,7 +99,7 @@ class CacheService {
 export const cacheService = new CacheService();
 
 // Cleanup expired entries every 2 minutes
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of cacheService['store'].entries()) {
     if (now > entry.expiresAt) {
@@ -107,3 +107,4 @@ setInterval(() => {
     }
   }
 }, 120000);
+cleanupInterval.unref?.();

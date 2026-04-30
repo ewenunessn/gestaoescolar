@@ -1,25 +1,31 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireEscrita, requireLeitura } from '../../../middleware/permissionMiddleware';
 import * as ctrl from '../controllers/solicitacoesAlimentosController';
 
 const router = Router();
-router.use(authenticateToken);
+const solicitacoesRead = requireLeitura('solicitacoes');
+const solicitacoesWrite = requireEscrita('solicitacoes');
 
-// Portal da escola
-router.get('/minhas', ctrl.listarMinhasSolicitacoes);
-router.post('/', ctrl.criarSolicitacao);
-router.delete('/:id', ctrl.cancelarSolicitacao);
+export function requireSolicitacoesRead(req: Request, res: Response, next: NextFunction) {
+  return solicitacoesRead(req, res, next);
+}
 
-// Módulo principal — lista todas
-router.get('/', ctrl.listarTodasSolicitacoes);
+export function requireSolicitacoesWrite(req: Request, res: Response, next: NextFunction) {
+  return solicitacoesWrite(req, res, next);
+}
 
-// Ações por item
-router.get('/itens/:itemId/analise', ctrl.analisarItem);
-router.patch('/itens/:itemId/aprovar-emergencial', ctrl.aprovarItemEmergencial);
-router.patch('/itens/:itemId/aceitar', ctrl.aceitarItem);
-router.patch('/itens/:itemId/recusar', ctrl.recusarItem);
+router.get('/minhas', authenticateToken, ctrl.listarMinhasSolicitacoes);
+router.post('/', authenticateToken, ctrl.criarSolicitacao);
+router.delete('/:id', authenticateToken, ctrl.cancelarSolicitacao);
 
-// Aprovar todos os itens pendentes de uma solicitação
-router.patch('/:id/aprovar-tudo', ctrl.aprovarTudo);
+router.get('/', authenticateToken, requireSolicitacoesRead, ctrl.listarTodasSolicitacoes);
+
+router.get('/itens/:itemId/analise', authenticateToken, requireSolicitacoesRead, ctrl.analisarItem);
+router.patch('/itens/:itemId/aprovar-emergencial', authenticateToken, requireSolicitacoesWrite, ctrl.aprovarItemEmergencial);
+router.patch('/itens/:itemId/aceitar', authenticateToken, requireSolicitacoesWrite, ctrl.aceitarItem);
+router.patch('/itens/:itemId/recusar', authenticateToken, requireSolicitacoesWrite, ctrl.recusarItem);
+
+router.patch('/:id/aprovar-tudo', authenticateToken, requireSolicitacoesWrite, ctrl.aprovarTudo);
 
 export default router;

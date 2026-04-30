@@ -1,36 +1,41 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import RotaController from '../controllers/RotaController';
-import { authenticateToken, optionalAuth } from '../../../middleware/authMiddleware';
+import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireEscrita, requireLeitura } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
+const rotasRead = requireLeitura('rotas');
+const rotasWrite = requireEscrita('rotas');
 
-// Rotas de Entrega
-router.get('/rotas', optionalAuth, RotaController.listarRotas);
-router.post('/rotas', authenticateToken, RotaController.criarRota);
-router.get('/rotas/:id', optionalAuth, RotaController.buscarRota);
-router.put('/rotas/:id', authenticateToken, RotaController.atualizarRota);
-router.delete('/rotas/:id', authenticateToken, RotaController.deletarRota);
+export function requireRotasRead(req: Request, res: Response, next: NextFunction) {
+  return rotasRead(req, res, next);
+}
 
-// Escolas da Rota
-router.get('/rotas/:rotaId/escolas', optionalAuth, RotaController.listarEscolasRota);
-router.post('/rotas/:rotaId/escolas', authenticateToken, RotaController.adicionarEscolaRota);
-router.delete('/rotas/:rotaId/escolas/:escolaId', authenticateToken, RotaController.removerEscolaRota);
-router.put('/rotas/:rotaId/escolas/ordem', authenticateToken, RotaController.atualizarOrdemEscolas);
+export function requireRotasWrite(req: Request, res: Response, next: NextFunction) {
+  return rotasWrite(req, res, next);
+}
 
-// Planejamento de Entregas
-router.get('/planejamentos', optionalAuth, RotaController.listarPlanejamentos);
-router.post('/planejamentos', authenticateToken, RotaController.criarPlanejamento);
-router.post('/planejamentos-avancado', authenticateToken, RotaController.criarPlanejamentoAvancado);
-router.put('/planejamentos/:id', authenticateToken, RotaController.atualizarPlanejamento);
-router.delete('/planejamentos/:id', authenticateToken, RotaController.deletarPlanejamento);
-router.get('/planejamentos/:id/escolas-status', optionalAuth, RotaController.listarStatusEscolasPlanejamento);
-router.put('/planejamentos/:id/escolas/:escolaId/status', authenticateToken, RotaController.atualizarStatusEscola);
-router.get('/evidencias', optionalAuth, RotaController.listarEvidencias);
+router.get('/rotas', authenticateToken, requireRotasRead, RotaController.listarRotas);
+router.post('/rotas', authenticateToken, requireRotasWrite, RotaController.criarRota);
+router.get('/rotas/:id', authenticateToken, requireRotasRead, RotaController.buscarRota);
+router.put('/rotas/:id', authenticateToken, requireRotasWrite, RotaController.atualizarRota);
+router.delete('/rotas/:id', authenticateToken, requireRotasWrite, RotaController.deletarRota);
 
-// Escolas disponíveis
-router.get('/escolas-disponiveis', RotaController.listarEscolasDisponiveis);
-router.get('/escolas/:escolaId/verificar-rota', RotaController.verificarEscolaEmRota);
+router.get('/rotas/:rotaId/escolas', authenticateToken, requireRotasRead, RotaController.listarEscolasRota);
+router.post('/rotas/:rotaId/escolas', authenticateToken, requireRotasWrite, RotaController.adicionarEscolaRota);
+router.delete('/rotas/:rotaId/escolas/:escolaId', authenticateToken, requireRotasWrite, RotaController.removerEscolaRota);
+router.put('/rotas/:rotaId/escolas/ordem', authenticateToken, requireRotasWrite, RotaController.atualizarOrdemEscolas);
 
+router.get('/planejamentos', authenticateToken, requireRotasRead, RotaController.listarPlanejamentos);
+router.post('/planejamentos', authenticateToken, requireRotasWrite, RotaController.criarPlanejamento);
+router.post('/planejamentos-avancado', authenticateToken, requireRotasWrite, RotaController.criarPlanejamentoAvancado);
+router.put('/planejamentos/:id', authenticateToken, requireRotasWrite, RotaController.atualizarPlanejamento);
+router.delete('/planejamentos/:id', authenticateToken, requireRotasWrite, RotaController.deletarPlanejamento);
+router.get('/planejamentos/:id/escolas-status', authenticateToken, requireRotasRead, RotaController.listarStatusEscolasPlanejamento);
+router.put('/planejamentos/:id/escolas/:escolaId/status', authenticateToken, requireRotasWrite, RotaController.atualizarStatusEscola);
+router.get('/evidencias', authenticateToken, requireRotasRead, RotaController.listarEvidencias);
 
+router.get('/escolas-disponiveis', authenticateToken, requireRotasRead, RotaController.listarEscolasDisponiveis);
+router.get('/escolas/:escolaId/verificar-rota', authenticateToken, requireRotasRead, RotaController.verificarEscolaEmRota);
 
 export default router;

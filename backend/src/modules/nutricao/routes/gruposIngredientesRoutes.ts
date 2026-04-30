@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireEscrita, requireLeitura } from '../../../middleware/permissionMiddleware';
 import {
   listarGrupos,
   criarGrupo,
@@ -9,12 +10,21 @@ import {
 } from '../controllers/gruposIngredientesController';
 
 const router = Router();
-router.use(authenticateToken);
+const refeicoesRead = requireLeitura('refeicoes');
+const refeicoesWrite = requireEscrita('refeicoes');
 
-router.get('/', listarGrupos);
-router.post('/', criarGrupo);
-router.put('/:id', atualizarGrupo);
-router.delete('/:id', excluirGrupo);
-router.put('/:id/itens', salvarItensGrupo);
+export function requireRefeicoesRead(req: Request, res: Response, next: NextFunction) {
+  return refeicoesRead(req, res, next);
+}
+
+export function requireRefeicoesWrite(req: Request, res: Response, next: NextFunction) {
+  return refeicoesWrite(req, res, next);
+}
+
+router.get('/', authenticateToken, requireRefeicoesRead, listarGrupos);
+router.post('/', authenticateToken, requireRefeicoesWrite, criarGrupo);
+router.put('/:id', authenticateToken, requireRefeicoesWrite, atualizarGrupo);
+router.delete('/:id', authenticateToken, requireRefeicoesWrite, excluirGrupo);
+router.put('/:id/itens', authenticateToken, requireRefeicoesWrite, salvarItensGrupo);
 
 export default router;

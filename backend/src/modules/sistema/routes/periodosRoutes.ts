@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import {
   listarPeriodos,
   obterPeriodoAtivo,
@@ -11,37 +11,45 @@ import {
   selecionarPeriodoUsuario
 } from '../controllers/periodosController';
 import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireEscrita, requireLeitura } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
+const periodosRead = requireLeitura('periodos');
+const periodosWrite = requireEscrita('periodos');
 
-// Aplicar autenticação em todas as rotas
-router.use(authenticateToken);
+export function requirePeriodosRead(req: Request, res: Response, next: NextFunction) {
+  return periodosRead(req, res, next);
+}
 
-// Listar todos os períodos
-router.get('/', listarPeriodos);
+export function requirePeriodosWrite(req: Request, res: Response, next: NextFunction) {
+  return periodosWrite(req, res, next);
+}
 
-// Obter período ativo (ou período do usuário)
-router.get('/ativo', obterPeriodoAtivo);
+// Listar todos os periodos
+router.get('/', authenticateToken, requirePeriodosRead, listarPeriodos);
 
-// Selecionar período do usuário
-router.post('/selecionar', selecionarPeriodoUsuario);
+// Obter periodo ativo (ou periodo do usuario)
+router.get('/ativo', authenticateToken, requirePeriodosRead, obterPeriodoAtivo);
 
-// Criar novo período
-router.post('/', criarPeriodo);
+// Selecionar periodo do usuario
+router.post('/selecionar', authenticateToken, selecionarPeriodoUsuario);
 
-// Atualizar período
-router.put('/:id', atualizarPeriodo);
+// Criar novo periodo
+router.post('/', authenticateToken, requirePeriodosWrite, criarPeriodo);
 
-// Ativar período
-router.patch('/:id/ativar', ativarPeriodo);
+// Atualizar periodo
+router.put('/:id', authenticateToken, requirePeriodosWrite, atualizarPeriodo);
 
-// Fechar período
-router.patch('/:id/fechar', fecharPeriodo);
+// Ativar periodo
+router.patch('/:id/ativar', authenticateToken, requirePeriodosWrite, ativarPeriodo);
 
-// Reabrir período
-router.patch('/:id/reabrir', reabrirPeriodo);
+// Fechar periodo
+router.patch('/:id/fechar', authenticateToken, requirePeriodosWrite, fecharPeriodo);
 
-// Deletar período
-router.delete('/:id', deletarPeriodo);
+// Reabrir periodo
+router.patch('/:id/reabrir', authenticateToken, requirePeriodosWrite, reabrirPeriodo);
+
+// Deletar periodo
+router.delete('/:id', authenticateToken, requirePeriodosWrite, deletarPeriodo);
 
 export default router;

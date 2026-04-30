@@ -1,0 +1,243 @@
+openapi: 3.0.3
+info:
+  title: Cardapios e Nutricao API
+  version: 1.0.0
+servers:
+  - url: /api
+paths:
+  /cardapios:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista cardapios
+      responses:
+        '200':
+          description: Lista retornada
+          content:
+            application/json:
+              example: [{ id: 15, nome: "Cardapio Abril 2026 - Integral e Creche", competencia: "2026-04" }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria cardapio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Cardapio Maio 2026", mes: 5, ano: 2026, modalidades_ids: [1, 3] }
+      responses:
+        '201': { description: Cardapio criado }
+  /cardapios/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca cardapio
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Cardapio retornado
+          content:
+            application/json:
+              example: { id: 15, nome: "Cardapio Abril 2026 - Integral e Creche" }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza cardapio
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Cardapio Abril 2026 - Ajustado" }
+      responses:
+        '200': { description: Cardapio atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove cardapio
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Cardapio removido }
+  /cardapios/{cardapioId}/refeicoes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista refeicoes do cardapio
+      parameters: [{ name: cardapioId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Refeicoes retornadas
+          content:
+            application/json:
+              example: [{ id: 8001, data: "2026-04-16", refeicao_nome: "Banana" }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Adiciona refeicao a um dia
+      parameters: [{ name: cardapioId, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { refeicao_id: 55, data: "2026-05-03", tipo_refeicao_id: 2 }
+      responses:
+        '201': { description: Refeicao vinculada }
+  /cardapios/refeicoes/{id}:
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove refeicao do cardapio
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Vinculo removido }
+  /cardapios/{cardapioId}/custo:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Calcula custo do cardapio
+      parameters: [{ name: cardapioId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Custo calculado
+          content:
+            application/json:
+              example:
+                custo_total: 0
+                por_modalidade:
+                  - { modalidade_id: 1, total_alunos_modalidade: 2288, custo_total_modalidade: 0 }
+  /refeicoes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista refeicoes
+      responses:
+        '200': { description: Lista retornada }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria refeicao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Arroz com frango", rendimento_porcoes: 100 }
+      responses:
+        '201': { description: Refeicao criada }
+  /refeicoes/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Refeicao retornada }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Arroz com frango integral" }
+      responses:
+        '200': { description: Refeicao atualizada }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Refeicao removida }
+  /refeicoes/{id}/duplicar:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Duplica refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Arroz com frango - copia" }
+      responses:
+        '201': { description: Refeicao duplicada }
+  /refeicoes/{id}/toggle:
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Alterna ativo/inativo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Status alterado }
+  /refeicoes/{id}/ficha-tecnica:
+    get:
+      summary: Ficha tecnica publica
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Ficha tecnica retornada
+          content:
+            application/json:
+              example: { id: 55, nome: "Arroz com frango", ingredientes: [{ produto_nome: "Arroz", per_capita: 80 }] }
+  /refeicoes/{refeicaoId}/produtos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista produtos da refeicao
+      parameters: [{ name: refeicaoId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produtos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Adiciona produto a refeicao
+      parameters: [{ name: refeicaoId, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { produto_id: 31, per_capita: 80, tipo_medida: "g" }
+      responses:
+        '201': { description: Produto vinculado }
+  /refeicoes/produtos/{id}:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza produto da refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { per_capita: 90, tipo_medida: "g" }
+      responses:
+        '200': { description: Produto atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove produto da refeicao
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produto removido }
+  /modalidades:
+    get:
+      summary: Lista modalidades
+      responses:
+        '200':
+          description: Modalidades retornadas
+          content:
+            application/json:
+              example: [{ id: 1, nome: "CRECHE", ativo: true }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria modalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "EJA", codigo_financeiro: "EJA-01" }
+      responses:
+        '201': { description: Modalidade criada }
+  /modalidades/categorias-financeiras:
+    get:
+      summary: Lista categorias financeiras de modalidades
+      responses:
+        '200': { description: Categorias retornadas }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria categoria financeira
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Infantil", codigo_financeiro: "INF-01" }
+      responses:
+        '201': { description: Categoria criada }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,0 +1,252 @@
+openapi: 3.0.3
+info:
+  title: Produtos e Contratos API
+  version: 1.0.0
+servers:
+  - url: /api
+paths:
+  /produtos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista produtos
+      responses:
+        '200':
+          description: Produtos retornados
+          content:
+            application/json:
+              example: [{ id: 31, nome: "Arroz Polido Tipo 1", unidade: "KG", tem_contrato: true }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria produto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Feijao", unidade_medida_id: 1, fator_correcao: 1.0, ativo: true }
+      responses:
+        '201': { description: Produto criado }
+  /produtos/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca produto
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produto retornado }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza produto
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Feijao Carioca", ativo: true }
+      responses:
+        '200': { description: Produto atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove produto
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produto removido }
+  /produtos/{id}/composicao-nutricional:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca composicao nutricional
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Composicao retornada
+          content:
+            application/json:
+              example: { produto_id: 31, energia_kcal: 130, proteina_g: 2.5 }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Salva composicao nutricional
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { energia_kcal: 130, proteina_g: 2.5, sodio_mg: 1 }
+      responses:
+        '200': { description: Composicao atualizada }
+  /produtos/standardize-composicao:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Padroniza schema de composicao nutricional
+      responses:
+        '200': { description: Padronizacao executada }
+  /contratos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista contratos
+      responses:
+        '200':
+          description: Contratos retornados
+          content:
+            application/json:
+              example: [{ id: 5, numero: "CT-2026-05", fornecedor_nome: "Fornecedor A" }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria contrato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { numero: "CT-2026-05", fornecedor_id: 9, data_inicio: "2026-01-01" }
+      responses:
+        '201': { description: Contrato criado }
+  /contratos/estatisticas:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Estatisticas de contratos
+      responses:
+        '200': { description: Estatisticas retornadas }
+  /contratos/buscar-por-produto:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca contratos por produto
+      parameters:
+        - { name: produto_id, in: query, required: false, schema: { type: integer } }
+      responses:
+        '200': { description: Contratos retornados }
+  /contratos/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca contrato
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Contrato retornado }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza contrato
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { observacoes: "Contrato reajustado" }
+      responses:
+        '200': { description: Contrato atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove contrato
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Contrato removido }
+  /fornecedores:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista fornecedores
+      responses:
+        '200':
+          description: Fornecedores retornados
+          content:
+            application/json:
+              example: [{ id: 9, nome: "Fornecedor A", cnpj: "00.000.000/0001-00" }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria fornecedor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Fornecedor A", cnpj: "00.000.000/0001-00" }
+      responses:
+        '201': { description: Fornecedor criado }
+  /fornecedores/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca fornecedor
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Fornecedor retornado }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza fornecedor
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Fornecedor A Atualizado" }
+      responses:
+        '200': { description: Fornecedor atualizado }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove fornecedor
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Fornecedor removido }
+  /fornecedores/{id}/relacionamentos:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Verifica relacionamentos do fornecedor
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Relacionamentos retornados }
+  /contrato-produtos:
+    get:
+      summary: Lista contratos-produtos
+      responses:
+        '200':
+          description: Lista retornada
+          content:
+            application/json:
+              example: [{ id: 88, contrato_id: 5, produto_id: 31, preco_unitario: 6.9 }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria contrato-produto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { contrato_id: 5, produto_id: 31, preco_unitario: 6.9 }
+      responses:
+        '201': { description: Vinculo criado }
+  /contrato-produtos/contrato/{contrato_id}:
+    get:
+      summary: Lista produtos de um contrato
+      parameters: [{ name: contrato_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produtos retornados }
+  /contrato-produtos/fornecedor/{fornecedor_id}:
+    get:
+      summary: Lista produtos por fornecedor
+      parameters: [{ name: fornecedor_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Produtos retornados }
+  /saldo-contratos-modalidades:
+    get:
+      summary: Lista saldos por modalidade
+      responses:
+        '200': { description: Saldos retornados }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria/atualiza saldo de modalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { modalidade_id: 3, contrato_produto_id: 88, saldo: 1200 }
+      responses:
+        '200': { description: Saldo salvo }
+  /saldo-contratos-modalidades/{id}/consumir:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Registra consumo da modalidade
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { quantidade: 25, referencia: "guia-21" }
+      responses:
+        '200': { description: Consumo registrado }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireAdmin } from '../../usuarios/controllers/adminUsuariosController';
 import {
   listarModulos,
   listarNiveisPermissao,
@@ -10,12 +12,12 @@ import {
 const router = Router();
 
 // Rotas de módulos e níveis
-router.get('/modulos', listarModulos);
-router.get('/niveis', listarNiveisPermissao);
+router.get('/modulos', authenticateToken, requireAdmin, listarModulos);
+router.get('/niveis', authenticateToken, requireAdmin, listarNiveisPermissao);
 
 // Rotas de permissões de usuário
-router.get('/usuario/:usuario_id', obterPermissoesUsuario);
-router.put('/usuario/:usuario_id', definirPermissoesUsuario);
-router.get('/usuario/:usuario_id/modulo/:modulo_slug', verificarPermissao);
+router.get('/usuario/:usuario_id', authenticateToken, requireAdmin, obterPermissoesUsuario);
+router.put('/usuario/:usuario_id', authenticateToken, requireAdmin, definirPermissoesUsuario);
+router.get('/usuario/:usuario_id/modulo/:modulo_slug', authenticateToken, requireAdmin, verificarPermissao);
 
 export default router;

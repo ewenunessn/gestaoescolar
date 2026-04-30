@@ -1,0 +1,289 @@
+openapi: 3.0.3
+info:
+  title: Auth e Usuarios API
+  version: 1.0.0
+  description: Contrato inferido para autenticacao, perfil, administracao de usuarios, funcoes e permissoes.
+servers:
+  - url: /api
+tags:
+  - name: auth
+  - name: usuarios
+  - name: admin-usuarios
+paths:
+  /usuarios/system-status:
+    get:
+      tags: [auth]
+      summary: Verifica status basico do sistema
+      responses:
+        '200':
+          description: Status retornado
+          content:
+            application/json:
+              example: { success: true, environment: "dev" }
+  /usuarios/login:
+    post:
+      tags: [auth]
+      summary: Realiza login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            example: { email: "admin@nutrilog.local", password: "secret" }
+      responses:
+        '200':
+          description: Login efetuado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+              example:
+                token: "jwt-token"
+                user: { id: 1, nome: "Administrador", tipo: "admin", escola_id: null }
+  /usuarios/me:
+    get:
+      tags: [usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Retorna perfil do usuario autenticado
+      responses:
+        '200':
+          description: Perfil retornado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+              example: { id: 7, nome: "Maria", email: "maria@prefeitura.gov", tipo: "usuario", escola_id: 115 }
+  /usuarios/me/permissoes:
+    get:
+      tags: [usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Retorna permissoes do usuario autenticado
+      responses:
+        '200':
+          description: Permissoes retornadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  permissoes:
+                    type: array
+                    items: { $ref: '#/components/schemas/PermissaoUsuario' }
+              example:
+                permissoes:
+                  - { modulo_slug: "escolas", nivel: 2, origem: "direta" }
+                  - { modulo_slug: "cardapios", nivel: 1, origem: "funcao" }
+  /usuarios:
+    get:
+      tags: [usuarios]
+      summary: Lista usuarios
+      responses:
+        '200':
+          description: Lista retornada
+          content:
+            application/json:
+              example:
+                - { id: 1, nome: "Administrador", email: "admin@nutrilog.local", tipo: "admin" }
+  /admin/usuarios:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Lista usuarios administrativos
+      responses:
+        '200':
+          description: Usuarios retornados
+          content:
+            application/json:
+              example:
+                - { id: 2, nome: "Gestor", email: "gestor@prefeitura.gov", ativo: true }
+    post:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Cria usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminUserUpsert' }
+            example: { nome: "Gestor", email: "gestor@prefeitura.gov", senha: "123456", tipo: "usuario" }
+      responses:
+        '201': { description: Usuario criado }
+  /admin/usuarios/{id}:
+    put:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza usuario
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminUserUpsert' }
+            example: { nome: "Gestor Atualizado", email: "gestor@prefeitura.gov", tipo: "usuario" }
+      responses:
+        '200': { description: Usuario atualizado }
+    delete:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Exclui usuario
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Usuario excluido }
+  /admin/usuarios/{id}/permissoes:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Busca permissoes diretas do usuario
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Permissoes retornadas
+          content:
+            application/json:
+              example:
+                permissoes:
+                  - { modulo_slug: "entregas", nivel: 2 }
+    put:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Define permissoes diretas do usuario
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permissoes:
+                  type: array
+                  items: { $ref: '#/components/schemas/PermissaoUsuario' }
+            example:
+              permissoes:
+                - { modulo_slug: "entregas", nivel: 2 }
+                - { modulo_slug: "estoque", nivel: 1 }
+      responses:
+        '200': { description: Permissoes atualizadas }
+  /admin/usuarios/{id}/conflitos:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Verifica conflitos de permissao
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado da verificacao
+          content:
+            application/json:
+              example: { conflitos: [] }
+  /admin/funcoes:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Lista funcoes
+      responses:
+        '200': { description: Funcoes retornadas }
+    post:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Cria funcao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Nutricionista", descricao: "Perfil tecnico" }
+      responses:
+        '201': { description: Funcao criada }
+  /admin/funcoes/{id}:
+    put:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza funcao
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Nutricionista Senior" }
+      responses:
+        '200': { description: Funcao atualizada }
+    delete:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Exclui funcao
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Funcao excluida }
+  /admin/modulos:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Lista modulos disponiveis
+      responses:
+        '200':
+          description: Modulos retornados
+          content:
+            application/json:
+              example: [{ slug: "escolas", nome: "Escolas" }, { slug: "entregas", nome: "Entregas" }]
+  /admin/niveis-permissao:
+    get:
+      tags: [admin-usuarios]
+      security: [{ bearerAuth: [] }]
+      summary: Lista niveis de permissao
+      responses:
+        '200':
+          description: Niveis retornados
+          content:
+            application/json:
+              example: [{ id: 1, nome: "leitura" }, { id: 2, nome: "escrita" }, { id: 3, nome: "total" }]
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    UserProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        nome: { type: string }
+        email: { type: string }
+        tipo: { type: string }
+        escola_id: { type: integer, nullable: true }
+        isSystemAdmin: { type: boolean }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/UserProfile' }
+    PermissaoUsuario:
+      type: object
+      properties:
+        modulo_slug: { type: string }
+        nivel: { type: integer, minimum: 0, maximum: 3 }
+        origem: { type: string, nullable: true }
+    AdminUserUpsert:
+      type: object
+      properties:
+        nome: { type: string }
+        email: { type: string, format: email }
+        senha: { type: string, nullable: true }
+        tipo: { type: string }

@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: Escolas e Portal API
+  version: 1.0.0
+  description: Cadastro de escolas, modalidades por escola, portal escola e solicitacoes da escola.
+servers:
+  - url: /api
+paths:
+  /escolas:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista escolas
+      responses:
+        '200':
+          description: Escolas retornadas
+          content:
+            application/json:
+              example:
+                - { id: 115, nome: "Anexo - Leao Irineu Delgado", total_alunos: 70, modalidades: ["ENS. FUNDAMENTAL"] }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria escola
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Nova Escola", municipio: "Benevides", endereco: "Rua A" }
+      responses:
+        '201': { description: Escola criada }
+  /escolas/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca escola
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Escola retornada
+          content:
+            application/json:
+              example: { id: 115, nome: "Anexo - Leao Irineu Delgado", municipio: "Benevides" }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Atualiza escola
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { nome: "Anexo Atualizado", telefone: "91999999999" }
+      responses:
+        '200': { description: Escola atualizada }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove escola
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Escola removida }
+  /escola-modalidades:
+    get:
+      summary: Lista vinculacoes escola-modalidade
+      responses:
+        '200':
+          description: Vinculos retornados
+          content:
+            application/json:
+              example: [{ id: 1, escola_id: 115, modalidade_id: 3, quantidade_alunos: 70 }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria vinculacao escola-modalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { escola_id: 115, modalidade_id: 3, quantidade: 70 }
+      responses:
+        '201': { description: Vinculo criado/atualizado }
+  /escola-modalidades/historico:
+    get:
+      summary: Lista historico de alteracoes
+      responses:
+        '200':
+          description: Historico retornado
+          content:
+            application/json:
+              example: [{ escola_id: 115, modalidade_id: 3, acao: "update", quantidade_anterior: 60, quantidade_nova: 70 }]
+  /escola-modalidades/relatorio-alunos:
+    get:
+      summary: Relatorio de alunos por modalidade
+      responses:
+        '200':
+          description: Relatorio retornado
+          content:
+            application/json:
+              example: [{ modalidade_nome: "CRECHE", total_alunos: 2288 }]
+  /escola-modalidades/escola/{escola_id}:
+    get:
+      summary: Lista modalidades da escola
+      parameters: [{ name: escola_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Modalidades retornadas
+          content:
+            application/json:
+              example: [{ modalidade_id: 3, modalidade_nome: "ENS. FUNDAMENTAL", quantidade_alunos: 70 }]
+  /escola-portal/dashboard:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Dashboard do portal escola
+      responses:
+        '200':
+          description: Dashboard retornado
+          content:
+            application/json:
+              example:
+                escola: { id: 115, nome: "Anexo - Leao Irineu Delgado" }
+                modalidades:
+                  - { modalidade_id: 3, modalidade_nome: "ENS. FUNDAMENTAL", quantidade_alunos: 70 }
+                totalAlunos: 70
+  /escola-portal/guias:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista guias da escola autenticada
+      responses:
+        '200':
+          description: Guias retornadas
+          content:
+            application/json:
+              example: [{ guia_id: 21, competencia: "2026-04", itens_pendentes: 2 }]
+  /escola-portal/guias/{guiaId}/itens:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista itens da guia para a escola autenticada
+      parameters: [{ name: guiaId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Itens retornados
+          content:
+            application/json:
+              example: [{ item_id: 301, produto_nome: "Arroz", quantidade: 50 }]
+  /escola-portal/cardapios-semana:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista cardapios da semana atual
+      responses:
+        '200':
+          description: Cardapios retornados
+          content:
+            application/json:
+              example: [{ data: "2026-04-16", refeicao: "Banana", modalidade: "CRECHE" }]
+  /escola-portal/comprovantes:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista comprovantes da escola
+      responses:
+        '200':
+          description: Comprovantes retornados
+          content:
+            application/json:
+              example: [{ id: 9, numero: "CE-2026-0009", status: "ativo" }]
+  /escola-portal/comprovantes/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Busca comprovante da escola
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Comprovante retornado
+          content:
+            application/json:
+              example: { id: 9, numero: "CE-2026-0009", itens: [{ item_id: 301, quantidade: 10 }] }
+  /solicitacoes-alimentos/minhas:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Lista solicitacoes da escola autenticada
+      responses:
+        '200':
+          description: Solicitacoes retornadas
+          content:
+            application/json:
+              example: [{ id: 77, status: "pendente", total_itens: 2 }]
+  /solicitacoes-alimentos:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Cria solicitacao de alimentos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              justificativa: "Reposicao emergencial"
+              itens:
+                - { produto_id: 31, produto_nome: "Arroz", quantidade: 20 }
+      responses:
+        '201': { description: Solicitacao criada }
+  /solicitacoes-alimentos/{id}:
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Cancela solicitacao pendente da escola
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Solicitacao cancelada }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
