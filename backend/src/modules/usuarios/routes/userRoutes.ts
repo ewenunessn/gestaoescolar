@@ -2,6 +2,7 @@ import { Router } from "express";
 import { login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
 import { getMePermissoes } from "../controllers/userController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireAdmin } from "../controllers/adminUsuariosController";
 
 const router = Router();
 
@@ -12,6 +13,6 @@ router.post("/login", login);
 // Rotas protegidas
 router.get("/me", authenticateToken, getProfile);
 router.get("/me/permissoes", authenticateToken, getMePermissoes);
-router.get("/", getUsers);
+router.get("/", authenticateToken, requireAdmin, getUsers);
 
 export default router;

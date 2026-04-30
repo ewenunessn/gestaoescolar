@@ -337,3 +337,4 @@ Entao a operacao nao deve alterar notificacoes de outro usuario
 - [Implementacao 2026-04-30] `periodosRoutes.ts` passou a exigir `authenticateToken` e permissao `periodos` para leitura/escrita; `POST /periodos/selecionar` permanece apenas autenticado por ser preferencia do usuario.
 - [Implementacao 2026-04-30] `calendarioLetivoRoutes.ts` passou a exigir `authenticateToken` e permissao `calendario` para calendario letivo, eventos, periodos avaliativos e excecoes.
 - [Implementacao 2026-04-30] `instituicao.ts` mantem `GET /api/instituicao` autenticado para uso em relatorios/PDFs e exige permissao de escrita `configuracoes` para atualizar dados, logo base64 e templates.
+- [Implementacao 2026-04-30] `userRoutes.ts` mantem login/status publicos, protege `/me` e `/me/permissoes` por JWT e restringe `GET /api/usuarios/` a administradores.

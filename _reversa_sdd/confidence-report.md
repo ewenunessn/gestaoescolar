@@ -66,6 +66,8 @@ Nenhuma lacuna critica permaneceu sem resposta humana nesta rodada. Os itens res
 - [x] Expandir o OpenAPI do modulo sistema para incluir SSE, calendario/notificacoes restantes e pontos de bootstrap relevantes.
 - [x] Proteger `/api/entregas/rotas`, planejamentos e auxiliares com `authenticateToken` e permissoes `rotas`.
 - [x] Proteger `/api/dashboard/stats` com `authenticateToken` e permissao de leitura `dashboard`.
+- [x] Proteger leituras e escritas de `/api/produtos/*` com `authenticateToken` e permissoes `produtos`.
+- [x] Proteger `GET /api/usuarios/` com `authenticateToken` e `requireAdmin`.
 
 ---
 

@@ -330,6 +330,7 @@ Entao o backend deve converter usando o peso da embalagem como contexto
 
 - [Implementacao 2026-04-30] `unidadeMedidaRoutes.ts` passou a exigir `authenticateToken` e permissao de leitura `produtos` para listagem, busca, conversao e calculo de fator.
 - [Implementacao 2026-04-30] `tacoRoutes.ts` exige `authenticateToken` e permissao de leitura `produtos` para busca TACO usada na composicao nutricional.
+- [Implementacao 2026-04-30] `produtoRoutes.ts` passou a exigir permissao de leitura `produtos` para consultas e permissao de escrita `produtos` para CRUD, composicao e padronizacao.
 - [Implementacao 2026-04-30] `cacheService` usa `unref` no timer de limpeza para nao manter processos de teste/CLI abertos apos importacao.
 
 ## Rastreabilidade de Codigo

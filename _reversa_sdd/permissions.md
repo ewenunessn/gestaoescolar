@@ -103,6 +103,8 @@ Confianca: CONFIRMADO em `frontend/src/routes/AppRouter.tsx`.
 - RESOLVIDO em 2026-04-30: rotas e menu frontend usam os slugs canonicos `compras`, `guias`, `faturamentos`, `refeicoes` e `portal_escola`.
 - RESOLVIDO em 2026-04-30: `rotaRoutes.ts` aplica RBAC `rotas` em leituras e escritas, incluindo endpoints auxiliares antes sem middleware explicito.
 - RESOLVIDO em 2026-04-30: `/api/dashboard/stats` aplica RBAC de leitura `dashboard`.
+- RESOLVIDO em 2026-04-30: leituras de produtos aplicam RBAC `produtos` leitura e escritas aplicam `produtos` escrita.
+- RESOLVIDO em 2026-04-30: `GET /api/usuarios/` aplica `authenticateToken` e `requireAdmin`.
 - LACUNA: algumas rotas sensiveis usam apenas `authenticateToken`, sem nivel granular documentado.
 - LACUNA: app `estoque-escolar-mobile` autentica por codigo escolar e token proprio; a equivalencia com RBAC web nao esta clara.
 - LACUNA: cache de 5 minutos pode manter permissao antiga apos alteracao se `limparCachePermissoes` nao for chamado nos fluxos administrativos.

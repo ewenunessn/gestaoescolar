@@ -2061,7 +2061,8 @@ Rotas auxiliares de unidade em `/api/unidades-medida`:
 CONFIRMADO:
 
 - Todas as rotas de produtos usam `authenticateToken`.
-- Leitura (`GET /`, `GET /:id`, composicao) nao chama `requireLeitura('produtos')`; qualquer usuario autenticado acessa.
+- Leitura (`GET /`, `GET /:id`, composicao) exige `requireLeitura('produtos')`.
+- Escrita (CRUD, composicao e padronizacao) exige `requireEscrita('produtos')`.
 - Escrita e exclusao usam `requireEscrita('produtos')`.
 - `standardizarComposicaoNutricional` ainda exige `user.isSystemAdmin` dentro do controller, alem de `requireEscrita('produtos')`.
 - Rotas de unidades de medida nao aplicam `authenticateToken` no arquivo de rotas; validar se ha protecao global no registro de rotas.
@@ -2139,7 +2140,7 @@ CONFIRMADO:
 
 - LACUNA: `importarProdutosLote` aponta para `/produtos/importar-lote`, endpoint nao registrado no backend atual.
 - LACUNA: `removerProduto` faz delete fisico e comentario assume `ON DELETE CASCADE`; validar impacto em historicos, contratos, guias, estoque e faturamento antes de permitir exclusao real.
-- LACUNA: rotas de leitura de produtos nao usam `requireLeitura('produtos')`, embora o frontend proteja `/produtos` por `LazyRoute moduloSlug="produtos"`.
+- CONFIRMADO: rotas de leitura de produtos usam `requireLeitura('produtos')`, alinhadas ao `moduloSlug="produtos"` do frontend.
 - LACUNA: controller cria/ajusta tabela de composicao em runtime, misturando migracao de schema com request handler.
 - LACUNA: `standardizarComposicaoNutricional` mapeia `vitamina_e_mg` a partir de `vitamina_c` e `vitamina_b1_mg` a partir de `vitamina_a`; validar se e regra intencional ou resquicio de migracao.
 - LACUNA: frontend de criacao aceita `fator_correcao >= 0`, mas backend exige `>= 1.0`.
@@ -2811,7 +2812,7 @@ CONFIRMADO:
 - `POST /api/auth/login`: autentica usuário por email/senha.
 - `GET /api/usuarios/me`: usa `authenticateToken` e retorna perfil do usuário do token.
 - `GET /api/usuarios/me/permissoes`: usa `authenticateToken` e retorna permissões diretas e permissões herdadas por função.
-- `GET /api/usuarios/`: lista id, nome, email, tipo, ativo e timestamps sem middleware declarado no arquivo de rotas.
+- `GET /api/usuarios/`: lista id, nome, email, tipo, ativo e timestamps com `authenticateToken` e `requireAdmin`.
 
 ### Login e Token
 
@@ -2898,7 +2899,7 @@ CONFIRMADO:
 ### Lacunas
 
 - LACUNA: `register` existe no controller, mas não está montado em `userRoutes.ts` analisado.
-- LACUNA: `GET /api/usuarios/` lista usuários sem autenticação explícita no arquivo de rotas.
+- CONFIRMADO: `GET /api/usuarios/` exige autenticação explícita e perfil admin.
 - CONFIRMADO: `userRoutes.ts` usa `authenticateToken` para `/me` e `/me/permissoes`, alinhado as rotas admin.
 - DESCONTINUADO: validacoes multi-tenant de `usuario_permissoes` foram removidas da fila de hardening porque o produto nao usa mais tenant.
 - LACUNA: exclusão admin de usuário é delete físico, enquanto `User.deleteUser` no model implementa soft delete; há duas semânticas de exclusão.

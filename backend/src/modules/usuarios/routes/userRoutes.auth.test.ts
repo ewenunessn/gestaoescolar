@@ -23,4 +23,11 @@ describe("userRoutes auth contract", () => {
       "authenticateToken",
     ]);
   });
+
+  it("requires admin access for listing users", () => {
+    assert.deepEqual(routeMiddlewareNames("/", "get").slice(0, 2), [
+      "authenticateToken",
+      "requireAdmin",
+    ]);
+  });
 });
