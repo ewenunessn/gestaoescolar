@@ -96,7 +96,10 @@ export function normalizeOutboxOperations(rawOperations: unknown[]): DeliveryOut
       let status: DeliveryOutboxStatus =
         legacyStatus === 'failed' ? 'failed_retryable' : legacyStatus || 'pending';
       const lastError = operation.lastError ? String(operation.lastError) : undefined;
-      if (status === 'failed_needs_action' && isRecoverableStockBalanceError(lastError)) {
+      if (
+        status === 'failed_needs_action' &&
+        (isRecoverableStockBalanceError(lastError) || isRecoverableInfrastructureError(lastError))
+      ) {
         status = 'failed_retryable';
       }
       const clientOperationId =
@@ -315,6 +318,14 @@ export function classifySyncError(error: any): SyncErrorClassification {
     };
   }
 
+  if (isRecoverableInfrastructureError(message)) {
+    return {
+      status: 'failed_retryable',
+      message: String(message),
+      httpStatus,
+    };
+  }
+
   return {
     status: 'failed_needs_action',
     message: String(message),
@@ -492,4 +503,12 @@ function isRecoverableStockBalanceError(message?: unknown): boolean {
     !normalized.includes('saldo escolar') &&
     !normalized.includes('estornar')
   );
+}
+
+function isRecoverableInfrastructureError(message?: unknown): boolean {
+  if (typeof message !== 'string') {
+    return false;
+  }
+
+  return message.trim().toLowerCase() === 'notfounderror';
 }

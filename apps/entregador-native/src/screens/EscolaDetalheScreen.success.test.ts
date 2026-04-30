@@ -40,4 +40,12 @@ test('delivery review stores a required merchandise photo in comprovante outbox 
   assert.match(source, /Informe uma foto da mercadoria entregue/);
   assert.match(source, /foto_local_uri:\s*fotoMercadoria\.uri/);
   assert.match(source, /foto_content_type:\s*'image\/jpeg'/);
+  assert.match(source, /getDeliveryPhotoLocalFileSize/);
+  assert.doesNotMatch(source, /getLocalPhotoBlob/);
+});
+
+test('merchandise photo capture disables camera shutter sound', () => {
+  assert.match(source, /shutterSound:\s*false/);
+  assert.match(source, /mute=\{true\}/);
+  assert.match(source, /animateShutter=\{false\}/);
 });

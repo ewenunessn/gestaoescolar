@@ -1,3 +1,5 @@
+import { readDeliveryPhotoAsArrayBuffer } from "./deliveryPhotoLocalFile";
+
 export function buildDeliveryPhotoUploadHeaders(headers: Record<string, string> = {}): Record<string, string> {
   return Object.fromEntries(
     Object.entries(headers).filter(([key, value]) => key.trim().length > 0 && String(value).trim().length > 0),
@@ -25,11 +27,12 @@ function buildSupabaseSignedUploadUrl(uploadUrl: string, token?: string): string
   return `${uploadUrl}${separator}token=${encodeURIComponent(token)}`;
 }
 
-function buildSupabaseSignedUploadBody(body: Blob): FormData {
-  const formData = new FormData();
-  formData.append("cacheControl", "3600");
-  formData.append("", body as unknown as string);
-  return formData;
+function buildSupabaseSignedUploadHeaders(headers: Record<string, string>): Record<string, string> {
+  return {
+    "x-upsert": "false",
+    "cache-control": "max-age=3600",
+    "content-type": headers["Content-Type"] || headers["content-type"] || "image/jpeg",
+  };
 }
 
 export async function uploadDeliveryPhotoToSignedUrl(input: {
@@ -37,13 +40,14 @@ export async function uploadDeliveryPhotoToSignedUrl(input: {
   uploadUrl: string;
   token?: string;
   headers: Record<string, string>;
+  readFileAsArrayBuffer?: (uri: string) => Promise<ArrayBuffer>;
 }): Promise<void> {
-  const body = await getLocalPhotoBlob(input.localUri);
   if (input.token) {
+    const body = await (input.readFileAsArrayBuffer || readDeliveryPhotoAsArrayBuffer)(input.localUri);
     const response = await fetch(buildSupabaseSignedUploadUrl(input.uploadUrl, input.token), {
       method: "PUT",
-      headers: { "x-upsert": "false" },
-      body: buildSupabaseSignedUploadBody(body),
+      headers: buildSupabaseSignedUploadHeaders(input.headers),
+      body,
     });
 
     if (!response.ok) {
@@ -54,6 +58,7 @@ export async function uploadDeliveryPhotoToSignedUrl(input: {
     return;
   }
 
+  const body = await getLocalPhotoBlob(input.localUri);
   const response = await fetch(input.uploadUrl, {
     method: "PUT",
     headers: buildDeliveryPhotoUploadHeaders(input.headers),

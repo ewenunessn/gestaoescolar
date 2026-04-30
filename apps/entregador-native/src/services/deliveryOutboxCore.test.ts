@@ -124,6 +124,7 @@ test('sync error classification separates retryable server errors from action er
   assert.equal(classifySyncError({ response: { status: 500, data: { error: 'falha' } } }).status, 'failed_retryable');
   assert.equal(classifySyncError({ response: { status: 400, data: { error: 'saldo insuficiente' } } }).status, 'failed_retryable');
   assert.equal(classifySyncError({ response: { status: 400, data: { error: 'quantidade invalida' } } }).status, 'failed_needs_action');
+  assert.equal(classifySyncError({ response: { status: 404, data: { error: 'NotFoundError' } } }).status, 'failed_retryable');
   assert.equal(classifySyncError({ message: 'Network Error' }).status, 'failed_retryable');
 });
 
@@ -133,6 +134,19 @@ test('normalizes legacy stock balance action failures as syncable retry operatio
       ...baseOperation,
       status: 'failed_needs_action',
       lastError: 'Saldo insuficiente para a movimentacao',
+    },
+  ]);
+
+  assert.equal(operation.status, 'failed_retryable');
+  assert.equal(getSyncableOperations([operation]).length, 1);
+});
+
+test('normalizes infrastructure not found action failures as syncable retry operations', () => {
+  const [operation] = normalizeOutboxOperations([
+    {
+      ...baseOperation,
+      status: 'failed_needs_action',
+      lastError: 'NotFoundError',
     },
   ]);
 

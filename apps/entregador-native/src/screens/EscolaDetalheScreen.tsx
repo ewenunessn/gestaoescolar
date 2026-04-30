@@ -10,8 +10,8 @@ import { useOffline } from '../contexts/OfflineContext';
 import { cacheService } from '../services/cacheService';
 import { createDeliveryBatchId, loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
 import { mergeItemsWithOutbox, type OfflineItemFields } from '../services/deliveryOutboxCore';
+import { getDeliveryPhotoLocalFileSize, persistDeliveryPhotoLocalFile } from '../services/deliveryPhotoLocalFile';
 import { getDeliveryReviewBlocker } from '../services/deliveryPhotoReview';
-import { getLocalPhotoBlob } from '../services/deliveryPhotoUpload';
 import { saveSchoolItemsSnapshot } from '../services/deliveryProjectionStore';
 import { upsertRouteSchoolProjectionSnapshot } from '../services/deliveryRouteProjectionStore';
 import { SCHOOL_ITEMS_REFRESH_MS, shouldRefreshCache } from '../services/deliverySyncPolicy';
@@ -436,6 +436,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         quality: 0.7,
         base64: false,
         skipProcessing: false,
+        shutterSound: false,
       });
 
       if (!photo?.uri) {
@@ -443,8 +444,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         return;
       }
 
-      const blob = await getLocalPhotoBlob(photo.uri);
-      setFotoMercadoria({ uri: photo.uri, sizeBytes: blob.size });
+      const persistedUri = await persistDeliveryPhotoLocalFile(photo.uri);
+      const sizeBytes = await getDeliveryPhotoLocalFileSize(persistedUri);
+      setFotoMercadoria({ uri: persistedUri, sizeBytes });
       setCameraAberta(false);
     } catch (err) {
       Alert.alert('Erro', `Erro ao capturar a foto: ${handleAxiosError(err)}`);
@@ -586,7 +588,13 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   if (cameraAberta) {
     return (
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
+        <CameraView
+          ref={cameraRef}
+          style={styles.cameraPreview}
+          facing="back"
+          mute={true}
+          animateShutter={false}
+        />
         <View style={styles.cameraActions}>
           <Button mode="outlined" onPress={() => setCameraAberta(false)} textColor="#fff">
             Cancelar
