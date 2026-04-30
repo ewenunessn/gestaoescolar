@@ -15,6 +15,10 @@ interface SolicitacaoItemRow {
   status: string;
 }
 
+interface SolicitacaoItemDbRow extends SolicitacaoItemRow {
+  produto_unidade?: string | null;
+}
+
 interface CoberturaGuiaItem {
   guia_id: number;
   guia_produto_escola_id: number;
@@ -64,6 +68,16 @@ function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
+}
+
+export function resolveSolicitacaoAnalysisUnit(row: { unidade?: string | null; produto_unidade?: string | null }): string {
+  const produtoUnidade = row.produto_unidade?.trim();
+  if (produtoUnidade) {
+    return produtoUnidade;
+  }
+
+  const solicitacaoUnidade = row.unidade?.trim();
+  return solicitacaoUnidade || 'UN';
 }
 
 function getCompetenciaFromDate(dateValue?: string): { mes: number; ano: number; competencia: string } {
@@ -232,10 +246,13 @@ class SolicitacaoEmergencialService {
         SELECT
           i.*,
           s.escola_id,
-          e.nome AS escola_nome
+          e.nome AS escola_nome,
+          COALESCE(NULLIF(TRIM(um.codigo), ''), NULLIF(TRIM(i.unidade), ''), 'UN') AS produto_unidade
         FROM solicitacoes_itens i
         INNER JOIN solicitacoes s ON s.id = i.solicitacao_id
         INNER JOIN escolas e ON e.id = s.escola_id
+        LEFT JOIN produtos p ON p.id = i.produto_id
+        LEFT JOIN unidades_medida um ON um.id = p.unidade_medida_id
         WHERE i.id = $1
         ${lockRow ? 'FOR UPDATE OF i' : ''}
       `,
@@ -246,7 +263,7 @@ class SolicitacaoEmergencialService {
       throw new Error('Item nao encontrado');
     }
 
-    const row = result.rows[0];
+    const row = result.rows[0] as SolicitacaoItemDbRow;
     return {
       ...row,
       id: Number(row.id),
@@ -254,6 +271,7 @@ class SolicitacaoEmergencialService {
       escola_id: Number(row.escola_id),
       produto_id: row.produto_id ? Number(row.produto_id) : null,
       quantidade: Number(row.quantidade),
+      unidade: resolveSolicitacaoAnalysisUnit(row),
     };
   }
 
@@ -463,12 +481,13 @@ class SolicitacaoEmergencialService {
         `
           UPDATE guia_produto_escola
           SET quantidade = quantidade + $1,
-              observacao = COALESCE(observacao || E'\n', '') || $2,
+              unidade = $2,
+              observacao = COALESCE(observacao || E'\n', '') || $3,
               updated_at = NOW()
-          WHERE id = $3
+          WHERE id = $4
           RETURNING *
         `,
-        [input.quantidade, input.observacao, existente.rows[0].id],
+        [input.quantidade, input.unidade, input.observacao, existente.rows[0].id],
       );
       return result.rows[0];
     }

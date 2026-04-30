@@ -18,9 +18,14 @@ async function getSolicitacaoComItens(id: number) {
   if (sol.rows.length === 0) return null;
 
   const itens = await db.query(`
-    SELECT i.*, u.nome as respondido_por_nome
+    SELECT
+      i.*,
+      COALESCE(NULLIF(TRIM(um.codigo), ''), NULLIF(TRIM(i.unidade), ''), 'UN') AS unidade,
+      u.nome as respondido_por_nome
     FROM solicitacoes_itens i
     LEFT JOIN usuarios u ON i.respondido_por = u.id
+    LEFT JOIN produtos p ON p.id = i.produto_id
+    LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
     WHERE i.solicitacao_id = $1
     ORDER BY i.id
   `, [id]);
@@ -47,6 +52,69 @@ function publicarSolicitacaoAlterada(
 
 export function canRespondToSolicitacaoStatus(status: string | null | undefined): boolean {
   return status === 'pendente' || status === 'parcial';
+}
+
+interface ProdutoSolicitacaoCatalogo {
+  id: number;
+  nome: string;
+  unidade?: string | null;
+}
+
+interface SolicitacaoItemInput {
+  produto_id?: unknown;
+  nome_produto?: unknown;
+  quantidade?: unknown;
+  unidade?: unknown;
+}
+
+export function normalizeSolicitacaoProdutoUnidade(unidade: unknown): string {
+  const value = typeof unidade === 'string' ? unidade.trim() : '';
+  return value || 'UN';
+}
+
+export function buildSolicitacaoItemData(
+  input: SolicitacaoItemInput,
+  produto: ProdutoSolicitacaoCatalogo | null | undefined,
+) {
+  const produtoId = Number(input?.produto_id || produto?.id || 0);
+  if (!Number.isInteger(produtoId) || produtoId <= 0 || !produto) {
+    throw new ValidationError('Selecione um produto cadastrado em todos os itens');
+  }
+
+  const quantidade = Number(input?.quantidade);
+  if (!Number.isFinite(quantidade) || quantidade <= 0) {
+    throw new ValidationError('Quantidade invalida');
+  }
+
+  const nomeProduto = String(produto.nome || '').trim();
+  if (!nomeProduto) {
+    throw new ValidationError('Produto cadastrado sem nome');
+  }
+
+  return {
+    produto_id: Number(produto.id),
+    nome_produto: nomeProduto,
+    quantidade,
+    unidade: normalizeSolicitacaoProdutoUnidade(produto.unidade),
+  };
+}
+
+async function buscarProdutoParaSolicitacao(produtoId: number): Promise<ProdutoSolicitacaoCatalogo | null> {
+  const result = await db.query(
+    `
+      SELECT
+        p.id,
+        p.nome,
+        COALESCE(NULLIF(TRIM(um.codigo), ''), 'UN') AS unidade
+      FROM produtos p
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      WHERE p.id = $1
+        AND COALESCE(p.ativo, true) = true
+    `,
+    [produtoId],
+  );
+
+  return result.rows[0] || null;
 }
 
 async function recalcularStatusSolicitacao(solicitacaoId: number, respondidoPor: number) {
@@ -94,7 +162,14 @@ export const listarMinhasSolicitacoes = asyncHandler(async (req: Request, res: R
   let itensMap: Record<number, any[]> = {};
   if (ids.length > 0) {
     const itens = await db.query(
-      `SELECT * FROM solicitacoes_itens WHERE solicitacao_id = ANY($1) ORDER BY id`,
+      `SELECT
+         i.*,
+         COALESCE(NULLIF(TRIM(um.codigo), ''), NULLIF(TRIM(i.unidade), ''), 'UN') AS unidade
+       FROM solicitacoes_itens i
+       LEFT JOIN produtos p ON p.id = i.produto_id
+       LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+       WHERE i.solicitacao_id = ANY($1)
+       ORDER BY i.id`,
       [ids]
     );
     for (const item of itens.rows) {
@@ -120,10 +195,15 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
   if (!Array.isArray(itens) || itens.length === 0)
     throw new ValidationError('Informe ao menos um item');
 
+  const itensNormalizados = [];
   for (const item of itens) {
-    if (!item.nome_produto?.trim()) throw new ValidationError('Nome do produto é obrigatório em todos os itens');
-    if (!item.quantidade || Number(item.quantidade) <= 0) throw new ValidationError('Quantidade inválida');
-    if (!item.unidade?.trim()) throw new ValidationError('Unidade é obrigatória em todos os itens');
+    const produtoId = Number(item?.produto_id || 0);
+    if (!Number.isInteger(produtoId) || produtoId <= 0) {
+      buildSolicitacaoItemData(item, null);
+    }
+
+    const produto = await buscarProdutoParaSolicitacao(produtoId);
+    itensNormalizados.push(buildSolicitacaoItemData(item, produto));
   }
 
   const sol = await db.query(
@@ -132,11 +212,11 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
   );
   const solId = sol.rows[0].id;
 
-  for (const item of itens) {
+  for (const item of itensNormalizados) {
     await db.query(
       `INSERT INTO solicitacoes_itens (solicitacao_id, produto_id, nome_produto, quantidade, unidade)
        VALUES ($1, $2, $3, $4, $5)`,
-      [solId, item.produto_id || null, item.nome_produto.trim(), Number(item.quantidade), item.unidade.trim()]
+      [solId, item.produto_id, item.nome_produto, item.quantidade, item.unidade]
     );
   }
 
@@ -147,7 +227,7 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
   await criarNotificacao({
     tipo: 'solicitacao_alimentos',
     titulo: 'Nova solicitação de alimentos',
-    mensagem: `${escolaNome} enviou uma solicitação com ${itens.length} item(s).`,
+    mensagem: `${escolaNome} enviou uma solicitação com ${itensNormalizados.length} item(s).`,
     link: '/solicitacoes-alimentos',
   });
 
@@ -199,9 +279,14 @@ export const listarTodasSolicitacoes = asyncHandler(async (req: Request, res: Re
   let itensMap: Record<number, any[]> = {};
   if (ids.length > 0) {
     const itens = await db.query(
-      `SELECT i.*, u.nome as respondido_por_nome
+      `SELECT
+         i.*,
+         COALESCE(NULLIF(TRIM(um.codigo), ''), NULLIF(TRIM(i.unidade), ''), 'UN') AS unidade,
+         u.nome as respondido_por_nome
        FROM solicitacoes_itens i
        LEFT JOIN usuarios u ON i.respondido_por = u.id
+       LEFT JOIN produtos p ON p.id = i.produto_id
+       LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
        WHERE i.solicitacao_id = ANY($1) ORDER BY i.id`,
       [ids]
     );
