@@ -24,7 +24,7 @@ export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
   
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
-    queryFn: listarEscolas,
+    queryFn: () => listarEscolas(),
     enabled: isReady && hasToken, // Aguarda AuthContext estar pronto
     staleTime: 0,
     gcTime: 5 * 60 * 1000,

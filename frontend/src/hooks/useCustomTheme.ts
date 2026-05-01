@@ -1,9 +1,9 @@
 import { useTheme as useMuiTheme } from '@mui/material/styles';
-import { useTheme } from '../contexts/ThemeContext';
+import { useThemePreference } from '../contexts/ThemeContext';
 
 export const useCustomTheme = () => {
   const muiTheme = useMuiTheme();
-  const { mode, toggleTheme, setTheme } = useTheme();
+  const { mode, toggleTheme, setTheme } = useThemePreference();
 
   return {
     theme: muiTheme,

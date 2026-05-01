@@ -22,7 +22,7 @@ describe('escolas service', () => {
   });
 
   it('requests student history with query filters', async () => {
-    vi.mocked(apiWithRetry.get).mockResolvedValueOnce({ data: { data: [{ id: 1 }] } });
+    vi.mocked(apiWithRetry.get).mockResolvedValueOnce({ data: { data: [{ id: 1 }] } } as any);
 
     const result = await listarHistoricoAlunosModalidades({
       escola_id: 10,
@@ -38,7 +38,7 @@ describe('escolas service', () => {
   });
 
   it('requests the student report with a reference date', async () => {
-    vi.mocked(apiWithRetry.get).mockResolvedValueOnce({ data: { data: { total_geral: 150 } } });
+    vi.mocked(apiWithRetry.get).mockResolvedValueOnce({ data: { data: { total_geral: 150 } } } as any);
 
     const result = await gerarRelatorioAlunosModalidades({
       data_referencia: '2026-02-01',
@@ -53,7 +53,7 @@ describe('escolas service', () => {
   });
 
   it('sends effective date metadata when removing an association', async () => {
-    vi.mocked(apiWithRetry.delete).mockResolvedValueOnce({ data: { success: true } });
+    vi.mocked(apiWithRetry.delete).mockResolvedValueOnce({ data: { success: true } } as any);
 
     await removerEscolaModalidade(99, {
       vigente_de: '2026-02-01',

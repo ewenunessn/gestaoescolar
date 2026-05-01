@@ -1,4 +1,5 @@
 import { apiWithRetry } from "./api";
+import type { Escola } from "../types/escola";
 
 export interface HistoricoAlunosModalidadesFiltros {
   escola_id?: number | string;
@@ -20,7 +21,7 @@ export interface MetadadosHistoricoAlunos {
   observacao?: string;
 }
 
-function buildQueryString(params: Record<string, unknown>) {
+function buildQueryString(params: object) {
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -39,8 +40,8 @@ export const escolasService = {
   }
 };
 
-let escolasCache: any[] | null = null;
-let escolasRequest: Promise<any[]> | null = null;
+let escolasCache: Escola[] | null = null;
+let escolasRequest: Promise<Escola[]> | null = null;
 let escolasCacheAt = 0;
 const ESCOLAS_CACHE_TTL_MS = 60_000;
 
@@ -49,7 +50,7 @@ function clearEscolasCache() {
   escolasCacheAt = 0;
 }
 
-export async function listarEscolas(forceRefresh = false) {
+export async function listarEscolas(forceRefresh = false): Promise<Escola[]> {
   const now = Date.now();
   if (!forceRefresh && escolasCache && now - escolasCacheAt < ESCOLAS_CACHE_TTL_MS) {
     return escolasCache;
@@ -62,9 +63,10 @@ export async function listarEscolas(forceRefresh = false) {
   escolasRequest = apiWithRetry
     .get("/escolas")
     .then(({ data }) => {
-      escolasCache = data.data || [];
+      const escolas = Array.isArray(data.data) ? data.data : [];
+      escolasCache = escolas;
       escolasCacheAt = Date.now();
-      return escolasCache;
+      return escolas;
     })
     .finally(() => {
       escolasRequest = null;

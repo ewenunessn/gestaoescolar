@@ -1,8 +1,8 @@
 import type { ContratoCalculado } from '../types/faturamento';
 
 let excelExportDepsPromise: Promise<{
-  ExcelJS: typeof import('exceljs').default;
-  saveAs: typeof import('file-saver').saveAs;
+  ExcelJS: typeof import('exceljs');
+  saveAs: (data: Blob, filename?: string) => void;
 }> | null = null;
 
 const carregarDependenciasExcel = async () => {
@@ -11,7 +11,7 @@ const carregarDependenciasExcel = async () => {
       import('exceljs'),
       import('file-saver'),
     ]).then(([excelJsModule, fileSaverModule]) => ({
-      ExcelJS: excelJsModule.default,
+      ExcelJS: excelJsModule,
       saveAs: fileSaverModule.saveAs,
     }));
   }
