@@ -9,7 +9,7 @@ Gerado pelo Reversa Architect em 2026-04-29.
 - SPA React/Vite para operacao administrativa e portal escola.
 - API Node.js/Express modularizada por dominio.
 - PostgreSQL como banco principal, com suporte a Neon/Vercel e banco local.
-- Apps Expo/React Native para entrega em campo e estoque escolar.
+- App Expo/React Native ativo para entrega em campo; o app de estoque escolar existe apenas como legado descontinuado.
 - Shell Electron para distribuicao desktop com frontend e backend local empacotado.
 - Pacote `shared` de tipos TypeScript, hoje pouco integrado ao codigo ativo.
 
@@ -22,7 +22,7 @@ Confianca: CONFIRMADO por inventario, dependencias e analise de modulos.
 | Operacao administrativa | Cadastros, cardapios, compras, estoque, entregas, faturamento, RBAC | `frontend`, `backend` |
 | Portal escola | Cardapios, solicitacoes, comprovantes e alunos por escola | `frontend`, `backend` |
 | Entrega em campo | Rotas, QR de romaneio, confirmacao offline, comprovantes e fotos | `apps/entregador-native`, `backend` |
-| Estoque escolar mobile | Consulta/movimentacao de estoque por escola via codigo de acesso | `apps/estoque-escolar-mobile`, `backend` |
+| Estoque escolar mobile | Legado descontinuado; nao usado em producao | `apps/estoque-escolar-mobile` |
 | Desktop | Janela nativa, downloads, logs, backend local | `desktop`, `frontend`, `backend` |
 | Persistencia | Dados relacionais, ledger de estoque, sessoes/permissoes | PostgreSQL |
 | Arquivos/documentos | PDFs, Excel, fotos de comprovante, uploads assinados | Frontend/backend/Supabase ou S3 compativel |
@@ -44,7 +44,7 @@ Confianca: CONFIRMADO por inventario, dependencias e analise de modulos.
 | API | Express 4, TypeScript, pg, JWT | `backend/src/index.ts`, `registerApiRoutes.ts` | REST API, regras de negocio e integracoes |
 | Banco | PostgreSQL/Neon/local | `DATABASE_URL`, `POSTGRES_URL`, `NEON_DATABASE_URL` | Persistencia relacional |
 | App Entregador | Expo 51, RN 0.74 | `apps/entregador-native/App.tsx` | Operacao de entregas offline/online |
-| App Estoque Escolar | Expo 54, RN 0.81 | `apps/estoque-escolar-mobile/App.tsx` | Estoque escolar por gestor/codigo |
+| App Estoque Escolar | Expo 54, RN 0.81 | `apps/estoque-escolar-mobile/App.tsx` | Legado descontinuado; fora do escopo operacional |
 | Desktop Shell | Electron 37 | `desktop/main.cjs`, `preload.cjs` | Empacota frontend/backend e APIs nativas |
 | Shared Types | TypeScript | `shared/types/index.ts` | Contratos pretendidos/compartilhados |
 
@@ -65,7 +65,7 @@ Confianca: CONFIRMADO por inventario, dependencias e analise de modulos.
 
 - LACUNA: slugs RBAC divergem entre frontend e backend (`pedidos`/`compras`, `demandas`/`guias`, `faturamento`/`faturamentos`).
 - LACUNA: `shared` nao aparece importado pelo codigo ativo, podendo estar defasado.
-- LACUNA: app `estoque-escolar-mobile` tem fluxos simulados e URL absoluta de producao em partes criticas.
+- DESCONTINUADO: app `estoque-escolar-mobile` tem fluxos simulados/legados e nao deve ser tratado como alvo de producao.
 - LACUNA: desktop nao bloqueia renderer aguardando backend local saudavel.
 - LACUNA: Data Master ainda deve validar constraints, triggers e cardinalidades reais do schema.
 

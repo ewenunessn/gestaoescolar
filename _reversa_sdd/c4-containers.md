@@ -6,13 +6,13 @@ flowchart TB
     Admin["Admin / Secretaria"]
     Escola["Usuario Escola"]
     Entregador["Entregador"]
-    Gestor["Gestor Mobile"]
+    Gestor["Gestor Mobile\nlegado/descontinuado"]
   end
 
   subgraph Aplicacoes
     Web["Frontend React/Vite\nMUI, Router, TanStack"]
     MobileEntrega["Expo Entregador\nOffline outbox, Camera, QR"]
-    MobileEstoque["Expo Estoque Escolar\nAsyncStorage, Tabs"]
+    MobileEstoque["Expo Estoque Escolar\nDESCONTINUADO"]
     Electron["Electron Desktop\nmain/preload/downloads"]
   end
 
@@ -33,13 +33,13 @@ flowchart TB
   Admin --> Web
   Escola --> Web
   Entregador --> MobileEntrega
-  Gestor --> MobileEstoque
+  Gestor -. legado .-> MobileEstoque
   Electron --> Web
   Electron --> API
 
   Web -->|Axios REST + JWT| API
   MobileEntrega -->|Axios/fetch REST + JWT| API
-  MobileEstoque -->|fetch REST + token/codigo| API
+  MobileEstoque -. descontinuado .-> API
   API --> Auth
   API --> Jobs
   API --> Realtime

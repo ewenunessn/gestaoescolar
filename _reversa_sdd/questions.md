@@ -35,7 +35,7 @@
 
 ✅ Respondida
 
-**Contexto:** O estoque escolar web/mobile usa `devAuthMiddleware` em `backend/src/modules/estoque/routes/estoqueEscolarRoutes.ts`, enquanto o restante do sistema usa JWT + RBAC.
+**Contexto:** O estoque escolar web/mobile usava `devAuthMiddleware` em `backend/src/modules/estoque/routes/estoqueEscolarRoutes.ts`, enquanto o restante do sistema usa JWT + RBAC. O app `apps/estoque-escolar-mobile` foi descontinuado; a validacao deve priorizar apenas os fluxos web ativos e o app `apps/entregador-native`.
 **Spec afetada:** [`C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/sdd/estoque-ledger.md`](C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/sdd/estoque-ledger.md), [`C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/sdd/auth-rbac.md`](C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/sdd/auth-rbac.md), [`C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/user-stories/estoque-escolar-mobile.md`](C:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/_reversa_sdd/user-stories/estoque-escolar-mobile.md)
 **Pergunta:** Esse desvio de autenticacao do estoque escolar e intencional como contrato de produto, ou e apenas uma etapa temporaria de migracao?
 **Impacto:** Muda a classificacao do modulo escolar entre regra suportada e debito tecnico/transicao.

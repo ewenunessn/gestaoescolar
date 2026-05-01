@@ -1,5 +1,7 @@
 # Estoque e Ledger
 
+> Nota operacional: o app `apps/estoque-escolar-mobile` foi descontinuado. O unico app mobile em uso e `apps/entregador-native`; regras abaixo que mencionam estoque escolar mobile permanecem apenas como registro historico do legado.
+
 ## Visao Geral
 
 - 🟢 O componente Estoque e Ledger registra entradas, saidas, ajustes e transferencias como eventos append-only na tabela `estoque_eventos`.

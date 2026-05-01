@@ -30,7 +30,7 @@ Regras confirmadas:
 | Admin | `tipo = admin` | Acesso total, bypass RBAC. | CONFIRMADO |
 | Usuario operacional | Token sem `admin`, sem `escola_id` obrigatorio | Acesso conforme funcao/permissoes por modulo. | CONFIRMADO |
 | Usuario escola | `escola_id` presente e nao admin | Redirecionado para portal escola; menus centrais reduzidos. | CONFIRMADO |
-| Gestor mobile escolar | Sessao em `gestor_escola` com escola e codigo de acesso | Acesso ao estoque da escola no app mobile. | CONFIRMADO |
+| Gestor mobile escolar | Sessao em `gestor_escola` com escola e codigo de acesso | Perfil legado do app `estoque-escolar-mobile`, hoje descontinuado. | DESCONTINUADO |
 | Entregador/mobile | Token bearer no app entregador | Acesso aos endpoints de entregas/rotas conforme permissoes do token. | INFERIDO |
 
 ## Slugs de modulos usados no frontend
@@ -106,5 +106,5 @@ Confianca: CONFIRMADO em `frontend/src/routes/AppRouter.tsx`.
 - RESOLVIDO em 2026-04-30: leituras de produtos aplicam RBAC `produtos` leitura e escritas aplicam `produtos` escrita.
 - RESOLVIDO em 2026-04-30: `GET /api/usuarios/` aplica `authenticateToken` e `requireAdmin`.
 - LACUNA: algumas rotas sensiveis usam apenas `authenticateToken`, sem nivel granular documentado.
-- LACUNA: app `estoque-escolar-mobile` autentica por codigo escolar e token proprio; a equivalencia com RBAC web nao esta clara.
+- DESCONTINUADO: app `estoque-escolar-mobile` autenticava por codigo escolar e token proprio, mas nao e mais usado operacionalmente.
 - LACUNA: cache de 5 minutos pode manter permissao antiga apos alteracao se `limparCachePermissoes` nao for chamado nos fluxos administrativos.

@@ -1,7 +1,10 @@
 # User Story - Estoque Escolar Mobile
 
+> Status: DESCONTINUADO. Esta user story permanece apenas como registro historico do legado. O unico app mobile em uso operacional/producao e `apps/entregador-native`.
+
 ## Contexto
 
+- DESCONTINUADO: o app `estoque-escolar-mobile` nao deve orientar novas implementacoes ou validacoes de producao.
 - 🟢 O app `estoque-escolar-mobile` oferece consulta de estoque, detalhes, lotes, validade e historico.
 - 🟢 O app permite entrada simples, saida inteligente e ajuste com sincronizacao posterior.
 - 🟡 A experiencia combina consulta local, filtros e fila offline em `@sync_pending_items`.

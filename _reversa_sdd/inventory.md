@@ -11,9 +11,14 @@ Gerado pelo Reversa Scout em 2026-04-29.
   - `frontend`: SPA React com Vite e Material UI.
   - `backend`: API Node.js/Express em TypeScript.
   - `desktop`: shell Electron para empacotamento desktop.
-  - `apps/entregador-native`: app Expo/React Native para entregador.
-  - `apps/estoque-escolar-mobile`: app Expo/React Native para estoque escolar.
+  - `apps/entregador-native`: unico app mobile em uso operacional/producao.
+  - `apps/estoque-escolar-mobile`: app Expo/React Native legado, descontinuado para uso operacional.
   - `shared`: pacote de tipos compartilhados.
+
+## Estado dos apps mobile
+
+- ATIVO: `apps/entregador-native` e o unico app mobile utilizado no sistema.
+- DESCONTINUADO: `apps/estoque-escolar-mobile` deve ser tratado apenas como legado/documentacao historica. Nao deve orientar novas implementacoes, testes de producao ou prioridades de hardening, salvo decisao explicita de reativacao.
 
 ## Estrutura de Pastas
 
@@ -104,8 +109,8 @@ Total de arquivos inventariados: 1277.
 
 ### Mobile (`apps`)
 
-- `entregador-native`
-- `estoque-escolar-mobile`
+- `entregador-native` - ativo.
+- `estoque-escolar-mobile` - descontinuado/legado.
 
 ## Entry Points
 
@@ -119,8 +124,8 @@ Total de arquivos inventariados: 1277.
 - `frontend/src/routes/AppRouter.tsx`: rotas, lazy loading e protecao de telas.
 - `apps/entregador-native/App.tsx`: entrada do app mobile de entregas.
 - `apps/entregador-native/index.ts`: entrypoint Expo/React Native.
-- `apps/estoque-escolar-mobile/App.tsx`: entrada do app mobile de estoque.
-- `apps/estoque-escolar-mobile/index.ts`: entrypoint Expo/React Native.
+- `apps/estoque-escolar-mobile/App.tsx`: entrada do app mobile de estoque legado/descontinuado.
+- `apps/estoque-escolar-mobile/index.ts`: entrypoint Expo/React Native legado/descontinuado.
 - `shared/types/index.ts`: pacote de tipos compartilhados.
 
 ## Configuracoes Relevantes

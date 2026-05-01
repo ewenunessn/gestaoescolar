@@ -11,6 +11,7 @@
 
 1. A cobertura OpenAPI ainda deve ser revisada modulo a modulo contra todos os endpoints reais antes de congelar contrato publico, embora o agregado de sistema ja cubra SSE, calendario, notificacoes e bootstrap HTTP.
 2. Itens relacionados a `tenant_id` foram descontinuados por decisao do produto e nao devem bloquear o preparo para producao.
+3. Itens relacionados ao app `apps/estoque-escolar-mobile` foram descontinuados por decisao do produto; o unico app mobile ativo e `apps/entregador-native`.
 
 ## Cosmetico
 

@@ -73,10 +73,10 @@
 | `frontend/src/modules/estoque/pages/EstoqueCentral.tsx` | `sdd/estoque-ledger.md` | 🟢 |
 | `frontend/src/modules/estoque/pages/EstoqueEscolar.tsx` | `sdd/estoque-ledger.md` | 🟢 |
 | `frontend/src/modules/estoque/pages/EstoqueMovimentacoes.tsx` | `sdd/estoque-ledger.md` | 🟢 |
-| `apps/estoque-escolar-mobile/src/hooks/useEstoque.ts` | `sdd/estoque-ledger.md`, `user-stories/estoque-escolar-mobile.md` | 🟢 |
-| `apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts` | `sdd/estoque-ledger.md`, `user-stories/estoque-escolar-mobile.md` | 🟢 |
-| `apps/estoque-escolar-mobile/src/screens/EstoqueScreen.tsx` | `user-stories/estoque-escolar-mobile.md` | 🟢 |
-| `apps/estoque-escolar-mobile/src/screens/HistoricoScreen.tsx` | `user-stories/estoque-escolar-mobile.md` | 🟢 |
+| `apps/estoque-escolar-mobile/src/hooks/useEstoque.ts` | `sdd/estoque-ledger.md`, `user-stories/estoque-escolar-mobile.md` | DESCONTINUADO |
+| `apps/estoque-escolar-mobile/src/hooks/useSyncManager.ts` | `sdd/estoque-ledger.md`, `user-stories/estoque-escolar-mobile.md` | DESCONTINUADO |
+| `apps/estoque-escolar-mobile/src/screens/EstoqueScreen.tsx` | `user-stories/estoque-escolar-mobile.md` | DESCONTINUADO |
+| `apps/estoque-escolar-mobile/src/screens/HistoricoScreen.tsx` | `user-stories/estoque-escolar-mobile.md` | DESCONTINUADO |
 | `backend/src/modules/entregas/routes/entregaRoutes.ts` | `sdd/entregas-comprovantes-fotos.md`, `openapi/estoque-entregas.yaml` | 🟢 |
 | `backend/src/modules/entregas/controllers/EntregaController.ts` | `sdd/entregas-comprovantes-fotos.md`, `openapi/estoque-entregas.yaml`, `user-stories/entrega-offline-comprovante.md` | 🟢 |
 | `backend/src/modules/entregas/controllers/HistoricoEntregaController.ts` | `sdd/entregas-comprovantes-fotos.md`, `openapi/estoque-entregas.yaml` | 🟢 |
