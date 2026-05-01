@@ -54,7 +54,7 @@ class ApiService {
     };
 
     if (DEV_CONFIG.ENABLE_LOGS) {
-      console.log(`API Request: ${options.method || 'GET'} ${url}`, options.body);
+      console.log(`API Request: ${options.method || 'GET'} ${url}`);
     }
 
     try {
@@ -77,7 +77,7 @@ class ApiService {
       const result = await response.json();
 
       if (DEV_CONFIG.ENABLE_LOGS) {
-        console.log(`API Response:`, result);
+        console.log(`API Response: ${options.method || 'GET'} ${endpoint}`);
       }
 
       return result;
@@ -475,48 +475,11 @@ class ApiService {
     }
   }
 
-  // Login legado (mantido para compatibilidade)
+  // Login legado descontinuado: o app deve usar autenticação real por escola e código.
   async login(email: string, senha: string): Promise<{ token: string; usuario: any }> {
-    try {
-      // Verificar se o backend está online
-      const healthCheck = await this.request('/health');
-
-      // Como o backend do Vercel não tem endpoint de login POST ativo,
-      // vamos usar os dados dos usuários disponíveis via GET
-      const usuarios = await this.request('/api/usuarios') as { data?: any[] };
-
-      // Buscar usuário por email
-      const usuario = usuarios.data?.find((u: any) => u.email === email);
-
-      if (!usuario) {
-        throw new Error('Usuário não encontrado');
-      }
-
-      // Simular validação de senha (em produção, isso seria feito no backend)
-      if (senha !== 'admin123' && senha !== '123456') {
-        throw new Error('Senha incorreta');
-      }
-
-      // Gerar token mock
-      const token = `mock_token_${usuario.id}_${Date.now()}`;
-
-      // Salvar token automaticamente após login bem-sucedido
-      await this.setToken(token);
-
-      return {
-        token,
-        usuario: {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          tipo: usuario.tipo,
-          ativo: usuario.ativo
-        }
-      };
-    } catch (error) {
-      console.error('Erro no login:', error);
-      throw new Error('Falha na autenticação. Verifique suas credenciais.');
-    }
+    void email;
+    void senha;
+    throw new Error('Login por email e senha foi descontinuado. Use o acesso por escola e codigo.');
   }
 
   async verificarSessao(): Promise<{ valida: boolean; usuario?: any }> {
@@ -525,29 +488,9 @@ class ApiService {
       return { valida: false };
     }
 
-    // Verificar se é um token mock válido
     if (token.startsWith('mock_token_')) {
-      try {
-        // Extrair ID do usuário do token
-        const userId = token.split('_')[2];
-        const usuarios = await this.request('/api/usuarios') as { data?: any[] };
-        const usuario = usuarios.data?.find((u: any) => u.id.toString() === userId);
-
-        if (usuario) {
-          return {
-            valida: true,
-            usuario: {
-              id: usuario.id,
-              nome: usuario.nome,
-              email: usuario.email,
-              tipo: usuario.tipo,
-              ativo: usuario.ativo
-            }
-          };
-        }
-      } catch (error) {
-        console.error('Erro ao verificar sessão:', error);
-      }
+      await this.removeToken();
+      return { valida: false };
     }
 
     return { valida: false };
