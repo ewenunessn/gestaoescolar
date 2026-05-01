@@ -309,7 +309,7 @@ export default function SolicitacoesPage() {
         <PageHeader
           title="Solicitações de Alimentos"
           subtitle="Gerencie suas solicitações de alimentos"
-          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Solicitações' }]}
+          breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Solicitações' }]}
         />
 
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>

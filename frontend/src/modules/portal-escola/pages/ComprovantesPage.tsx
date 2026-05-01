@@ -258,7 +258,7 @@ export default function ComprovantesPage() {
         <PageHeader
           title="Comprovantes de Entrega"
           subtitle="Visualize os comprovantes de entrega da sua escola"
-          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Comprovantes' }]}
+          breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Comprovantes' }]}
         />
 
         <Button

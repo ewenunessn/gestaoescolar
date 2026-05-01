@@ -64,7 +64,7 @@ export default function AlunosPage() {
       <PageHeader
         title="Alunos e Modalidades"
         subtitle="Informações sobre alunos e modalidades da escola"
-        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Alunos' }]}
+        breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Alunos' }]}
       />
 
       <Button

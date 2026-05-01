@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, CircularProgress } from '@mui/material';
 import { ArrowBack, Lock } from '@mui/icons-material';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { useUserRole } from '../hooks/useUserRole';
@@ -31,8 +31,26 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
     return <>{children}</>;
   }
 
-  // Enquanto carrega, não mostra nada (evita flash)
-  if (loading) return null;
+  // Enquanto carrega, mostra um estado explícito e evita flash de conteúdo protegido.
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '50vh',
+          gap: 1.5,
+        }}
+      >
+        <CircularProgress size={28} />
+        <Typography variant="body2" color="text.secondary">
+          Verificando permissões...
+        </Typography>
+      </Box>
+    );
+  }
 
   const allowed = hasPermission(moduloSlug, minNivel);
 

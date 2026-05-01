@@ -133,7 +133,10 @@ const MENU_ESCOLA = [
     category: "Portal Escola",
     items: [
       { text: "Minha Escola", icon: <HomeWork fontSize="small" />, path: "/portal-escola" },
+      { text: "Cardápio", icon: <Restaurant fontSize="small" />, path: "/portal-escola/cardapio" },
       { text: "Solicitações", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
+      { text: "Comprovantes", icon: <Description fontSize="small" />, path: "/portal-escola/comprovantes" },
+      { text: "Alunos", icon: <School fontSize="small" />, path: "/portal-escola/alunos" },
     ],
   },
 ];
