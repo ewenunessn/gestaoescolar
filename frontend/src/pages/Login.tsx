@@ -70,7 +70,6 @@ export default function Login() {
       
       navigate(redirectPath, { replace: true });
     } catch (err: any) {
-      console.error('❌ [LOGIN] Erro:', err);
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {
       setLoading(false);

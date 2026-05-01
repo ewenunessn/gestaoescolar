@@ -75,8 +75,8 @@ api.interceptors.request.use((config) => {
   // Log em desenvolvimento
   if (apiConfig.debug) {
     apiLog(`📡 ${config.method?.toUpperCase()} ${config.url}`, {
-      data: config.data,
-      params: config.params,
+      hasBody: config.data !== undefined,
+      hasParams: config.params !== undefined,
       hasToken: !!token
     });
   }
@@ -93,7 +93,6 @@ api.interceptors.response.use(
         `✅ ${response.config.method?.toUpperCase()} ${response.config.url}`,
         {
           status: response.status,
-          data: response.data,
         }
       );
     }
@@ -109,7 +108,6 @@ api.interceptors.response.use(
         `❌ ${originalRequest.method?.toUpperCase()} ${originalRequest.url}`,
         {
           status: error.response?.status,
-          data: error.response?.data,
           message: error.message,
         }
       );

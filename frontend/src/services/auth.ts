@@ -8,20 +8,13 @@ type LogoutOptions = {
 const AUTH_STORAGE_KEYS = ["token", "user", "perfil", "nome"] as const;
 
 export async function login(email: string, password: string) {
-  try {
-    const loginData: any = {
-      email,
-      senha: password,
-    };
+  const loginData: any = {
+    email,
+    senha: password,
+  };
 
-    const { data } = await apiWithRetry.post("/auth/login", loginData);
-    const result = data.data || data;
-
-    return result;
-  } catch (err) {
-    console.error("Login falhou:", err);
-    throw err;
-  }
+  const { data } = await apiWithRetry.post("/auth/login", loginData);
+  return data.data || data;
 }
 
 export function isAuthenticated(): boolean {

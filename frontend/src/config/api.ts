@@ -76,7 +76,9 @@ export const apiLog = (...args: any[]) => {
 };
 
 export const apiError = (...args: any[]) => {
-  console.error('[API ERROR]', ...args);
+  if (apiConfig.debug) {
+    console.error('[API ERROR]', ...args);
+  }
 };
 
 export const checkApiHealth = async (): Promise<boolean> => {
