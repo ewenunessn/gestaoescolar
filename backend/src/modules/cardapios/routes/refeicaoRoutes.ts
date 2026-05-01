@@ -11,6 +11,7 @@ import {
 } from "../controllers/refeicaoController";
 import {
   listarRefeicaoProdutos,
+  listarProdutosPorRefeicoes,
   adicionarRefeicaoProduto,
   editarRefeicaoProduto,
   removerRefeicaoProduto,
@@ -28,6 +29,7 @@ router.use(authenticateToken);
 
 // Rotas de LEITURA - Refeições
 router.get("/", requireLeitura('refeicoes'), listarRefeicoes);
+router.get("/produtos/batch", requireLeitura('refeicoes'), listarProdutosPorRefeicoes);
 router.get("/:id", requireLeitura('refeicoes'), buscarRefeicao);
 router.get("/:refeicaoId/produtos", requireLeitura('refeicoes'), listarRefeicaoProdutos);
 

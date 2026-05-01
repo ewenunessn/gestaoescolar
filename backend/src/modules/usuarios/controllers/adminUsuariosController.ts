@@ -155,23 +155,57 @@ export const excluirUsuario = asyncHandler(async (req: Request, res: Response) =
 // ─── Funções (Roles) ──────────────────────────────────────────────────────────
 
 export const listarFuncoes = asyncHandler(async (req: Request, res: Response) => {
-  const funcoes = await db.query(`SELECT * FROM funcoes ORDER BY nome`);
+  const funcoes = await db.query(`
+    SELECT
+      f.id,
+      f.nome,
+      f.descricao,
+      f.ativo,
+      f.created_at,
+      f.updated_at,
+      fp.modulo_id,
+      m.nome as modulo_nome,
+      m.slug as modulo_slug,
+      fp.nivel_permissao_id,
+      np.nome as nivel_nome,
+      np.slug as nivel_slug,
+      np.nivel
+    FROM funcoes f
+    LEFT JOIN funcao_permissoes fp ON fp.funcao_id = f.id
+    LEFT JOIN modulos m ON fp.modulo_id = m.id
+    LEFT JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
+    ORDER BY f.nome, m.ordem
+  `);
 
-  // Para cada função, buscar suas permissões
-  const result = await Promise.all(funcoes.rows.map(async (f: any) => {
-    const perms = await db.query(`
-      SELECT fp.modulo_id, m.nome as modulo_nome, m.slug as modulo_slug,
-             fp.nivel_permissao_id, np.nome as nivel_nome, np.slug as nivel_slug, np.nivel
-      FROM funcao_permissoes fp
-      JOIN modulos m ON fp.modulo_id = m.id
-      JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
-      WHERE fp.funcao_id = $1
-      ORDER BY m.ordem
-    `, [f.id]);
-    return { ...f, permissoes: perms.rows };
-  }));
+  const funcoesMap = new Map<number, any>();
 
-  res.json({ success: true, data: result });
+  for (const row of funcoes.rows) {
+    if (!funcoesMap.has(row.id)) {
+      funcoesMap.set(row.id, {
+        id: row.id,
+        nome: row.nome,
+        descricao: row.descricao,
+        ativo: row.ativo,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        permissoes: [],
+      });
+    }
+
+    if (row.modulo_id) {
+      funcoesMap.get(row.id).permissoes.push({
+        modulo_id: row.modulo_id,
+        modulo_nome: row.modulo_nome,
+        modulo_slug: row.modulo_slug,
+        nivel_permissao_id: row.nivel_permissao_id,
+        nivel_nome: row.nivel_nome,
+        nivel_slug: row.nivel_slug,
+        nivel: row.nivel,
+      });
+    }
+  }
+
+  res.json({ success: true, data: Array.from(funcoesMap.values()) });
 });
 
 export const criarFuncao = asyncHandler(async (req: Request, res: Response) => {

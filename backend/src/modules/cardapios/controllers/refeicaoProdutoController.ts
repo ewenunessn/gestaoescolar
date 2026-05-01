@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import {
   getRefeicaoProdutos,
+  getRefeicaoProdutosPorRefeicoes,
   addRefeicaoProduto,
   updateRefeicaoProduto,
   deleteRefeicaoProduto,
@@ -11,6 +12,17 @@ export async function listarRefeicaoProdutos(req: Request, res: Response) {
   const refeicao_id = Number(req.params.refeicaoId);
   const lista = await getRefeicaoProdutos(refeicao_id);
   res.json(lista);
+}
+
+export async function listarProdutosPorRefeicoes(req: Request, res: Response) {
+  const ids = String(req.query.ids || '')
+    .split(',')
+    .map((id) => Number(id.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const refeicaoIds = Array.from(new Set(ids));
+
+  const produtosPorRefeicao = await getRefeicaoProdutosPorRefeicoes(refeicaoIds);
+  res.json(produtosPorRefeicao);
 }
 
 // Adicionar produto à refeição

@@ -63,7 +63,66 @@ export async function getRefeicaoProdutos(
   }
 }
 
-// Adicionar produto à refeição
+// Listar produtos de varias refeicoes
+export async function getRefeicaoProdutosPorRefeicoes(
+  refeicaoIds: number[]
+): Promise<Record<string, RefeicaoProduto[]>> {
+  if (refeicaoIds.length === 0) {
+    return {};
+  }
+
+  try {
+    const query = `
+      SELECT
+        rp.id,
+        rp.refeicao_id,
+        rp.produto_id,
+        rp.per_capita,
+        rp.tipo_medida,
+        rp.created_at,
+        rp.updated_at,
+        json_build_object(
+          'id', p.id,
+          'nome', p.nome,
+          'unidade', COALESCE(um.codigo, 'UN'),
+          'fator_correcao', p.fator_correcao,
+          'ativo', p.ativo
+        ) as produto,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'modalidade_id', rpm.modalidade_id,
+              'modalidade_nome', m.nome,
+              'per_capita', rpm.per_capita_ajustado
+            )
+          )
+          FROM refeicao_produto_modalidade rpm
+          INNER JOIN modalidades m ON m.id = rpm.modalidade_id
+          WHERE rpm.refeicao_produto_id = rp.id
+        ) as per_capita_por_modalidade
+      FROM refeicao_produtos rp
+      LEFT JOIN produtos p ON rp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      WHERE rp.refeicao_id = ANY($1::int[])
+      ORDER BY rp.refeicao_id, p.nome
+    `;
+
+    const result = await db.query(query, [refeicaoIds]);
+    return result.rows.reduce<Record<string, RefeicaoProduto[]>>((acc, row) => {
+      const key = String(row.refeicao_id);
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(row);
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error("Erro ao buscar produtos das refeicoes:", error);
+    throw error;
+  }
+}
+
+// Adicionar produto a refeicao
 export async function addRefeicaoProduto(
   data: Omit<RefeicaoProduto, "id" | "created_at" | "updated_at">
 ): Promise<RefeicaoProduto> {

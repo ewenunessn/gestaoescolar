@@ -601,17 +601,24 @@ const CardapioCalendarioPage: React.FC = () => {
       }
       
       // Buscar produtos de todas as refeições
-      const refeicoesComProdutos = await Promise.all(
-        refeicoesNoPeriodo.map(async (ref) => {
-          try {
-            const response = await api.get(`/refeicoes/${ref.refeicao_id}/produtos`);
-            const produtos = response.data || [];
-            return { ...ref, produtos };
-          } catch {
-            return { ...ref, produtos: [] };
-          }
-        })
+      const refeicaoIds = Array.from(
+        new Set(refeicoesNoPeriodo.map((ref) => Number(ref.refeicao_id)).filter((id) => Number.isInteger(id) && id > 0))
       );
+      let produtosPorRefeicao: Record<string, any[]> = {};
+
+      try {
+        const response = await api.get('/refeicoes/produtos/batch', {
+          params: { ids: refeicaoIds.join(',') },
+        });
+        produtosPorRefeicao = response.data || {};
+      } catch {
+        produtosPorRefeicao = {};
+      }
+
+      const refeicoesComProdutos = refeicoesNoPeriodo.map((ref) => ({
+        ...ref,
+        produtos: produtosPorRefeicao[String(ref.refeicao_id)] || [],
+      }));
       
       // Agrupar por dia
       const refeicoesAgrupadas: Record<number, typeof refeicoesComProdutos> = {};
