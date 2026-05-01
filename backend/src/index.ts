@@ -15,7 +15,7 @@ import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
 import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
 import { balancedCompression } from './middleware/compression';
 
-import { ensureAdminTables } from "./modules/usuarios/controllers/adminUsuariosController";
+import { ensureAdminTables, requireAdmin } from "./modules/usuarios/controllers/adminUsuariosController";
 import { registerApiRoutes } from "./routes/registerApiRoutes";
 
 import { createServer } from 'http';
@@ -141,30 +141,10 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// DEBUG ENDPOINT - TEMPORARIO - habilitado apenas fora de producao
-if (process.env.NODE_ENV !== "production") {
-  app.get("/debug-env", (req, res) => {
-    const envVars = {
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL: process.env.VERCEL,
-      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
-      JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
-      ALL_JWT_VARS: Object.keys(process.env).filter((k) => k.includes("JWT")),
-      ENV_KEYS_COUNT: Object.keys(process.env).length
-    };
-
-    res.json({
-      message: "Environment Variables Debug",
-      timestamp: new Date().toISOString(),
-      ...envVars
-    });
-  });
-}
-
 import { authenticateToken } from './middleware/authMiddleware';
 
-// Endpoint de teste de banco protegido por auth
-app.get("/api/test-db", authenticateToken, async (req, res) => {
+// Endpoint operacional de banco restrito a administradores
+app.get("/api/test-db", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT NOW() as current_time, version()');
     res.json({
@@ -193,7 +173,6 @@ app.get("/", (req, res) => {
     message: "API funcionando corretamente",
     endpoints: {
       health: "/health",
-      database_test: "/api/test-db",
       documentation: "Rotas disponÃ­veis listadas abaixo"
     },
     availableRoutes: [

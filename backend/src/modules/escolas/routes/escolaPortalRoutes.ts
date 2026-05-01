@@ -10,15 +10,6 @@ router.use(authenticateToken);
 // Dashboard da escola
 router.get('/dashboard', escolaPortalController.getDashboardEscola);
 
-// Debug: verificar token
-router.get('/debug-token', (req: any, res) => {
-  res.json({
-    success: true,
-    user: req.user,
-    message: 'Token decodificado com sucesso'
-  });
-});
-
 // Guias da escola
 router.get('/guias', escolaPortalController.getGuiasEscola);
 
