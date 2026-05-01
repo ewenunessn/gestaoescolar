@@ -40,6 +40,7 @@ import { guiaService } from "../../../services/guiaService";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { ErrorState } from "../../../components/StateFeedback";
 import { initPdfMake, buildPdfDoc, buildQrFooter, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import api from "../../../services/api";
 import {
@@ -942,6 +943,18 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {error && (
+        <Box sx={{ mb: 2 }}>
+          <ErrorState
+            title="Não foi possível concluir a operação"
+            description={error}
+            actionLabel="Tentar novamente"
+            onAction={carregarDados}
+            compact
+          />
+        </Box>
+      )}
+
       {/* DataTable com estatísticas e filtros no toolbar */}
       <DataTableAdvanced
         title="Escolas para Entrega"

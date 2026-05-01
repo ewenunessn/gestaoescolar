@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Box, Card, Typography, Grid, CircularProgress, Alert, Chip, Button
+  Box, Card, Typography, Grid, Alert, Chip, Button
 } from "@mui/material";
 import { 
   Restaurant as RestaurantIcon, ArrowBack as ArrowBackIcon, Print as PrintIcon
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/StateFeedback";
 import api from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import CardapioSemanalPortal from "../components/CardapioSemanalPortal";
@@ -22,6 +23,7 @@ export default function CardapioPage() {
   const [cardapios, setCardapios] = useState<any[]>([]);
   const [tiposRefeicao, setTiposRefeicao] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => {
@@ -34,10 +36,12 @@ export default function CardapioPage() {
   const carregarDados = async () => {
     try {
       setLoading(true);
+      setErro('');
       const cardapiosRes = await api.get('/escola-portal/cardapios-semana');
       setCardapios(cardapiosRes.data.data || []);
     } catch (error: any) {
       console.error('Erro ao carregar cardápios:', error);
+      setErro(error.response?.data?.message || 'Erro ao carregar cardápios da semana');
       toast.error('Erro ao carregar cardápios');
     } finally {
       setLoading(false);
@@ -104,9 +108,11 @@ export default function CardapioPage() {
   if (loading) {
     return (
       <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState
+          title="Carregando cardápio"
+          description="Buscando as preparações disponíveis para a semana."
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -118,6 +124,18 @@ export default function CardapioPage() {
         subtitle="Visualize o cardápio da semana"
         breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Cardápio' }]}
       />
+
+      {erro && (
+        <Box sx={{ mb: 3 }}>
+          <ErrorState
+            title="Não foi possível carregar o cardápio"
+            description={erro}
+            actionLabel="Tentar novamente"
+            onAction={carregarDados}
+            compact
+          />
+        </Box>
+      )}
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <Button
@@ -135,6 +153,16 @@ export default function CardapioPage() {
           {gerandoPdf ? 'Gerando PDF...' : 'Imprimir Cardápio Semanal'}
         </Button>
       </Box>
+
+      {erro && cardapios.length === 0 ? null : cardapios.length === 0 ? (
+        <EmptyState
+          title="Nenhum cardápio disponível"
+          description="Ainda não há cardápio publicado para esta semana."
+          actionLabel="Atualizar"
+          onAction={carregarDados}
+        />
+      ) : (
+        <>
 
       {/* Cardápio do Dia */}
       <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -230,6 +258,8 @@ export default function CardapioPage() {
         </Typography>
         <CardapioSemanalPortal cardapios={cardapios} />
       </Card>
+        </>
+      )}
     </PageContainer>
   );
 }

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,6 +29,7 @@ import RuleFolderRounded from "@mui/icons-material/RuleFolderRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 
 import PageContainer from "../../../components/PageContainer";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/StateFeedback";
 import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 import { useToast } from "../../../hooks/useToast";
 import { listarEscolas } from "../../../services/escolas";
@@ -134,6 +134,7 @@ const EstoqueCentralPage: React.FC = () => {
   const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
   const [escolas, setEscolas] = useState<Array<{ id: number; nome: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState<EstoquePosicao | null>(null);
@@ -150,6 +151,7 @@ const EstoqueCentralPage: React.FC = () => {
   const carregarDados = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
+      setErro("");
       const [posicoesResult, movimentacoesResult, alertasResult, escolasResult] =
         await Promise.allSettled([
           listarPosicaoCentral(true),
@@ -162,6 +164,7 @@ const EstoqueCentralPage: React.FC = () => {
         setPosicoes(posicoesResult.value);
       } else {
         setPosicoes([]);
+        setErro("Nao foi possivel carregar a posicao do estoque central.");
         toast.errorLoad("a posicao do estoque central");
       }
 
@@ -171,6 +174,7 @@ const EstoqueCentralPage: React.FC = () => {
       setAlertas(alertasResult.status === "fulfilled" ? alertasResult.value : []);
       setEscolas(escolasResult.status === "fulfilled" ? escolasResult.value ?? [] : []);
     } catch {
+      setErro("Nao foi possivel carregar o estoque central.");
       toast.errorLoad("o estoque central");
       setPosicoes([]);
       setMovimentacoes([]);
@@ -374,6 +378,18 @@ const EstoqueCentralPage: React.FC = () => {
 
       <CompactMetricsStrip metrics={metricas} />
 
+      {erro && (
+        <Box sx={{ mb: 1.5 }}>
+          <ErrorState
+            title="Falha ao carregar estoque"
+            description={erro}
+            actionLabel="Tentar novamente"
+            onAction={() => void carregarDados()}
+            compact
+          />
+        </Box>
+      )}
+
       <Paper
         sx={{
           position: "sticky",
@@ -464,9 +480,11 @@ const EstoqueCentralPage: React.FC = () => {
       >
         <Box sx={{ overflowX: "auto", borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px" }}>
           {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-              <CircularProgress />
-            </Box>
+            <LoadingState
+              title="Carregando estoque central"
+              description="Atualizando saldos, reservas e alertas."
+              minHeight={260}
+            />
           ) : (
             <TableContainer component={Box}>
               <Table size="small">
@@ -558,9 +576,15 @@ const EstoqueCentralPage: React.FC = () => {
                   {!posicoesFiltradas.length ? (
                     <TableRow>
                       <TableCell colSpan={5} sx={{ borderBottom: 0 }}>
-                        <Typography textAlign="center" color="text.secondary" sx={{ py: 4, fontSize: 13 }}>
-                          Nenhum item encontrado.
-                        </Typography>
+                        <EmptyState
+                          title={searchTerm ? "Nenhum item encontrado" : "Nenhum item no estoque central"}
+                          description={
+                            searchTerm
+                              ? "Revise o termo pesquisado ou limpe o filtro para ver todos os itens."
+                              : "Cadastre uma entrada ou sincronize os produtos para iniciar o controle."
+                          }
+                          compact
+                        />
                       </TableCell>
                     </TableRow>
                   ) : null}

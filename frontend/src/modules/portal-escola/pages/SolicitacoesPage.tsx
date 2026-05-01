@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Box, Button, CircularProgress, Dialog, DialogTitle, DialogContent, 
+import {
+  Box, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, IconButton, Tooltip, Autocomplete, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Alert,
   Typography
@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/StateFeedback";
 import { useToast } from "../../../hooks/useToast";
 import {
   listarMinhasSolicitacoes, criarSolicitacao, cancelarSolicitacao,
@@ -38,6 +39,7 @@ export default function SolicitacoesPage() {
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaObs, setNovaObs] = useState('');
   const [novaItens, setNovaItens] = useState<NovoItemData[]>([]);
@@ -87,9 +89,11 @@ export default function SolicitacoesPage() {
   const carregarSolicitacoes = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
+      setErro('');
       const data = await listarMinhasSolicitacoes();
       setSolicitacoes(data);
-    } catch {
+    } catch (error: any) {
+      setErro(error?.response?.data?.message || 'Erro ao carregar solicitações');
       toast.error('Erro ao carregar solicitações');
     } finally {
       if (showLoading) setLoading(false);
@@ -296,9 +300,11 @@ export default function SolicitacoesPage() {
   if (loading) {
     return (
       <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState
+          title="Carregando solicitações"
+          description="Buscando o histórico de pedidos da escola."
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -311,6 +317,18 @@ export default function SolicitacoesPage() {
           subtitle="Gerencie suas solicitações de alimentos"
           breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Solicitações' }]}
         />
+
+        {erro && (
+          <Box sx={{ mb: 3 }}>
+            <ErrorState
+              title="Não foi possível carregar as solicitações"
+              description={erro}
+              actionLabel="Tentar novamente"
+              onAction={() => carregarSolicitacoes()}
+              compact
+            />
+          </Box>
+        )}
 
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
           <Button
@@ -330,7 +348,16 @@ export default function SolicitacoesPage() {
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable title="Solicitações" columns={columns} data={solicitacoes} />
+          {solicitacoes.length === 0 && !erro ? (
+            <EmptyState
+              title="Nenhuma solicitação cadastrada"
+              description="Crie a primeira solicitação para registrar uma demanda de alimentos."
+              actionLabel="Nova solicitação"
+              onAction={() => setNovaOpen(true)}
+            />
+          ) : (
+            <DataTable title="Solicitações" columns={columns} data={solicitacoes} />
+          )}
         </Box>
       </PageContainer>
 

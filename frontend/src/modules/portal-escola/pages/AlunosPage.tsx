@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Box, Card, Typography, Grid, CircularProgress, Alert, Button, Paper
+  Box, Card, Typography, Grid, Button, Paper
 } from "@mui/material";
 import { 
   People as PeopleIcon, School as SchoolIcon, ArrowBack as ArrowBackIcon
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/StateFeedback";
 import api from "../../../services/api";
-import { useToast } from "../../../hooks/useToast";
 
 export default function AlunosPage() {
   const navigate = useNavigate();
-  const toast = useToast();
 
   const [escola, setEscola] = useState<any>(null);
   const [modalidades, setModalidades] = useState<any[]>([]);
@@ -44,9 +43,11 @@ export default function AlunosPage() {
   if (loading) {
     return (
       <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState
+          title="Carregando alunos"
+          description="Buscando dados de matrícula e modalidades da escola."
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -54,7 +55,13 @@ export default function AlunosPage() {
   if (erro) {
     return (
       <PageContainer>
-        <Alert severity="error">{erro}</Alert>
+        <ErrorState
+          title="Não foi possível carregar alunos"
+          description={erro}
+          actionLabel="Tentar novamente"
+          onAction={carregarDados}
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -122,23 +129,31 @@ export default function AlunosPage() {
           <PeopleIcon sx={{ color: 'primary.main' }} />
           Alunos por Modalidade
         </Typography>
-        <Grid container spacing={2}>
-          {modalidades.map((mod, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                  {mod.nome}
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  {mod.quantidade_alunos || 0}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  alunos
-                </Typography>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        {modalidades.length === 0 ? (
+          <EmptyState
+            title="Nenhuma modalidade vinculada"
+            description="Esta escola ainda não possui distribuição de alunos por modalidade."
+            compact
+          />
+        ) : (
+          <Grid container spacing={2}>
+            {modalidades.map((mod, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                    {mod.nome}
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {mod.quantidade_alunos || 0}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    alunos
+                  </Typography>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
       </Paper>
     </PageContainer>
   );

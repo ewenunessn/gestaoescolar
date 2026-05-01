@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Box, Card, Typography, Grid, CircularProgress, Alert, Paper, Avatar
+  Box, Card, Typography, Grid, Paper, Avatar
 } from "@mui/material";
 import { 
   Restaurant as RestaurantIcon, 
@@ -10,6 +10,7 @@ import {
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { ErrorState, LoadingState } from "../../../components/StateFeedback";
 import api from "../../../services/api";
 
 interface CardOption {
@@ -142,9 +143,11 @@ export default function PortalEscolaHome() {
   if (loading) {
     return (
       <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState
+          title="Carregando portal da escola"
+          description="Estamos consultando os dados e permissões da sua escola."
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -152,7 +155,13 @@ export default function PortalEscolaHome() {
   if (erro) {
     return (
       <PageContainer>
-        <Alert severity="error">{erro}</Alert>
+        <ErrorState
+          title="Não foi possível carregar o portal"
+          description={erro}
+          actionLabel="Tentar novamente"
+          onAction={carregarDados}
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import {
 
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { ErrorState } from "../../../components/StateFeedback";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { guiaService } from "../../../services/guiaService";
 import pedidosService from "../../../services/pedidos";
@@ -104,53 +105,45 @@ export default function Abastecimento() {
     setPageTitle("Abastecimento");
   }, [setPageTitle]);
 
-  useEffect(() => {
-    let active = true;
+  const carregarResumo = useCallback(async () => {
+    setLoading(true);
+    const nextErrors: string[] = [];
 
-    async function carregarResumo() {
-      setLoading(true);
-      const nextErrors: string[] = [];
+    const [guiasResult, pedidosResult, entregasResult] = await Promise.allSettled([
+      guiaService.listarCompetencias(),
+      pedidosService.listar({ limit: 5 }),
+      entregaService.obterEstatisticas(),
+    ]);
 
-      const [guiasResult, pedidosResult, entregasResult] = await Promise.allSettled([
-        guiaService.listarCompetencias(),
-        pedidosService.listar({ limit: 5 }),
-        entregaService.obterEstatisticas(),
-      ]);
-
-      if (!active) return;
-
-      if (guiasResult.status === "fulfilled") {
-        setGuias(Array.isArray(guiasResult.value) ? guiasResult.value.slice(0, 5) : []);
-      } else {
-        nextErrors.push("Nao foi possivel carregar guias.");
-        setGuias([]);
-      }
-
-      if (pedidosResult.status === "fulfilled") {
-        const data = (pedidosResult.value as any)?.data || pedidosResult.value;
-        setPedidos(Array.isArray(data) ? data.slice(0, 5) : []);
-      } else {
-        nextErrors.push("Nao foi possivel carregar pedidos.");
-        setPedidos([]);
-      }
-
-      if (entregasResult.status === "fulfilled") {
-        setEntregas({ ...initialEntregaResumo, ...entregasResult.value });
-      } else {
-        nextErrors.push("Nao foi possivel carregar entregas.");
-        setEntregas(initialEntregaResumo);
-      }
-
-      setErrors(nextErrors);
-      setLoading(false);
+    if (guiasResult.status === "fulfilled") {
+      setGuias(Array.isArray(guiasResult.value) ? guiasResult.value.slice(0, 5) : []);
+    } else {
+      nextErrors.push("Nao foi possivel carregar guias.");
+      setGuias([]);
     }
 
-    carregarResumo();
+    if (pedidosResult.status === "fulfilled") {
+      const data = (pedidosResult.value as any)?.data || pedidosResult.value;
+      setPedidos(Array.isArray(data) ? data.slice(0, 5) : []);
+    } else {
+      nextErrors.push("Nao foi possivel carregar pedidos.");
+      setPedidos([]);
+    }
 
-    return () => {
-      active = false;
-    };
+    if (entregasResult.status === "fulfilled") {
+      setEntregas({ ...initialEntregaResumo, ...entregasResult.value });
+    } else {
+      nextErrors.push("Nao foi possivel carregar entregas.");
+      setEntregas(initialEntregaResumo);
+    }
+
+    setErrors(nextErrors);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    void carregarResumo();
+  }, [carregarResumo]);
 
   const metrics = useMemo(
     () => [
@@ -177,6 +170,8 @@ export default function Abastecimento() {
     ],
     [entregas, guias, pedidos],
   );
+
+  const resumoIndisponivel = errors.length === 3;
 
   return (
     <PageContainer>
@@ -239,18 +234,19 @@ export default function Abastecimento() {
       </Paper>
 
       {errors.length > 0 && (
-        <Paper
-          sx={{
-            mb: 2,
-            p: 1.5,
-            border: `0.5px solid ${alpha(theme.palette.warning.main, 0.35)}`,
-            bgcolor: alpha(theme.palette.warning.main, 0.08),
-          }}
-        >
-          <Typography sx={{ fontSize: 13, color: "warning.dark" }}>
-            Dados parciais: {errors.join(" ")}
-          </Typography>
-        </Paper>
+        <Box sx={{ mb: 2 }}>
+          <ErrorState
+            title={resumoIndisponivel ? "Resumo indisponível" : "Dados parciais"}
+            description={
+              resumoIndisponivel
+                ? "Não foi possível carregar guias, pedidos e entregas."
+                : errors.join(" ")
+            }
+            actionLabel="Tentar novamente"
+            onAction={() => void carregarResumo()}
+            compact
+          />
+        </Box>
       )}
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "1.25fr 0.75fr" }, gap: 2 }}>

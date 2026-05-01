@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Box, Button, CircularProgress, Dialog, DialogTitle, DialogContent, 
+import {
+  Box, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, IconButton, Tooltip, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
@@ -13,6 +13,7 @@ import {
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/StateFeedback";
 import api from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
@@ -25,6 +26,7 @@ export default function ComprovantesPage() {
 
   const [comprovantes, setComprovantes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
   const [detalhesOpen, setDetalhesOpen] = useState(false);
   const [comprovanteDetalhes, setComprovanteDetalhes] = useState<any>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -40,10 +42,12 @@ export default function ComprovantesPage() {
   const carregarComprovantes = async () => {
     setLoading(true);
     try {
+      setErro('');
       const response = await api.get('/escola-portal/comprovantes');
       setComprovantes(response.data.data || []);
     } catch (error: any) {
       console.error('Erro ao carregar comprovantes:', error);
+      setErro(error.response?.data?.message || 'Erro ao carregar comprovantes');
       toast.error('Erro ao carregar comprovantes');
     } finally {
       setLoading(false);
@@ -245,9 +249,11 @@ export default function ComprovantesPage() {
   if (loading) {
     return (
       <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState
+          title="Carregando comprovantes"
+          description="Buscando registros de entrega da sua escola."
+          minHeight="60vh"
+        />
       </PageContainer>
     );
   }
@@ -261,6 +267,18 @@ export default function ComprovantesPage() {
           breadcrumbs={[{ label: 'Portal Escola', path: '/portal-escola' }, { label: 'Comprovantes' }]}
         />
 
+        {erro && (
+          <Box sx={{ mb: 3 }}>
+            <ErrorState
+              title="Não foi possível carregar os comprovantes"
+              description={erro}
+              actionLabel="Tentar novamente"
+              onAction={carregarComprovantes}
+              compact
+            />
+          </Box>
+        )}
+
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/portal-escola')}
@@ -271,7 +289,16 @@ export default function ComprovantesPage() {
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable title="Comprovantes" columns={columns} data={comprovantes} />
+          {comprovantes.length === 0 && !erro ? (
+            <EmptyState
+              title="Nenhum comprovante encontrado"
+              description="As entregas finalizadas aparecerão aqui para consulta e impressão."
+              actionLabel="Atualizar"
+              onAction={carregarComprovantes}
+            />
+          ) : (
+            <DataTable title="Comprovantes" columns={columns} data={comprovantes} />
+          )}
         </Box>
       </PageContainer>
 
