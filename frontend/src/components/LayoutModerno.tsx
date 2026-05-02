@@ -101,7 +101,7 @@ const getLayoutTokens = (theme: Theme): LayoutTokens => ({
   bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.04),
   navActiveBg: theme.palette.sidebarSelection,
   navActiveBorder: theme.palette.mode === "light" ? "#8eea63" : alpha(theme.palette.primary.main, 0.3),
-  navActiveText: theme.palette.mode === "light" ? "#37d42f" : theme.palette.text.primary,
+  navActiveText: theme.palette.mode === "light" ? "#37d42f" : theme.palette.primary.main,
   borderSubtle: theme.palette.divider,
   borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
   textPrimary: theme.palette.text.primary,

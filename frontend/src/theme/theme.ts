@@ -79,22 +79,22 @@ const lightTokens: ThemeTokens = {
 };
 
 const darkTokens: ThemeTokens = {
-  bg: '#0f1012',
-  canvas: '#17181c',
-  canvasAlt: '#1f2126',
-  sidebar: '#090a0c',
-  text: '#f3f4f6',
-  muted: '#a3a7b0',
-  subtle: '#767b86',
-  border: 'rgba(255, 255, 255, 0.07)',
-  borderStrong: 'rgba(255, 255, 255, 0.12)',
-  primary: '#58a6ff',
-  primaryHover: '#7bb8ff',
-  primaryContrast: '#07111f',
-  success: '#47c97e',
-  warning: '#d1a24e',
-  danger: '#ff7373',
-  info: '#7fb6ff',
+  bg: '#000000',
+  canvas: '#202126',
+  canvasAlt: '#26272d',
+  sidebar: '#050506',
+  text: '#f7f7f8',
+  muted: '#a4a6ad',
+  subtle: '#6f727b',
+  border: 'rgba(255, 255, 255, 0.075)',
+  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  primary: '#2fe4cf',
+  primaryHover: '#20c7b6',
+  primaryContrast: '#03110f',
+  success: '#35d7a9',
+  warning: '#f2a23a',
+  danger: '#ff6a57',
+  info: '#20aee6',
 };
 
 const getTokens = (mode: AppThemeMode): ThemeTokens => (
@@ -510,7 +510,7 @@ export const createAppTheme = (mode: AppThemeMode) => {
       mode,
       primary: {
         main: t.primary,
-        light: '#7bea52',
+        light: mode === 'light' ? '#7bea52' : '#65f2e3',
         dark: t.primaryHover,
         contrastText: t.primaryContrast,
       },
