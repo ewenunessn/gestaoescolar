@@ -379,41 +379,46 @@ export async function duplicarRefeicao(req: Request, res: Response) {
 
     const novaRefeicaoId = novaRefeicao.rows[0].id;
 
-    // Copiar produtos da refeição (com todas as colunas corretas)
-    const produtosCopiados = await client.query(`
+    // Copiar produtos da refeicao (com todas as colunas corretas)
+    await client.query(`
       INSERT INTO refeicao_produtos (
         refeicao_id, produto_id, per_capita, tipo_medida, observacoes, ordem, tipo_ingrediente
       )
-      SELECT 
+      SELECT
         $1, produto_id, per_capita, tipo_medida, observacoes, ordem, tipo_ingrediente
       FROM refeicao_produtos
       WHERE refeicao_id = $2
-      RETURNING id, produto_id
     `, [novaRefeicaoId, id]);
 
-    // Copiar configurações por modalidade (usando refeicao_produto_id correto)
-    // Para cada produto copiado, copiar suas configurações de modalidade
-    for (const produtoNovo of produtosCopiados.rows) {
-      // Encontrar o produto original correspondente
-      const produtoOriginal = await client.query(`
-        SELECT id FROM refeicao_produtos
-        WHERE refeicao_id = $1 AND produto_id = $2
-        LIMIT 1
-      `, [id, produtoNovo.produto_id]);
-
-      if (produtoOriginal.rows.length > 0) {
-        // Copiar as configurações de modalidade do produto original para o novo
-        await client.query(`
-          INSERT INTO refeicao_produto_modalidade (
-            refeicao_produto_id, modalidade_id, per_capita_ajustado, observacao
-          )
-          SELECT 
-            $1, modalidade_id, per_capita_ajustado, observacao
-          FROM refeicao_produto_modalidade
-          WHERE refeicao_produto_id = $2
-        `, [produtoNovo.id, produtoOriginal.rows[0].id]);
-      }
-    }
+    await client.query(`
+      WITH produtos_originais AS (
+        SELECT
+          id AS original_id,
+          produto_id,
+          ROW_NUMBER() OVER (PARTITION BY produto_id ORDER BY ordem NULLS LAST, id) AS item_ordem
+        FROM refeicao_produtos
+        WHERE refeicao_id = $2
+      ),
+      produtos_novos AS (
+        SELECT
+          id AS novo_id,
+          produto_id,
+          ROW_NUMBER() OVER (PARTITION BY produto_id ORDER BY ordem NULLS LAST, id) AS item_ordem
+        FROM refeicao_produtos
+        WHERE refeicao_id = $1
+      )
+      INSERT INTO refeicao_produto_modalidade (
+        refeicao_produto_id, modalidade_id, per_capita_ajustado, observacao
+      )
+      SELECT
+        pn.novo_id,
+        rpm.modalidade_id,
+        rpm.per_capita_ajustado,
+        rpm.observacao
+      FROM produtos_originais po
+      JOIN produtos_novos pn ON pn.produto_id = po.produto_id AND pn.item_ordem = po.item_ordem
+      JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = po.original_id
+    `, [novaRefeicaoId, id]);
 
     await client.query('COMMIT');
 

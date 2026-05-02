@@ -42,6 +42,47 @@ export function requireAdmin(req: Request, res: Response, next: Function) {
   next();
 }
 
+function normalizarPermissoes(permissoes: any[] = []) {
+  return (Array.isArray(permissoes) ? permissoes : [])
+    .filter((perm) => perm?.nivel_permissao_id && perm?.modulo_id)
+    .map((perm) => ({
+      modulo_id: Number(perm.modulo_id),
+      nivel_permissao_id: Number(perm.nivel_permissao_id),
+    }));
+}
+
+async function inserirFuncaoPermissoes(client: any, funcaoId: number | string, permissoes: any[] = []) {
+  const permissoesValidas = normalizarPermissoes(permissoes);
+  if (permissoesValidas.length === 0) return;
+
+  await client.query(`
+    INSERT INTO funcao_permissoes (funcao_id, modulo_id, nivel_permissao_id)
+    SELECT $1, modulo_id, nivel_permissao_id
+    FROM UNNEST($2::int[], $3::int[]) AS permissoes(modulo_id, nivel_permissao_id)
+    ON CONFLICT (funcao_id, modulo_id) DO UPDATE SET nivel_permissao_id = EXCLUDED.nivel_permissao_id
+  `, [
+    funcaoId,
+    permissoesValidas.map((perm) => perm.modulo_id),
+    permissoesValidas.map((perm) => perm.nivel_permissao_id),
+  ]);
+}
+
+async function inserirUsuarioPermissoes(client: any, usuarioId: number | string, permissoes: any[] = []) {
+  const permissoesValidas = normalizarPermissoes(permissoes);
+  if (permissoesValidas.length === 0) return;
+
+  await client.query(`
+    INSERT INTO usuario_permissoes (usuario_id, modulo_id, nivel_permissao_id)
+    SELECT $1, modulo_id, nivel_permissao_id
+    FROM UNNEST($2::int[], $3::int[]) AS permissoes(modulo_id, nivel_permissao_id)
+    ON CONFLICT (usuario_id, modulo_id) DO UPDATE SET nivel_permissao_id = EXCLUDED.nivel_permissao_id
+  `, [
+    usuarioId,
+    permissoesValidas.map((perm) => perm.modulo_id),
+    permissoesValidas.map((perm) => perm.nivel_permissao_id),
+  ]);
+}
+
 // ─── Usuários ─────────────────────────────────────────────────────────────────
 
 export const listarUsuarios = asyncHandler(async (req: Request, res: Response) => {
@@ -226,15 +267,7 @@ export const criarFuncao = asyncHandler(async (req: Request, res: Response) => {
     );
     const funcao = funcaoResult.rows[0];
 
-    for (const perm of permissoes) {
-      if (perm.nivel_permissao_id && perm.modulo_id) {
-        await client.query(`
-          INSERT INTO funcao_permissoes (funcao_id, modulo_id, nivel_permissao_id)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (funcao_id, modulo_id) DO UPDATE SET nivel_permissao_id = $3
-        `, [funcao.id, perm.modulo_id, perm.nivel_permissao_id]);
-      }
-    }
+    await inserirFuncaoPermissoes(client, funcao.id, permissoes);
 
     await client.query('COMMIT');
     res.status(201).json({ success: true, data: funcao, message: 'Função criada com sucesso' });
@@ -273,14 +306,7 @@ export const atualizarFuncao = asyncHandler(async (req: Request, res: Response) 
 
     if (permissoes !== undefined) {
       await client.query('DELETE FROM funcao_permissoes WHERE funcao_id = $1', [id]);
-      for (const perm of permissoes) {
-        if (perm.nivel_permissao_id && perm.modulo_id) {
-          await client.query(`
-            INSERT INTO funcao_permissoes (funcao_id, modulo_id, nivel_permissao_id)
-            VALUES ($1, $2, $3)
-          `, [id, perm.modulo_id, perm.nivel_permissao_id]);
-        }
-      }
+      await inserirFuncaoPermissoes(client, id, permissoes);
 
       // Limpar cache de todos os usuários que usam essa função
       const usuariosResult = await client.query('SELECT id FROM usuarios WHERE funcao_id = $1', [id]);
@@ -380,15 +406,7 @@ export const setPermissoesUsuario = asyncHandler(async (req: Request, res: Respo
     await client.query('DELETE FROM usuario_permissoes WHERE usuario_id = $1', [id]);
 
     // Inserir novas permissões
-    for (const perm of (permissoes || [])) {
-      if (perm.nivel_permissao_id && perm.modulo_id) {
-        await client.query(`
-          INSERT INTO usuario_permissoes (usuario_id, modulo_id, nivel_permissao_id)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (usuario_id, modulo_id) DO UPDATE SET nivel_permissao_id = $3
-        `, [id, perm.modulo_id, perm.nivel_permissao_id]);
-      }
-    }
+    await inserirUsuarioPermissoes(client, id, permissoes || []);
 
     await client.query('COMMIT');
 

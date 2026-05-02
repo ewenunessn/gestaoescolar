@@ -108,13 +108,17 @@ export async function salvarProgramacoes(req: Request, res: Response) {
 
       // Substituir escolas da programação
       await client.query(`DELETE FROM pedido_item_programacao_escolas WHERE programacao_id = $1`, [prog_id]);
-      for (const esc of prog.escolas) {
-        if (toNum(esc.quantidade) > 0) {
-          await client.query(`
-            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
-            VALUES ($1, $2, $3)
-          `, [prog_id, esc.escola_id, esc.quantidade]);
-        }
+      const escolasValidas = (prog.escolas || []).filter((esc) => toNum(esc.quantidade) > 0);
+      if (escolasValidas.length > 0) {
+        await client.query(`
+          INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+          SELECT $1, escola_id, quantidade
+          FROM UNNEST($2::int[], $3::numeric[]) AS escolas(escola_id, quantidade)
+        `, [
+          prog_id,
+          escolasValidas.map((esc) => Number(esc.escola_id)),
+          escolasValidas.map((esc) => Number(esc.quantidade)),
+        ]);
       }
     }
 

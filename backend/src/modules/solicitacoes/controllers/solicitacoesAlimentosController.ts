@@ -99,7 +99,11 @@ export function buildSolicitacaoItemData(
   };
 }
 
-async function buscarProdutoParaSolicitacao(produtoId: number): Promise<ProdutoSolicitacaoCatalogo | null> {
+async function buscarProdutosParaSolicitacao(produtoIds: number[]): Promise<Map<number, ProdutoSolicitacaoCatalogo>> {
+  if (produtoIds.length === 0) {
+    return new Map();
+  }
+
   const result = await db.query(
     `
       SELECT
@@ -108,13 +112,13 @@ async function buscarProdutoParaSolicitacao(produtoId: number): Promise<ProdutoS
         COALESCE(NULLIF(TRIM(um.codigo), ''), 'UN') AS unidade
       FROM produtos p
       LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
-      WHERE p.id = $1
+      WHERE p.id = ANY($1::int[])
         AND COALESCE(p.ativo, true) = true
     `,
-    [produtoId],
+    [produtoIds],
   );
 
-  return result.rows[0] || null;
+  return new Map(result.rows.map((row: ProdutoSolicitacaoCatalogo) => [Number(row.id), row]));
 }
 
 async function recalcularStatusSolicitacao(solicitacaoId: number, respondidoPor: number) {
@@ -195,16 +199,18 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
   if (!Array.isArray(itens) || itens.length === 0)
     throw new ValidationError('Informe ao menos um item');
 
-  const itensNormalizados = [];
-  for (const item of itens) {
+  const produtoIds = itens.map((item: SolicitacaoItemInput) => {
     const produtoId = Number(item?.produto_id || 0);
     if (!Number.isInteger(produtoId) || produtoId <= 0) {
       buildSolicitacaoItemData(item, null);
     }
+    return produtoId;
+  });
 
-    const produto = await buscarProdutoParaSolicitacao(produtoId);
-    itensNormalizados.push(buildSolicitacaoItemData(item, produto));
-  }
+  const produtosPorId = await buscarProdutosParaSolicitacao(Array.from(new Set(produtoIds)));
+  const itensNormalizados = itens.map((item: SolicitacaoItemInput, index: number) =>
+    buildSolicitacaoItemData(item, produtosPorId.get(produtoIds[index]))
+  );
 
   const sol = await db.query(
     `INSERT INTO solicitacoes (escola_id, observacao) VALUES ($1, $2) RETURNING *`,
@@ -212,13 +218,17 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
   );
   const solId = sol.rows[0].id;
 
-  for (const item of itensNormalizados) {
-    await db.query(
-      `INSERT INTO solicitacoes_itens (solicitacao_id, produto_id, nome_produto, quantidade, unidade)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [solId, item.produto_id, item.nome_produto, item.quantidade, item.unidade]
-    );
-  }
+  await db.query(
+    `INSERT INTO solicitacoes_itens (solicitacao_id, produto_id, nome_produto, quantidade, unidade)
+     SELECT
+       $1,
+       (item->>'produto_id')::int,
+       item->>'nome_produto',
+       (item->>'quantidade')::numeric,
+       item->>'unidade'
+     FROM UNNEST($2::jsonb[]) AS payload(item)`,
+    [solId, itensNormalizados.map((item) => JSON.stringify(item))]
+  );
 
   const resultado = await getSolicitacaoComItens(solId);
 
