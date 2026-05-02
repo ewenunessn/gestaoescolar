@@ -13,7 +13,7 @@ const STORAGE_KEY = 'app-theme-mode';
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const CustomThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [mode, setModeState] = useState<AppThemeMode>('dark');
+  const [mode, setModeState] = useState<AppThemeMode>('light');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(STORAGE_KEY) as AppThemeMode | null;

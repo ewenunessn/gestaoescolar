@@ -7,18 +7,18 @@ const loginTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#2563eb',
+      main: '#28d99a',
     },
     secondary: {
       main: '#6b7280',
     },
     background: {
-      default: '#ffffff',
+      default: '#eeeeee',
       paper: '#ffffff',
     },
     text: {
-      primary: '#1f2937',
-      secondary: '#6b7280',
+      primary: '#2f3135',
+      secondary: '#747981',
     },
   },
   typography: {

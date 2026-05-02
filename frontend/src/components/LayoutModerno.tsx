@@ -99,9 +99,9 @@ const getLayoutTokens = (theme: Theme): LayoutTokens => ({
   bgSecondary: theme.palette.background.paper,
   bgElevated: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.05 : 0.05),
   bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.04),
-  navActiveBg: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.08 : 0.1),
-  navActiveBorder: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.12 : 0.16),
-  navActiveText: theme.palette.text.primary,
+  navActiveBg: theme.palette.sidebarSelection,
+  navActiveBorder: theme.palette.mode === "light" ? "#8eea63" : alpha(theme.palette.primary.main, 0.3),
+  navActiveText: theme.palette.mode === "light" ? "#37d42f" : theme.palette.text.primary,
   borderSubtle: theme.palette.divider,
   borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
   textPrimary: theme.palette.text.primary,
@@ -113,7 +113,7 @@ const getLayoutTokens = (theme: Theme): LayoutTokens => ({
   primaryTint: alpha(theme.palette.primary.main, 0.16),
   successTint: alpha(theme.palette.success.main, 0.18),
   dangerTint: alpha(theme.palette.error.main, 0.18),
-  shadow: theme.palette.mode === "light" ? "0 10px 24px rgba(31,36,48,0.05)" : "0 10px 24px rgba(0,0,0,0.16)",
+  shadow: theme.palette.mode === "light" ? "0 12px 30px rgba(47,49,53,0.06)" : "0 10px 24px rgba(0,0,0,0.16)",
 });
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {

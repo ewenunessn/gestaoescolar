@@ -60,22 +60,22 @@ type ThemeTokens = {
 };
 
 const lightTokens: ThemeTokens = {
-  bg: '#f3f0e8',
-  canvas: '#fbf8f2',
-  canvasAlt: '#f5efe4',
-  sidebar: '#ece4d5',
-  text: '#1f2430',
-  muted: '#5f6777',
-  subtle: '#8b92a0',
-  border: 'rgba(40, 48, 68, 0.10)',
-  borderStrong: 'rgba(40, 48, 68, 0.18)',
-  primary: '#235c52',
-  primaryHover: '#1b4a42',
-  primaryContrast: '#f7f4ee',
-  success: '#2f7d57',
-  warning: '#b87828',
-  danger: '#bf4d43',
-  info: '#3b6a87',
+  bg: '#eeeeee',
+  canvas: '#ffffff',
+  canvasAlt: '#f7f8f6',
+  sidebar: '#ffffff',
+  text: '#2f3135',
+  muted: '#747981',
+  subtle: '#a4a8ad',
+  border: '#e3e5e8',
+  borderStrong: '#d4d8dc',
+  primary: '#28d99a',
+  primaryHover: '#1fbf84',
+  primaryContrast: '#ffffff',
+  success: '#34d399',
+  warning: '#c7ea2f',
+  danger: '#ef5b5b',
+  info: '#2f3135',
 };
 
 const darkTokens: ThemeTokens = {
@@ -202,7 +202,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       '.data-table-action': {
         borderRadius: '8px',
         border: `1px solid ${t.borderStrong}`,
-        backgroundColor: alpha(t.text, mode === 'light' ? 0.02 : 0.03),
+        backgroundColor: mode === 'light' ? t.canvas : alpha(t.text, 0.03),
       },
       '.data-table-action:hover': {
         backgroundColor: alpha(t.text, mode === 'light' ? 0.05 : 0.08),
@@ -222,7 +222,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       },
       '.data-table-btn-create': {
         backgroundColor: t.success,
-        color: mode === 'light' ? '#f7fbf8' : '#08140e',
+        color: mode === 'light' ? '#ffffff' : '#08140e',
       },
       '.data-table-btn-create:hover': {
         backgroundColor: alpha(t.success, mode === 'light' ? 0.9 : 0.82),
@@ -254,7 +254,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         props: { variant: 'contained', color: 'add' },
         style: {
           backgroundColor: t.success,
-          color: mode === 'light' ? '#f7fbf8' : '#08140e',
+          color: mode === 'light' ? '#ffffff' : '#08140e',
           '&:hover': {
             backgroundColor: alpha(t.success, mode === 'light' ? 0.9 : 0.82),
           },
@@ -397,7 +397,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         borderRadius: 8,
         border: `1px solid ${t.border}`,
         backgroundColor: t.canvas,
-        boxShadow: 'none',
+        boxShadow: mode === 'light' ? '0 12px 30px rgba(47, 49, 53, 0.04)' : 'none',
       },
     },
   },
@@ -510,7 +510,7 @@ export const createAppTheme = (mode: AppThemeMode) => {
       mode,
       primary: {
         main: t.primary,
-        light: t.primaryHover,
+        light: '#7bea52',
         dark: t.primaryHover,
         contrastText: t.primaryContrast,
       },
@@ -543,11 +543,11 @@ export const createAppTheme = (mode: AppThemeMode) => {
         hover: alpha(t.text, mode === 'light' ? 0.05 : 0.08),
         selected: alpha(t.primary, 0.14),
       },
-      sidebarSelection: alpha(t.primary, mode === 'light' ? 0.16 : 0.22),
-      tableHover: alpha(t.text, mode === 'light' ? 0.03 : 0.05),
+      sidebarSelection: mode === 'light' ? '#e9f9df' : alpha(t.primary, 0.22),
+      tableHover: mode === 'light' ? '#f8faf8' : alpha(t.text, 0.05),
       add: {
         main: t.success,
-        contrastText: mode === 'light' ? '#f7fbf8' : '#08140e',
+        contrastText: mode === 'light' ? '#ffffff' : '#08140e',
       },
       edit: {
         main: t.info,
@@ -560,13 +560,13 @@ export const createAppTheme = (mode: AppThemeMode) => {
     },
     typography: {
       fontFamily: desktopSans,
-      h1: { fontFamily: desktopDisplay, fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.03em' },
-      h2: { fontFamily: desktopDisplay, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.03em' },
-      h3: { fontFamily: desktopDisplay, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em' },
-      h4: { fontFamily: desktopDisplay, fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em' },
+      h1: { fontFamily: desktopDisplay, fontSize: '2rem', fontWeight: 700, letterSpacing: 0 },
+      h2: { fontFamily: desktopDisplay, fontSize: '1.6rem', fontWeight: 700, letterSpacing: 0 },
+      h3: { fontFamily: desktopDisplay, fontSize: '1.25rem', fontWeight: 700, letterSpacing: 0 },
+      h4: { fontFamily: desktopDisplay, fontSize: '1.05rem', fontWeight: 700, letterSpacing: 0 },
       body1: { fontSize: '0.9rem' },
       body2: { fontSize: '0.82rem' },
-      button: { fontFamily: desktopSans, fontSize: '0.82rem', letterSpacing: '-0.01em' },
+      button: { fontFamily: desktopSans, fontSize: '0.82rem', letterSpacing: 0 },
     },
     shape: {
       borderRadius: 10,
@@ -577,5 +577,5 @@ export const createAppTheme = (mode: AppThemeMode) => {
 
 export const getLogo = () => '/logo.png';
 
-const theme = createAppTheme('dark');
+const theme = createAppTheme('light');
 export default theme;

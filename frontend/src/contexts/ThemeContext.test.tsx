@@ -47,10 +47,10 @@ describe('CustomThemeProvider', () => {
       </CustomThemeProvider>,
     );
 
-    await waitFor(() => expect(setTitleBarTheme).toHaveBeenLastCalledWith('dark'));
-
-    fireEvent.click(screen.getByRole('button', { name: 'dark' }));
-
     await waitFor(() => expect(setTitleBarTheme).toHaveBeenLastCalledWith('light'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'light' }));
+
+    await waitFor(() => expect(setTitleBarTheme).toHaveBeenLastCalledWith('dark'));
   });
 });
