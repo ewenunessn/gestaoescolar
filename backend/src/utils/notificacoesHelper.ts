@@ -20,12 +20,12 @@ export async function criarNotificacao(opts: CriarNotificacaoOpts): Promise<void
     }
     if (!ids || ids.length === 0) return;
 
-    for (const uid of ids) {
-      await db.query(
-        `INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, link) VALUES ($1,$2,$3,$4,$5)`,
-        [uid, opts.tipo, opts.titulo, opts.mensagem, opts.link ?? null]
-      );
-    }
+    await db.query(
+      `INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, link)
+       SELECT usuario_id, $2, $3, $4, $5
+       FROM UNNEST($1::int[]) AS usuarios(usuario_id)`,
+      [ids, opts.tipo, opts.titulo, opts.mensagem, opts.link ?? null]
+    );
 
     publishRealtimeEvent({
       domain: 'notificacoes',
