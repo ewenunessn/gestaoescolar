@@ -44,7 +44,7 @@ flowchart TB
   Router --> Guard["PermissionGuard"]
   Guard --> PermHook["useUserPermissions"]
   Guard --> RoleHook["useUserRole"]
-  Router --> Layout["LayoutModerno"]
+  Router --> Layout["AppShellLayout"]
 
   Layout --> Modules["Modulos lazy-loaded"]
   Modules --> Abastecimento["abastecimento"]

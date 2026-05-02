@@ -52,21 +52,21 @@ import {
 import type { Theme } from "@mui/material/styles";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { useThemePreference } from "../contexts/ThemeContext";
-import { NotificacoesProvider } from "../contexts/NotificacoesContext";
-import { NotificacoesEscolaProvider } from "../contexts/NotificacoesEscolaContext";
-import { useConfigContext } from "../contexts/ConfigContext";
-import { logout } from "../services/auth";
-import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
-import { useUserPermissions } from "../hooks/useUserPermissions";
-import { useUserRole } from "../hooks/useUserRole";
-import { SeletorPeriodo } from "./SeletorPeriodo";
-import { GlobalSearchDropdown, useGlobalSearch } from "./GlobalSearch";
-import NotificacoesEscolaMenu from "./NotificacoesEscolaMenu";
-import NotificacoesMenu from "./NotificacoesMenu";
+import { useThemePreference } from "../../contexts/ThemeContext";
+import { NotificacoesProvider } from "../../contexts/NotificacoesContext";
+import { NotificacoesEscolaProvider } from "../../contexts/NotificacoesEscolaContext";
+import { useConfigContext } from "../../contexts/ConfigContext";
+import { logout } from "../../services/auth";
+import { useConfigChangeIndicator } from "../../hooks/useConfigChangeIndicator";
+import { useUserPermissions } from "../../hooks/useUserPermissions";
+import { useUserRole } from "../../hooks/useUserRole";
+import { ActivePeriodSelector } from "../navigation/ActivePeriodSelector";
+import { GlobalSearchDropdown, useGlobalSearch } from "../navigation/GlobalSearch";
+import NotificacoesEscolaMenu from "../NotificacoesEscolaMenu";
+import NotificacoesMenu from "../NotificacoesMenu";
 import { DesktopTitlebarMenu } from "./DesktopTitlebarMenu";
 import { NutriLogLogo } from "./NutriLogLogo";
-import { ROUTE_PERMISSION_SLUGS } from "../routes/permissionSlugs";
+import { ROUTE_PERMISSION_SLUGS } from "../../routes/permissionSlugs";
 
 const drawerWidth = 248;
 const collapsedDrawerWidth = 78;
@@ -97,11 +97,11 @@ type LayoutTokens = {
 const getLayoutTokens = (theme: Theme): LayoutTokens => ({
   bgPrimary: theme.palette.background.sidebar,
   bgSecondary: theme.palette.background.paper,
-  bgElevated: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.05 : 0.05),
-  bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.04),
-  navActiveBg: theme.palette.sidebarSelection,
-  navActiveBorder: theme.palette.mode === "light" ? "#8eea63" : alpha(theme.palette.primary.main, 0.3),
-  navActiveText: theme.palette.mode === "light" ? "#37d42f" : theme.palette.primary.main,
+  bgElevated: theme.palette.mode === "light" ? "#eeeeee" : "#1d1d1d",
+  bgAccent: theme.palette.mode === "light" ? "#f3f3f3" : "#171717",
+  navActiveBg: theme.palette.mode === "light" ? "#e7e7e7" : "#202020",
+  navActiveBorder: "transparent",
+  navActiveText: theme.palette.mode === "light" ? "#202020" : "#f5f5f5",
   borderSubtle: theme.palette.divider,
   borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
   textPrimary: theme.palette.text.primary,
@@ -243,48 +243,55 @@ const NavItem = ({
   onNavigate,
   collapsed,
   tokens,
+  showIcon = true,
 }: {
   item: { text: string; icon: React.ReactNode; path: string };
   pathname: string;
   onNavigate: (path: string) => void;
   collapsed: boolean;
   tokens: LayoutTokens;
+  showIcon?: boolean;
 }) => {
   const active = isActivePath(pathname, item.path);
+  const isSubItem = !showIcon && !collapsed;
   const content = (
     <ListItemButton
       onClick={() => onNavigate(item.path)}
       sx={{
-        mx: collapsed ? 0.75 : 1.25,
-        my: 0.5,
-        px: collapsed ? 1 : 1.5,
-        py: 1.1,
-        minHeight: 44,
-        borderRadius: 1.5,
+        ml: collapsed ? 0.75 : isSubItem ? 5.9 : 1.25,
+        mr: collapsed ? 0.75 : 1.25,
+        my: 0.18,
+        px: collapsed ? 1 : 1.25,
+        py: 0.72,
+        minHeight: 32,
+        borderRadius: 1.25,
         justifyContent: collapsed ? "center" : "flex-start",
         backgroundColor: active ? tokens.navActiveBg : "transparent",
         color: active ? tokens.navActiveText : tokens.textSecondary,
-        border: `1px solid ${active ? tokens.navActiveBorder : "transparent"}`,
+        border: 0,
         "&:hover": {
           backgroundColor: active ? tokens.navActiveBg : tokens.bgElevated,
           color: tokens.textPrimary,
         },
       }}
     >
-      <ListItemIcon
-        sx={{
-          minWidth: collapsed ? 0 : 36,
-          color: "inherit",
-          justifyContent: "center",
-        }}
-      >
-        {item.icon}
-      </ListItemIcon>
+      {showIcon && (
+        <ListItemIcon
+          sx={{
+            minWidth: collapsed ? 0 : 30,
+            color: "inherit",
+            justifyContent: "center",
+            "& .MuiSvgIcon-root": { fontSize: 18 },
+          }}
+        >
+          {item.icon}
+        </ListItemIcon>
+      )}
       {!collapsed && (
         <ListItemText
           primary={item.text}
           primaryTypographyProps={{
-            fontSize: "0.84rem",
+            fontSize: "0.82rem",
             fontWeight: active ? 600 : 500,
           }}
         />
@@ -358,9 +365,9 @@ const CategoryGroup = ({
           onClick={() => setOpen((value) => !value)}
           sx={{
             mx: 0.75,
-            my: 0.5,
-            minHeight: 44,
-            borderRadius: 1.5,
+            my: 0.35,
+            minHeight: 38,
+            borderRadius: 1.25,
             justifyContent: "center",
             color: hasActive ? tokens.navActiveText : tokens.textMuted,
             backgroundColor: hasActive ? tokens.navActiveBg : "transparent",
@@ -376,27 +383,29 @@ const CategoryGroup = ({
   }
 
   return (
-    <Box sx={{ mt: 0.75 }}>
+    <Box sx={{ mt: 0.65 }}>
       <ListItemButton
         onClick={() => setOpen((value) => !value)}
         sx={{
           mx: 1.25,
           px: 1.25,
-          py: 0.9,
-          minHeight: 40,
-          borderRadius: 1.5,
+          py: 0.55,
+          minHeight: 30,
+          borderRadius: 1,
           color: hasActive ? tokens.textPrimary : tokens.textMuted,
-          "&:hover": { backgroundColor: tokens.bgAccent, color: tokens.textPrimary },
+          backgroundColor: "transparent",
+          "&:hover": { backgroundColor: "transparent", color: tokens.textPrimary },
         }}
       >
-        <ListItemIcon sx={{ minWidth: 34, color: "inherit" }}>{icon}</ListItemIcon>
+        <ListItemIcon sx={{ minWidth: 30, color: "inherit", "& .MuiSvgIcon-root": { fontSize: 17 } }}>{icon}</ListItemIcon>
         <ListItemText
           primary={category}
           primaryTypographyProps={{
-            fontSize: "0.7rem",
-            fontWeight: 700,
+            fontSize: "0.68rem",
+            fontWeight: 600,
             textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.06em",
+            color: tokens.textMuted,
           }}
         />
         <ExpandMore sx={{ fontSize: 18, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s ease" }} />
@@ -411,6 +420,7 @@ const CategoryGroup = ({
               onNavigate={onNavigate}
               collapsed={false}
               tokens={tokens}
+              showIcon={false}
             />
           ))}
         </List>
@@ -469,7 +479,7 @@ const ThemeSwitcher = ({ compact = false }: { compact?: boolean }) => {
   );
 };
 
-const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const theme = useTheme();
   const tokens = getLayoutTokens(theme);
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -600,9 +610,9 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       <Box
         sx={{
           p: 1.5,
-          borderTop: `1px solid ${tokens.borderSubtle}`,
+          borderTop: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.06 : 0.08)}`,
           display: "grid",
-          gap: 1,
+          gap: 0.35,
         }}
       >
         {!isMobile && (
@@ -611,7 +621,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             startIcon={<MenuIcon />}
             sx={{
               justifyContent: collapsed ? "center" : "flex-start",
-              borderRadius: 1.5,
+              minHeight: 34,
+              borderRadius: 1.25,
               color: tokens.textSecondary,
               backgroundColor: "transparent",
               "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
@@ -626,7 +637,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           startIcon={<Logout sx={{ color: tokens.danger }} />}
           sx={{
             justifyContent: collapsed && !isMobile ? "center" : "flex-start",
-            borderRadius: 1.5,
+            minHeight: 34,
+            borderRadius: 1.25,
             color: tokens.textSecondary,
             "&:hover": {
               backgroundColor: tokens.dangerTint,
@@ -816,7 +828,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             }}
           >
             <ThemeSwitcher />
-            <SeletorPeriodo />
+            <ActivePeriodSelector />
             {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
           </Box>
         </Toolbar>
@@ -883,12 +895,12 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const AppShellLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <NotificacoesProvider>
     <NotificacoesEscolaProvider>
-      <LayoutModernoInner>{children}</LayoutModernoInner>
+      <AppShellLayoutInner>{children}</AppShellLayoutInner>
     </NotificacoesEscolaProvider>
   </NotificacoesProvider>
 );
 
-export default LayoutModerno;
+export default AppShellLayout;

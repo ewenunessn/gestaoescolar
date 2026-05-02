@@ -61,6 +61,7 @@ export interface ConfirmarEntregaData {
 export interface OfflineBundleFilters {
   rotaIds?: number[];
   guiaId?: number;
+  periodoId?: number;
   dataEntrega?: string;
   dataInicio?: string;
   dataFim?: string;
@@ -75,10 +76,16 @@ export interface OfflineEntregaBundle {
 }
 
 class EntregaModel {
-  async listarEscolasComEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<EscolaEntrega[]> {
+  async listarEscolasComEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean, periodoId?: number): Promise<EscolaEntrega[]> {
     let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
     const params = [];
     let paramCount = 1;
+
+    if (periodoId) {
+      whereClause += ` AND g.periodo_id = $${paramCount}`;
+      params.push(periodoId);
+      paramCount++;
+    }
 
     if (guiaId) {
       whereClause += ` AND g.id = $${paramCount}`;
@@ -158,10 +165,16 @@ class EntregaModel {
     return result.rows;
   }
 
-  async listarItensEntregaPorEscola(escolaId: number, guiaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<ItemEntrega[]> {
+  async listarItensEntregaPorEscola(escolaId: number, guiaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean, periodoId?: number): Promise<ItemEntrega[]> {
     let whereClause = 'WHERE gpe.escola_id = $1 AND gpe.para_entrega = true AND g.status = \'aberta\'';
     const params: Array<number | string> = [escolaId];
     let paramCount = 2;
+
+    if (periodoId) {
+      whereClause += ` AND g.periodo_id = $${paramCount}`;
+      params.push(periodoId);
+      paramCount++;
+    }
 
     if (guiaId) {
       whereClause += ` AND g.id = $${paramCount}`;
@@ -264,11 +277,14 @@ class EntregaModel {
         gpe.unidade as produto_unidade,
         g.mes,
         g.ano,
+        g.periodo_id,
+        per.fechado as periodo_fechado,
         g.observacao as guia_observacao,
         e.nome as escola_nome
       FROM guia_produto_escola gpe
       INNER JOIN produtos p ON gpe.produto_id = p.id
       INNER JOIN guias g ON gpe.guia_id = g.id
+      LEFT JOIN periodos per ON per.id = g.periodo_id
       INNER JOIN escolas e ON gpe.escola_id = e.id
       WHERE gpe.id = $1
       ${lockRow ? 'FOR UPDATE OF gpe' : ''}
@@ -322,6 +338,12 @@ class EntregaModel {
     const itemParams: any[] = [rotaIds];
     let paramCount = 2;
     let whereClause = `WHERE re.rota_id = ANY($1::int[]) AND gpe.para_entrega = true AND g.status = 'aberta'`;
+
+    if (filters.periodoId) {
+      whereClause += ` AND g.periodo_id = $${paramCount}`;
+      itemParams.push(filters.periodoId);
+      paramCount++;
+    }
 
     if (filters.guiaId) {
       whereClause += ` AND g.id = $${paramCount}`;
@@ -427,9 +449,9 @@ class EntregaModel {
     };
   }
 
-  async listarMudancasEntregas(since?: string): Promise<{ serverTime: string; itens: any[] }> {
+  async listarMudancasEntregas(since?: string, periodoId?: number): Promise<{ serverTime: string; itens: any[] }> {
     const serverTimeResult = await db.query('SELECT NOW() as server_time');
-    const params: string[] = [];
+    const params: any[] = [];
     let changedClause = `gpe.updated_at > NOW() - INTERVAL '24 hours'`;
 
     if (since) {
@@ -443,6 +465,9 @@ class EntregaModel {
             AND he2.updated_at > $1
         )
       )`;
+    }
+    if (periodoId) {
+      params.push(periodoId);
     }
 
     const result = await db.query(`
@@ -497,6 +522,7 @@ class EntregaModel {
       INNER JOIN guias g ON gpe.guia_id = g.id
       WHERE gpe.para_entrega = true
         AND g.status = 'aberta'
+        ${periodoId ? `AND g.periodo_id = $${params.length}` : ''}
         AND ${changedClause}
       ORDER BY gpe.updated_at ASC, gpe.id ASC
       LIMIT 1000
@@ -545,6 +571,9 @@ class EntregaModel {
 
       if (!item.para_entrega) {
         throw new Error('Este item nao esta marcado para entrega');
+      }
+      if ((item as any).periodo_fechado) {
+        throw new Error('Nao e possivel confirmar entrega de periodo fechado');
       }
 
       const saldoPendente = Number(item.quantidade) - Number(item.quantidade_total_entregue || 0);
@@ -596,6 +625,9 @@ class EntregaModel {
       const item = await this.buscarItemEntrega(itemId, client, true);
       if (!item) {
         throw new Error('Item nao encontrado');
+      }
+      if ((item as any).periodo_fechado) {
+        throw new Error('Nao e possivel cancelar entrega de periodo fechado');
       }
 
       const historicoResult = await client.query(`
@@ -673,10 +705,16 @@ class EntregaModel {
     });
   }
 
-  async obterEstatisticasEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<any> {
+  async obterEstatisticasEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean, periodoId?: number): Promise<any> {
     let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
     const params = [];
     let paramCount = 1;
+
+    if (periodoId) {
+      whereClause += ` AND g.periodo_id = $${paramCount}`;
+      params.push(periodoId);
+      paramCount++;
+    }
 
     if (guiaId) {
       whereClause += ` AND g.id = $${paramCount}`;

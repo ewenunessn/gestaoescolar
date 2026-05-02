@@ -28,9 +28,9 @@ Fonte principal: `frontend/src/theme/theme.ts`, com confirmacao visual nas telas
 | --- | --- | --- | --- |
 | `PageHeader` titulo | `1.2rem` a `1.42rem` | ajuste responsivo para cabecalhos de pagina | 🟢 |
 | `PageHeader` subtitulo | `0.84rem` | subtitulo compacto | 🟢 |
-| `DataTable` linhas desktop | `0.8125rem` | leitura de tabela densa | 🟢 |
-| `DataTable` linhas mobile | `0.75rem` | compressao para telas menores | 🟢 |
-| `DataTable` paginacao | `0.6875rem` | microtipografia operacional | 🟢 |
+| `EntityListTable` linhas desktop | `0.8125rem` | leitura de tabela densa | 🟢 |
+| `EntityListTable` linhas mobile | `0.75rem` | compressao para telas menores | 🟢 |
+| `EntityListTable` paginacao | `0.6875rem` | microtipografia operacional | 🟢 |
 
 ## Caracteristicas do estilo textual
 

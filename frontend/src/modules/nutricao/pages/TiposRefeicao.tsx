@@ -11,7 +11,7 @@ import {
   Add as AddIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
@@ -233,9 +233,9 @@ const TiposRefeicaoPage: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             title="Tipos de Refeição"
             data={tipos}
             columns={columns}

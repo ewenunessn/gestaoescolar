@@ -11,7 +11,7 @@ import {
   HomeWork, AdminPanelSettings, NotificationsActive, Schedule, ArrowForward,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api from "../../services/api";
 
 // ─── Tipos ───
 interface SearchResult {

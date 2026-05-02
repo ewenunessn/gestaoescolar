@@ -39,17 +39,18 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import SeletorPeriodoCalendario, { Periodo } from "../../../components/SeletorPeriodoCalendario";
+import DemandPeriodCalendarSelector, { Periodo } from "../../../components/dialogs/DemandPeriodCalendarSelector";
 import { JobProgressModal } from "../../../components/JobProgressModal";
 import { guiaService } from "../../../services/guiaService";
 import { useToast } from "../../../hooks/useToast";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 import {
   buscarStatusGeracaoGuiaDemanda,
   iniciarGeracaoGuiaDemanda,
   GerarGuiasResponse,
 } from "../../../services/guiaDemandaGenerationService";
 import { listarCardapiosDisponiveis, CardapioDisponivel } from "../../../services/demanda";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
 
@@ -74,6 +75,7 @@ interface Competencia {
 const GuiasDemandaLista: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
 
   // Estados principais
   const [competencias, setCompetencias] = useState<Competencia[]>([]);
@@ -259,18 +261,21 @@ const GuiasDemandaLista: React.FC = () => {
             </IconButton>
           </Tooltip>
           <Tooltip title="Excluir">
-            <IconButton
-              size="small"
-              color="delete"
-              onClick={() => openDeleteModal(row.original)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
+            <span>
+              <IconButton
+                size="small"
+                color="delete"
+                onClick={() => openDeleteModal(row.original)}
+                disabled={periodoBloqueado}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
       ),
     },
-  ], [navigate]);
+  ], [navigate, periodoBloqueado]);
 
   const handleRowClick = useCallback((comp: Competencia) => {
     navigate(`/guias-demanda/${comp.guia_id}`);
@@ -432,6 +437,8 @@ const GuiasDemandaLista: React.FC = () => {
           action={
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant="outlined" color="primary" startIcon={<TableChartIcon />} onClick={() => setOpenGerarGuia(true)}
+                disabled={periodoBloqueado}
+                title={motivoBloqueio}
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Gerar Guia de Demanda
               </Button>
@@ -444,6 +451,8 @@ const GuiasDemandaLista: React.FC = () => {
                 setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
                 setOpenModal(true);
               }}
+                disabled={periodoBloqueado}
+                title={motivoBloqueio}
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Nova Competência
               </Button>
@@ -451,9 +460,9 @@ const GuiasDemandaLista: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             title="Guias de Demanda"
             data={competenciasFiltradas}
             columns={columns}
@@ -641,7 +650,7 @@ const GuiasDemandaLista: React.FC = () => {
           }} variant="outlined">
             Cancelar
           </Button>
-          <Button onClick={handleCriarCompetencia} variant="contained">
+          <Button onClick={handleCriarCompetencia} variant="contained" disabled={periodoBloqueado}>
             Criar Competência
           </Button>
         </DialogActions>
@@ -661,7 +670,7 @@ const GuiasDemandaLista: React.FC = () => {
           <Button onClick={closeDeleteModal} disabled={deleting}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
+          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting || periodoBloqueado}>
             {deleting ? 'Excluindo...' : 'Excluir'}
           </Button>
         </DialogActions>
@@ -705,6 +714,11 @@ const GuiasDemandaLista: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent dividers>
+          {periodoBloqueado && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {motivoBloqueio}
+            </Alert>
+          )}
           <Alert severity="info" sx={{ mb: 2 }}>
             Selecione a competência e um ou mais períodos. Cada período gera uma guia de demanda com as quantidades por escola.
           </Alert>
@@ -925,6 +939,7 @@ const GuiasDemandaLista: React.FC = () => {
               variant="contained"
               disabled={
                 gerandoGuias ||
+                periodoBloqueado ||
                 loadingCardapios ||
                 !competenciaGerar ||
                 periodosGerar.length === 0 ||
@@ -940,7 +955,7 @@ const GuiasDemandaLista: React.FC = () => {
       </Dialog>
 
       {/* Seletor de Período via Calendário */}
-      <SeletorPeriodoCalendario
+      <DemandPeriodCalendarSelector
         open={seletorOpen}
         onClose={() => setSeletorOpen(false)}
         onConfirm={(p) => setPeriodosGerar(prev => [...prev, p])}

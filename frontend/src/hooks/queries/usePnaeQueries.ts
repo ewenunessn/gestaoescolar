@@ -11,13 +11,15 @@ import {
   atualizarValorPerCapita,
 } from '../../services/pnae';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePeriodoAtivo } from './usePeriodosQueries';
 
 // Dashboard
 export const useDashboardPNAE = () => {
   const { isReady, hasToken } = useAuth();
+  const { data: periodoAtivo } = usePeriodoAtivo();
   
   return useQuery({
-    queryKey: ['pnae', 'dashboard'],
+    queryKey: ['pnae', 'dashboard', periodoAtivo?.id],
     queryFn: getDashboardPNAE,
     staleTime: 5 * 60 * 1000, // 5 minutos
     enabled: isReady && hasToken, // Só executar quando auth estiver pronto E tiver token

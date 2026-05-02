@@ -32,7 +32,7 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export default function SeletorPeriodoCalendario({ open, onClose, onConfirm, periodosExistentes = [], competencia, titulo }: Props) {
+export default function DemandPeriodCalendarSelector({ open, onClose, onConfirm, periodosExistentes = [], competencia, titulo }: Props) {
   // Mês exibido
   const hoje = new Date();
   const initYear = competencia ? Number(competencia.split('-')[0]) : hoje.getFullYear();

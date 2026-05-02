@@ -40,7 +40,7 @@ import {
 } from "../../../hooks/queries/useNutricionistaQueries";
 import { Nutricionista } from "../../../services/nutricionistas";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { ColumnDef } from "@tanstack/react-table";
 
 const NutricionistasPage = () => {
@@ -299,9 +299,9 @@ const NutricionistasPage = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={nutricionistasFiltrados}
             columns={columns}
             loading={loading}

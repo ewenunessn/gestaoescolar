@@ -12,6 +12,7 @@ import {
   validarCompraDaGuia,
 } from '../services/compraGenerationService';
 import { useToast } from '../hooks/useToast';
+import { usePeriodoOperacional } from '../hooks/usePeriodoOperacional';
 import SelecionarContratosDialog from './SelecionarContratosDialog';
 import { JobProgressModal } from './JobProgressModal';
 
@@ -42,6 +43,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
   const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   
   const toast = useToast();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
 
   // Debug: Log quando estados de job mudam
   useEffect(() => {
@@ -254,6 +256,11 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         </DialogTitle>
 
         <DialogContent>
+          {periodoBloqueado && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {motivoBloqueio}
+            </Alert>
+          )}
           {mostrarConfirmacao ? (
             <>
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -347,7 +354,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
                 onClick={handleConfirmarComSemContrato}
                 variant="contained"
                 color="warning"
-                disabled={gerando}
+                disabled={gerando || periodoBloqueado}
                 startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}
               >
                 {gerando ? 'Gerando...' : 'Continuar Mesmo Assim'}
@@ -361,7 +368,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
               <Button
                 onClick={handleGerar}
                 variant="contained"
-                disabled={!guiaSelecionada || gerando || loading}
+                disabled={!guiaSelecionada || gerando || loading || periodoBloqueado}
                 startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}
               >
                 {gerando ? 'Gerando...' : 'Gerar Pedido'}

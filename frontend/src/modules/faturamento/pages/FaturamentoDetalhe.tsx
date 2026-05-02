@@ -40,11 +40,13 @@ import type { ContratoCalculado } from "../../../types/faturamento";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import { exportarContratoParaExcel } from "../../../utils/exportarFaturamentoExcel";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 export default function FaturamentoDetalhe() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [faturamentos, setFaturamentos] = useState<any[]>([]);
@@ -509,7 +511,7 @@ export default function FaturamentoDetalhe() {
             variant="contained" color="delete"
             startIcon={<DeleteIcon />}
             onClick={() => setDialogExcluir(true)}
-            disabled={processando}
+            disabled={processando || periodoBloqueado}
           >
             Excluir Faturamento
           </Button>
@@ -530,7 +532,7 @@ export default function FaturamentoDetalhe() {
             color="delete"
             startIcon={<DeleteIcon />}
             onClick={() => setDialogExcluir(true)}
-            disabled={processando}
+            disabled={processando || periodoBloqueado}
           >
             Excluir Faturamento
           </Button>
@@ -540,6 +542,11 @@ export default function FaturamentoDetalhe() {
       {erro && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
           {erro}
+        </Alert>
+      )}
+      {periodoBloqueado && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {motivoBloqueio}
         </Alert>
       )}
 
@@ -694,7 +701,7 @@ export default function FaturamentoDetalhe() {
                                   size="small"
                                   variant="contained" color="delete"
                                   onClick={() => handleReverterConsumoItem(divisao.faturamento_item_id)}
-                                  disabled={processando}
+                                  disabled={processando || periodoBloqueado}
                                 >
                                   Reverter
                                 </Button>
@@ -703,7 +710,7 @@ export default function FaturamentoDetalhe() {
                                   size="small"
                                   variant="contained" color="add"
                                   onClick={() => handleRegistrarConsumoItem(divisao.faturamento_item_id)}
-                                  disabled={processando}
+                                  disabled={processando || periodoBloqueado}
                                 >
                                   Registrar
                                 </Button>
@@ -832,7 +839,7 @@ export default function FaturamentoDetalhe() {
                               size="small"
                               variant="contained" color="delete"
                               onClick={() => handleReverterConsumoItem(item.id)}
-                              disabled={processando}
+                              disabled={processando || periodoBloqueado}
                             >
                               Reverter
                             </Button>
@@ -841,7 +848,7 @@ export default function FaturamentoDetalhe() {
                               size="small"
                               variant="contained" color="add"
                               onClick={() => handleRegistrarConsumoItem(item.id)}
-                              disabled={processando}
+                              disabled={processando || periodoBloqueado}
                             >
                               Registrar
                             </Button>
@@ -902,7 +909,7 @@ export default function FaturamentoDetalhe() {
           <Button
             onClick={confirmarRemoverModalidade}
             color="delete" variant="contained"
-            disabled={processando}
+            disabled={processando || periodoBloqueado}
           >
             {processando ? 'Removendo...' : 'Confirmar Remoção'}
           </Button>
@@ -933,7 +940,7 @@ export default function FaturamentoDetalhe() {
           <Button
             onClick={handleExcluir}
             color="delete" variant="contained"
-            disabled={processando}
+            disabled={processando || periodoBloqueado}
           >
             {processando ? 'Excluindo...' : 'Confirmar Exclusão'}
           </Button>

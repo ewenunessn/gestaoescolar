@@ -69,7 +69,7 @@ const hiddenSystemColumns: VisibilityState = {
   id: false,
 };
 
-interface DataTableAdvancedProps<TData> {
+interface OperationalDataTableProps<TData> {
   data: TData[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<TData, any>[];
@@ -89,12 +89,11 @@ interface DataTableAdvancedProps<TData> {
   emptyMessage?: string;
 }
 
-export function DataTableAdvanced<TData>({
+export function OperationalDataTable<TData>({
   data,
   columns,
   loading = false,
   onRowClick,
-  title,
   searchPlaceholder = 'Buscar...',
   enableRowSelection = false,
   enableColumnVisibility = false,
@@ -106,7 +105,7 @@ export function DataTableAdvanced<TData>({
   onFilterClick,
   onImportExportClick,
   emptyMessage = 'Nenhum registro encontrado',
-}: DataTableAdvancedProps<TData>) {
+}: OperationalDataTableProps<TData>) {
   const theme = useTheme();
   const t = getToken(theme);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -167,6 +166,112 @@ export function DataTableAdvanced<TData>({
   };
 
   const filteredCount = table.getFilteredRowModel().rows.length;
+  const actionButtonSx = {
+    '& .data-table-action': {
+      width: 32,
+      height: 32,
+      p: 0,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+    },
+  };
+
+  const renderToolbarControls = () => (
+    <>
+      {rightToolbarActions}
+
+      {!searchOpen && (
+        <Tooltip title="Buscar">
+          <IconButton size="small" onClick={() => setSearchOpen(true)} className="data-table-action">
+            <SearchIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {searchOpen ? (
+        <TextField
+          size="small"
+          placeholder={searchPlaceholder}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          autoFocus
+          sx={{
+            width: 240,
+            '& .MuiOutlinedInput-root': {
+              bgcolor: t.bg,
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              height: 32,
+              '& fieldset': { borderColor: t.borderMd },
+              '&:hover fieldset': { borderColor: t.muted },
+              '&.Mui-focused fieldset': { borderColor: t.green },
+            },
+            '& .MuiInputBase-input': {
+              color: t.text,
+              '&::placeholder': { color: t.sub, opacity: 1 },
+              padding: '0 10px',
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                <SearchIcon sx={{ color: t.muted, fontSize: 15 }} />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => {
+                  setSearchInput('');
+                  setGlobalFilter('');
+                  setSearchOpen(false);
+                }} sx={{ color: t.muted, p: 0.25 }}>
+                  <ClearIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+      ) : null}
+
+      {enableColumnVisibility && (
+        <Tooltip title="Colunas">
+          <IconButton
+            size="small"
+            onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
+            className="data-table-action"
+          >
+            <ViewColumnIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {onFilterClick && (
+        <Tooltip title="Filtros">
+          <IconButton size="small" onClick={onFilterClick} className="data-table-action">
+            <FilterListIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {onImportExportClick && (
+        <Tooltip title="Importar/Exportar">
+          <IconButton size="small" onClick={onImportExportClick} className="data-table-action">
+            <MoreVertIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {enableExport && (
+        <Tooltip title="Exportar">
+          <IconButton size="small" onClick={handleExport} disabled={!onExport} className="data-table-action">
+            <FileDownloadIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </>
+  );
 
   return (
     <Paper
@@ -181,154 +286,42 @@ export function DataTableAdvanced<TData>({
     >
       {/* ── Toolbar ── */}
       <Box className="data-table-toolbar" sx={{ p: 2, pb: 1.5 }}>
-        {/* Title + count */}
-        {title && (
-          <Box sx={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            mb: 1,
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{
-                width: 3, height: 18, borderRadius: '2px',
-                bgcolor: t.green,
-              }} />
-              <Typography sx={{
-                fontSize: '0.8125rem', fontWeight: 600,
-                color: t.text,
-                letterSpacing: '-0.01em',
-              }}>
-                {title}
-              </Typography>
-              <Typography sx={{
-                fontSize: '0.6875rem', color: t.sub,
-                ml: 0.5, fontWeight: 400,
-              }}>
-                {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={2} alignItems="center">
-              {toolbarActions}
-              {enableRowSelection && Object.keys(rowSelection).length > 0 && (
-                <Chip
-                  label={`${Object.keys(rowSelection).length} selecionado(s)`}
-                  className="data-table-selection-chip"
-                  sx={{ fontSize: '0.6875rem', fontWeight: 500, height: 22 }}
-                  variant="outlined"
-                  onDelete={() => setRowSelection({})}
-                />
-              )}
-              {!searchOpen && (
-                <Tooltip title="Buscar">
-                  <IconButton size="small" onClick={() => setSearchOpen(true)} className="data-table-action">
-                    <SearchIcon sx={{ fontSize: 17 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Stack>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 1.5,
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box sx={{
+              width: 3, height: 18, borderRadius: '2px',
+              bgcolor: t.green,
+            }} />
+            <Typography sx={{
+              fontSize: '0.6875rem', color: t.sub,
+              fontWeight: 400,
+            }}>
+              {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
+            </Typography>
           </Box>
-        )}
-        {!title && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', mb: 1 }}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              {toolbarActions}
-              {enableRowSelection && Object.keys(rowSelection).length > 0 && (
-                <Chip
-                  label={`${Object.keys(rowSelection).length} selecionado(s)`}
-                  className="data-table-selection-chip"
-                  sx={{ fontSize: '0.6875rem', fontWeight: 500, height: 22 }}
-                  variant="outlined"
-                  onDelete={() => setRowSelection({})}
-                />
-              )}
-            </Stack>
-          </Box>
-        )}
-
-        {/* Action row */}
-        <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
-          {rightToolbarActions}
-
-          {searchOpen ? (
-            <TextField
-              size="small"
-              placeholder={searchPlaceholder}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              autoFocus
-              sx={{
-                width: 240,
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: t.bg,
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  height: 32,
-                  '& fieldset': { borderColor: t.borderMd },
-                  '&:hover fieldset': { borderColor: t.muted },
-                  '&.Mui-focused fieldset': { borderColor: t.green },
-                },
-                '& .MuiInputBase-input': {
-                  color: t.text,
-                  '&::placeholder': { color: t.sub, opacity: 1 },
-                  padding: '0 10px',
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ ml: 0.5 }}>
-                    <SearchIcon sx={{ color: t.muted, fontSize: 15 }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => {
-                      setSearchInput('');
-                      setGlobalFilter('');
-                      setSearchOpen(false);
-                    }} sx={{ color: t.muted, p: 0.25 }}>
-                      <ClearIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          ) : null}
-
-          {enableColumnVisibility && (
-            <Tooltip title="Colunas">
-              <IconButton
-                size="small"
-                onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
-                className="data-table-action"
-              >
-                <ViewColumnIcon sx={{ fontSize: 17 }} />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          {onFilterClick && (
-            <Tooltip title="Filtros">
-              <IconButton size="small" onClick={onFilterClick} className="data-table-action">
-                <FilterListIcon sx={{ fontSize: 17 }} />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          {onImportExportClick && (
-            <Tooltip title="Importar/Exportar">
-              <IconButton size="small" onClick={onImportExportClick} className="data-table-action">
-                <MoreVertIcon sx={{ fontSize: 17 }} />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          {enableExport && (
-            <Tooltip title="Exportar">
-              <IconButton size="small" onClick={handleExport} disabled={!onExport} className="data-table-action">
-                <FileDownloadIcon sx={{ fontSize: 17 }} />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
+            justifyContent="flex-end"
+            sx={{ minHeight: 32, ...actionButtonSx }}
+          >
+            {toolbarActions}
+            {enableRowSelection && Object.keys(rowSelection).length > 0 && (
+              <Chip
+                label={`${Object.keys(rowSelection).length} selecionado(s)`}
+                className="data-table-selection-chip"
+                sx={{ fontSize: '0.6875rem', fontWeight: 500, height: 22 }}
+                variant="outlined"
+                onDelete={() => setRowSelection({})}
+              />
+            )}
+            {renderToolbarControls()}
+          </Stack>
+        </Box>
       </Box>
 
       {/* ── Table ── */}

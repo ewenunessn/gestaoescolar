@@ -136,18 +136,26 @@ class HistoricoEntregaModel {
   /**
    * Listar histórico de entregas de uma escola
    */
-  async listarPorEscola(escolaId: number, guiaId?: number): Promise<HistoricoEntregaRecord[]> {
+  async listarPorEscola(escolaId: number, guiaId?: number, periodoId?: number): Promise<HistoricoEntregaRecord[]> {
     let query = `
       SELECT he.* 
       FROM historico_entregas he
       INNER JOIN guia_produto_escola gpe ON he.guia_produto_escola_id = gpe.id
+      INNER JOIN guias g ON g.id = gpe.guia_id
       WHERE gpe.escola_id = $1
     `;
     const params: any[] = [escolaId];
+    let paramCount = 2;
 
     if (guiaId) {
-      query += ` AND gpe.guia_id = $2`;
+      query += ` AND gpe.guia_id = $${paramCount}`;
       params.push(guiaId);
+      paramCount++;
+    }
+
+    if (periodoId) {
+      query += ` AND g.periodo_id = $${paramCount}`;
+      params.push(periodoId);
     }
 
     query += ` ORDER BY he.data_entrega DESC`;
@@ -171,16 +179,23 @@ class HistoricoEntregaModel {
   /**
    * Listar itens de uma escola com histórico
    */
-  async listarItensComHistorico(escolaId: number, guiaId?: number): Promise<ItemComHistorico[]> {
+  async listarItensComHistorico(escolaId: number, guiaId?: number, periodoId?: number): Promise<ItemComHistorico[]> {
     let query = `
       SELECT * FROM vw_entregas_completas
       WHERE escola_id = $1
     `;
     const params: any[] = [escolaId];
+    let paramCount = 2;
 
     if (guiaId) {
-      query += ` AND guia_id = $2`;
+      query += ` AND guia_id = $${paramCount}`;
       params.push(guiaId);
+      paramCount++;
+    }
+
+    if (periodoId) {
+      query += ` AND EXISTS (SELECT 1 FROM guias g WHERE g.id = guia_id AND g.periodo_id = $${paramCount})`;
+      params.push(periodoId);
     }
 
     query += ` ORDER BY produto_nome`;
@@ -213,6 +228,19 @@ class HistoricoEntregaModel {
    * Deletar um registro de entrega (apenas para correções)
    */
   async deletar(id: number): Promise<void> {
+    const periodo = await db.query(`
+      SELECT per.fechado
+      FROM historico_entregas he
+      JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+      JOIN guias g ON g.id = gpe.guia_id
+      LEFT JOIN periodos per ON per.id = g.periodo_id
+      WHERE he.id = $1
+    `, [id]);
+
+    if (periodo.rows[0]?.fechado) {
+      throw new Error('Nao e possivel deletar entrega de periodo fechado');
+    }
+
     const result = await db.query(`
       DELETE FROM historico_entregas
       WHERE id = $1

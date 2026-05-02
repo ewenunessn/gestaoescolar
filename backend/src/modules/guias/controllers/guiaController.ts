@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import GuiaModel from '../models/Guia';
+import db from '../../../database';
 import { normalizeRomaneioRouteIds } from '../models/romaneioFilters';
 import { publishRealtimeEvent } from '../../../services/realtimeEvents';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
 import {
   asyncHandler,
   ValidationError,
@@ -26,12 +28,39 @@ function publicarGuiaAlterada(
   });
 }
 
+async function obterPeriodoDaRequisicao(req: Request, res: Response) {
+  const periodo = await obterPeriodoContexto(req.user?.id);
+  if (!periodo) {
+    res.status(400).json({ success: false, error: 'Nenhum periodo selecionado ou ativo encontrado' });
+    return null;
+  }
+  return periodo;
+}
+
+function bloquearPeriodoFechado(periodo: { fechado?: boolean }, res: Response) {
+  if (!periodo.fechado) return false;
+  res.status(400).json({ success: false, error: 'Nao e possivel alterar dados de periodo fechado' });
+  return true;
+}
+
+async function bloquearGuiaDePeriodoFechado(guia: any, res: Response) {
+  if (!guia?.periodo_id) return false;
+  const periodo = await db.query('SELECT fechado FROM periodos WHERE id = $1', [guia.periodo_id]);
+  if (periodo.rows[0]?.fechado) {
+    res.status(400).json({ success: false, error: 'Nao e possivel alterar guia de periodo fechado' });
+    return true;
+  }
+  return false;
+}
+
 export const guiaController = {
   // Listar todas as guias
   async listarGuias(req: Request, res: Response) {
     try {
+      const periodo = await obterPeriodoDaRequisicao(req, res);
+      if (!periodo) return;
 
-      const guias = await GuiaModel.listarGuias();
+      const guias = await GuiaModel.listarGuias(periodo.id);
       
       res.json({ success: true, data: guias });
     } catch (error) {
@@ -44,9 +73,11 @@ export const guiaController = {
   async criarGuia(req: Request, res: Response) {
     try {
       const { mes, ano, nome, observacao } = req.body;
+      const periodo = await obterPeriodoDaRequisicao(req, res);
+      if (!periodo || bloquearPeriodoFechado(periodo, res)) return;
 
       // Verificar se já existe uma guia para o mesmo mês/ano
-      const guias = await GuiaModel.listarGuias();
+      const guias = await GuiaModel.listarGuias(periodo.id);
       const guiaExistente = guias.find(g => g.mes === mes && g.ano === ano);
 
       if (guiaExistente) {
@@ -60,7 +91,8 @@ export const guiaController = {
         mes,
         ano,
         nome,
-        observacao
+        observacao,
+        periodo_id: periodo.id
       });
 
       publicarGuiaAlterada('created', guia.id, { mes, ano });
@@ -535,18 +567,24 @@ export const guiaController = {
       }
 
       // Buscar ou criar guia para o mês/ano de competência
-      let guia = await GuiaModel.buscarGuiaPorMesAno(mes, ano);
+      const periodo = await obterPeriodoDaRequisicao(req, res);
+      if (!periodo || bloquearPeriodoFechado(periodo, res)) return;
+
+      let guia = await GuiaModel.buscarGuiaPorMesAno(mes, ano, periodo.id);
       
       if (!guia) {
         guia = await GuiaModel.criarGuia({
           mes,
           ano,
           nome: `Guia ${mes}/${ano}`,
-          observacao: 'Gerada automaticamente ao adicionar produto'
+          observacao: 'Gerada automaticamente ao adicionar produto',
+          periodo_id: periodo.id
         });
       }
 
       // Adicionar produto à guia
+      if (await bloquearGuiaDePeriodoFechado(guia, res)) return;
+
       const guiaProduto = await GuiaModel.adicionarProdutoGuia({
         guia_id: guia.id,
         produto_id: parseInt(produtoId),
@@ -641,6 +679,8 @@ export const guiaController = {
     try {
       const { data_inicio, data_fim, escola_id, rota_id, rota_ids, status } = req.query;
       const rotaIds = normalizeRomaneioRouteIds({ rota_id, rota_ids });
+      const periodo = await obterPeriodoDaRequisicao(req, res);
+      if (!periodo) return;
 
       const items = await GuiaModel.listarRomaneio({
         dataInicio: data_inicio as string,
@@ -648,7 +688,8 @@ export const guiaController = {
         escolaId: escola_id ? parseInt(escola_id as string) : undefined,
         rotaId: rota_id ? parseInt(rota_id as string) : undefined,
         rotaIds,
-        status: status as string
+        status: status as string,
+        periodoId: periodo.id
       });
 
       res.json({ success: true, data: items });
@@ -740,8 +781,10 @@ export const guiaController = {
 
   // Listar competências com resumo de status
   async listarCompetencias(req: Request, res: Response) {    try {
+      const periodo = await obterPeriodoDaRequisicao(req, res);
+      if (!periodo) return;
       
-      const competencias = await GuiaModel.listarCompetencias();
+      const competencias = await GuiaModel.listarCompetencias(periodo.id);
       
       res.json({ success: true, data: competencias });
     } catch (error) {

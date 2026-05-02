@@ -21,7 +21,6 @@ interface PageHeaderProps {
 
 export default function PageHeader({
   title,
-  totalCount,
   subtitle,
   breadcrumbs,
   action,
@@ -95,7 +94,7 @@ export default function PageHeader({
         {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
       </Box>
 
-      {(totalCount !== undefined || subtitle) && (
+      {subtitle && (
         <Typography
           variant="body2"
           sx={{
@@ -106,7 +105,7 @@ export default function PageHeader({
             maxWidth: 720,
           }}
         >
-          {subtitle || `Exibindo ${totalCount} resultado${totalCount !== 1 ? 's' : ''}`}
+          {subtitle}
         </Typography>
       )}
 

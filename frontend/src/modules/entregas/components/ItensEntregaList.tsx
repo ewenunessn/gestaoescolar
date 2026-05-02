@@ -31,12 +31,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from "../types";
 import { entregaService } from "../services/entregaService";
 import ViewTabs from "../../../components/ViewTabs";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import {
   REALTIME_BROWSER_EVENT,
   RealtimeEvent,
   shouldRefreshForRealtimeEvent,
 } from "../../../services/realtime";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface ItemSelecionado extends ItemEntrega {
   selecionado: boolean;
@@ -58,6 +59,7 @@ interface ItensEntregaListProps {
 }
 
 export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVoltar, filtros }) => {
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const [itens, setItens] = useState<ItemSelecionado[]>([]);
   const [itensSelecionados, setItensSelecionados] = useState<ItemSelecionado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -444,7 +446,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
               size="small"
               color="error"
               onClick={() => cancelarEntrega(row.original)}
-              disabled={processando}
+              disabled={processando || periodoBloqueado}
             >
               <CancelIcon />
             </IconButton>
@@ -452,7 +454,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         </Tooltip>
       ),
     },
-  ], [processando, cancelarEntrega]);
+  ], [processando, cancelarEntrega, periodoBloqueado]);
 
   if (loading) {
     return (
@@ -547,7 +549,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
               Resumo da Entrega ({itensSelecionados.length} itens)
             </Typography>
           
-          <DataTableAdvanced
+          <OperationalDataTable
             title="Resumo da Entrega"
             data={itensSelecionados}
             columns={[
@@ -643,7 +645,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           <Button
             variant="contained"
             onClick={finalizarEntrega}
-            disabled={processando || !nomeRecebedor.trim()}
+            disabled={processando || !nomeRecebedor.trim() || periodoBloqueado}
             fullWidth
             sx={{ flex: 2 }}
           >
@@ -686,6 +688,11 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           {error}
         </Alert>
       )}
+      {periodoBloqueado && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {motivoBloqueio}
+        </Alert>
+      )}
 
       <ViewTabs
         value={abaAtiva}
@@ -704,7 +711,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
 
       {abaAtiva === 'pendentes' ? (
         <>
-          <DataTableAdvanced
+          <OperationalDataTable
             title="Itens Pendentes"
             data={itensFiltrados}
             columns={colunasPendentes}
@@ -718,7 +725,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
                 variant="contained"
                 startIcon={<DeliveryIcon />}
                 onClick={continuar}
-                disabled={itensSelecionados.length === 0}
+                disabled={itensSelecionados.length === 0 || periodoBloqueado}
                 size="small"
               >
                 Continuar
@@ -727,7 +734,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           />
         </>
       ) : (
-        <DataTableAdvanced
+        <OperationalDataTable
           title="Itens Entregues"
           data={itensFiltrados}
           columns={colunasEntregues}

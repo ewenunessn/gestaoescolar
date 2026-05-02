@@ -52,7 +52,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { gerarModeloExcelProdutos } from "../../../utils/produtoImportUtils";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { ColumnDef } from "@tanstack/react-table";
 import * as XLSX from "xlsx";
 
@@ -528,9 +528,9 @@ const ProdutosPage = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             title="Produtos"
             data={produtosFiltrados}
             columns={columns}

@@ -38,6 +38,7 @@ export interface ComprovanteItemRecord {
 
 export interface CriarComprovanteData {
   escola_id: number;
+  periodo_id?: number;
   nome_quem_entregou: string;
   nome_quem_recebeu: string;
   cargo_recebedor?: string;
@@ -69,6 +70,29 @@ class ComprovanteEntregaModel {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
+
+      const historicoIds = dados.itens.map((item) => Number(item.historico_entrega_id));
+      const periodoResult = await client.query(`
+        SELECT COUNT(DISTINCT g.periodo_id)::int as total_periodos,
+               BOOL_OR(COALESCE(per.fechado, false)) as periodo_fechado,
+               MIN(g.periodo_id) as periodo_id
+        FROM historico_entregas he
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        LEFT JOIN periodos per ON per.id = g.periodo_id
+        WHERE he.id = ANY($1::int[])
+      `, [historicoIds]);
+
+      const periodoInfo = periodoResult.rows[0];
+      if (Number(periodoInfo?.total_periodos || 0) !== 1) {
+        throw new Error('Itens do comprovante devem pertencer a um unico periodo');
+      }
+      if (dados.periodo_id && Number(periodoInfo.periodo_id) !== Number(dados.periodo_id)) {
+        throw new Error('Itens do comprovante pertencem a outro periodo');
+      }
+      if (periodoInfo?.periodo_fechado) {
+        throw new Error('Nao e possivel criar comprovante em periodo fechado');
+      }
 
       // Gerar número do comprovante
       const numeroResult = await client.query('SELECT gerar_numero_comprovante() as numero');
@@ -164,13 +188,26 @@ class ComprovanteEntregaModel {
   /**
    * Listar comprovantes de uma escola
    */
-  async listarPorEscola(escolaId: number, limit = 50, offset = 0): Promise<ComprovanteCompleto[]> {
+  async listarPorEscola(escolaId: number, limit = 50, offset = 0, periodoId?: number): Promise<ComprovanteCompleto[]> {
+    const params: any[] = [escolaId, limit, offset];
+    const periodoFilter = periodoId ? `AND EXISTS (
+        SELECT 1
+        FROM comprovante_itens ci
+        JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        WHERE ci.comprovante_id = vw_comprovantes_completos.id
+          AND g.periodo_id = $4
+      )` : '';
+    if (periodoId) params.push(periodoId);
+
     const result = await db.query(`
       SELECT * FROM vw_comprovantes_completos
       WHERE escola_id = $1
+      ${periodoFilter}
       ORDER BY data_entrega DESC
       LIMIT $2 OFFSET $3
-    `, [escolaId, limit, offset]);
+    `, params);
 
     return result.rows;
   }
@@ -178,7 +215,7 @@ class ComprovanteEntregaModel {
   /**
    * Listar todos os comprovantes (com paginação e filtro de data)
    */
-  async listar(limit = 50, offset = 0, dataInicio?: string, dataFim?: string): Promise<ComprovanteCompleto[]> {
+  async listar(limit = 50, offset = 0, dataInicio?: string, dataFim?: string, periodoId?: number): Promise<ComprovanteCompleto[]> {
     let query = `
       SELECT * FROM vw_comprovantes_completos
       WHERE 1=1
@@ -200,6 +237,20 @@ class ComprovanteEntregaModel {
       paramIndex++;
     }
 
+    if (periodoId) {
+      query += ` AND EXISTS (
+        SELECT 1
+        FROM comprovante_itens ci
+        JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        WHERE ci.comprovante_id = vw_comprovantes_completos.id
+          AND g.periodo_id = $${paramIndex}
+      )`;
+      params.push(periodoId);
+      paramIndex++;
+    }
+
     query += ` ORDER BY data_entrega DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
@@ -214,6 +265,19 @@ class ComprovanteEntregaModel {
    * Cancelar um comprovante
    */
   async cancelar(id: number): Promise<void> {
+    const periodo = await db.query(`
+      SELECT BOOL_OR(COALESCE(per.fechado, false)) as fechado
+      FROM comprovante_itens ci
+      JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+      JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+      JOIN guias g ON g.id = gpe.guia_id
+      LEFT JOIN periodos per ON per.id = g.periodo_id
+      WHERE ci.comprovante_id = $1
+    `, [id]);
+    if (periodo.rows[0]?.fechado) {
+      throw new Error('Nao e possivel cancelar comprovante de periodo fechado');
+    }
+
     await db.query(`
       UPDATE comprovantes_entrega
       SET status = 'cancelado', updated_at = NOW()
@@ -228,6 +292,19 @@ class ComprovanteEntregaModel {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
+
+      const periodo = await client.query(`
+        SELECT BOOL_OR(COALESCE(per.fechado, false)) as fechado
+        FROM comprovante_itens ci
+        JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        LEFT JOIN periodos per ON per.id = g.periodo_id
+        WHERE ci.comprovante_id = $1
+      `, [id]);
+      if (periodo.rows[0]?.fechado) {
+        throw new Error('Nao e possivel excluir comprovante de periodo fechado');
+      }
       
       // Excluir os itens do comprovante
       await client.query(`
@@ -259,12 +336,25 @@ class ComprovanteEntregaModel {
   /**
    * Contar comprovantes por escola
    */
-  async contarPorEscola(escolaId: number): Promise<number> {
+  async contarPorEscola(escolaId: number, periodoId?: number): Promise<number> {
+    const params: any[] = [escolaId];
+    const periodoFilter = periodoId ? `AND EXISTS (
+        SELECT 1
+        FROM comprovante_itens ci
+        JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        WHERE ci.comprovante_id = ce.id
+          AND g.periodo_id = $2
+      )` : '';
+    if (periodoId) params.push(periodoId);
+
     const result = await db.query(`
       SELECT COUNT(*) as total
-      FROM comprovantes_entrega
+      FROM comprovantes_entrega ce
       WHERE escola_id = $1
-    `, [escolaId]);
+      ${periodoFilter}
+    `, params);
 
     return parseInt(result.rows[0].total);
   }

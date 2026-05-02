@@ -9,6 +9,7 @@ import {
   flexRender,
   SortingState,
   ColumnFiltersState,
+  VisibilityState,
 } from '@tanstack/react-table';
 import {
   Box,
@@ -26,12 +27,10 @@ import {
   Typography,
   CircularProgress,
   TableSortLabel,
-  Stack,
   Button,
   Tooltip,
   useMediaQuery,
   useTheme,
-  Chip,
   Theme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -53,7 +52,7 @@ const getToken = (theme: Theme) => ({
   canvasSub: theme.palette.background.default,
 });
 
-const hiddenSystemColumns = {
+const hiddenSystemColumns: VisibilityState = {
   id: false,
 };
 
@@ -68,7 +67,7 @@ type MobileRowData = {
   modalidades_nomes?: string;
 };
 
-interface DataTableProps<TData> {
+interface EntityListTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData, any>[];
   loading?: boolean;
@@ -137,12 +136,11 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
   );
 });
 
-export const DataTable = memo(function DataTable<TData>({
+export const EntityListTable = memo(function EntityListTable<TData>({
   data,
   columns,
   loading = false,
   onRowClick,
-  title,
   searchPlaceholder = 'Buscar...',
   onCreateClick,
   createButtonLabel = 'Criar',
@@ -151,11 +149,10 @@ export const DataTable = memo(function DataTable<TData>({
   toolbarExtra,
   initialColumnVisibility = {},
   initialPageSize = 50,
-}: DataTableProps<TData>) {
+}: EntityListTableProps<TData>) {
   const theme = useTheme();
   const t = getToken(theme);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -223,19 +220,30 @@ export const DataTable = memo(function DataTable<TData>({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 1.5,
         }}>
-          {title ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box className="data-table-title-bar" />
-              <Typography className="data-table-title">
-                {title}
-              </Typography>
-              <Typography className="data-table-count">
-                {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
-              </Typography>
-            </Box>
-          ) : <Box />}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box className="data-table-title-bar" />
+            <Typography className="data-table-count">
+              {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
+            </Typography>
+          </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              '& .data-table-action': {
+                width: 32,
+                height: 32,
+                p: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                alignSelf: 'center',
+              },
+            }}
+          >
             {onCreateClick && (
               <Button
                 variant="contained"
@@ -620,4 +628,4 @@ export const DataTable = memo(function DataTable<TData>({
       />
     </Paper>
   );
-}) as <TData>(props: DataTableProps<TData>) => JSX.Element;
+}) as <TData>(props: EntityListTableProps<TData>) => JSX.Element;

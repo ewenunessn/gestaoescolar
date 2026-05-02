@@ -3,6 +3,7 @@ import db from '../../../database';
 import { toNum } from '../../../utils/typeHelpers';
 import { JobService } from '../../../services/jobService';
 import { publishRealtimeEvent } from '../../../services/realtimeEvents';
+import { obterPeriodoContexto, PeriodoContexto } from '../../../utils/periodoUsuarioHelper';
 
 function publicarGuiaPlanejamentoAlterada(action: string, guiaId: number, payload?: Record<string, unknown>) {
   publishRealtimeEvent({
@@ -20,6 +21,17 @@ function publicarPedidoPlanejamentoAlterado(action: string, pedidoId: number, pa
     entityId: pedidoId,
     payload,
   });
+}
+
+async function obterPeriodoOperacional(usuarioId: number): Promise<{ periodo?: PeriodoContexto; erro?: { status: number; data: any } }> {
+  const periodo = await obterPeriodoContexto(usuarioId);
+  if (!periodo) {
+    return { erro: { status: 400, data: { error: 'Nenhum periodo selecionado ou ativo encontrado' } } };
+  }
+  if (periodo.fechado) {
+    return { erro: { status: 400, data: { error: 'Nao e possivel gerar dados em periodo fechado' } } };
+  }
+  return { periodo };
 }
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
@@ -506,6 +518,8 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
 
   const [ano, mes] = competencia.split('-').map(Number);
   const usuario_id = usuarioId;
+  const { periodo: periodoLetivo, erro: periodoErro } = await obterPeriodoOperacional(usuario_id);
+  if (periodoErro) return periodoErro;
   if (!usuario_id) throw new Error('Usuário não autenticado');
   const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
   const mesAbrev = meses[mes - 1];
@@ -698,8 +712,8 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
     // 4. Criar pedido único
     const maxResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
-      FROM pedidos WHERE competencia_mes_ano = $1
-    `, [competencia]);
+      FROM pedidos WHERE competencia_mes_ano = $1 AND periodo_id = $2
+    `, [competencia, periodoLetivo!.id]);
     const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${seq}`;
 
@@ -711,10 +725,10 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
     ].filter(Boolean).join(' | ');
 
     const pedidoResult = await client.query(`
-      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano)
-      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4)
+      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, periodo_id)
+      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5)
       RETURNING id
-    `, [numero, obsTexto, usuario_id, competencia]);
+    `, [numero, obsTexto, usuario_id, competencia, periodoLetivo!.id]);
 
     const pedido_id = pedidoResult.rows[0].id;
 
@@ -1313,6 +1327,12 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
   try {
     await client.query('BEGIN');
 
+    const { periodo: periodoLetivo, erro: periodoErro } = await obterPeriodoOperacional(usuarioId);
+    if (periodoErro) {
+      await client.query('ROLLBACK');
+      return periodoErro;
+    }
+
     const erros: string[] = [];
 
     // Calcular demanda para cada período
@@ -1356,8 +1376,8 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
 
     // Buscar ou criar 1 única guia para a competência
     const guiaExistente = await client.query(`
-      SELECT id FROM guias WHERE competencia_mes_ano = $1
-    `, [competenciaMesAno]);
+      SELECT id FROM guias WHERE competencia_mes_ano = $1 AND periodo_id = $2
+    `, [competenciaMesAno, periodoLetivo!.id]);
 
     let guia_id: number;
 
@@ -1377,10 +1397,10 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
       const codigo_guia = codigoResult.rows[0].codigo;
       
       const guiaResult = await client.query(`
-        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, codigo_guia, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, NOW(), NOW())
+        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, codigo_guia, periodo_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, $7, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, codigo_guia]);
+      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, codigo_guia, periodoLetivo!.id]);
       guia_id = guiaResult.rows[0].id;
     }
 
@@ -1535,7 +1555,10 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
 
     // 1. Buscar a guia
     const guiaResult = await client.query(`
-      SELECT id, mes, ano, competencia_mes_ano, nome FROM guias WHERE id = $1
+      SELECT g.id, g.mes, g.ano, g.competencia_mes_ano, g.nome, g.periodo_id, per.fechado
+      FROM guias g
+      LEFT JOIN periodos per ON per.id = g.periodo_id
+      WHERE g.id = $1
     `, [guia_id]);
 
     if (guiaResult.rows.length === 0) {
@@ -1544,6 +1567,10 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
     }
 
     const guia = guiaResult.rows[0];
+    if (guia.fechado) {
+      await client.query('ROLLBACK');
+      return { status: 400, data: { error: 'Nao e possivel gerar pedido de guia em periodo fechado' } };
+    }
     const competencia = guia.competencia_mes_ano || `${guia.ano}-${String(guia.mes).padStart(2, '0')}`;
     const [ano, mes] = competencia.split('-').map(Number);
     const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -1843,8 +1870,8 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
     // SÉTIMO: Criar o pedido
     const maxResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
-      FROM pedidos WHERE competencia_mes_ano = $1
-    `, [competencia]);
+      FROM pedidos WHERE competencia_mes_ano = $1 AND periodo_id = $2
+    `, [competencia, guia.periodo_id]);
     const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${seq}`;
 
@@ -1856,10 +1883,10 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
     ].filter(Boolean).join(' | ');
 
     const pedidoResult = await client.query(`
-      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, guia_id)
-      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5)
+      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, guia_id, periodo_id)
+      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5, $6)
       RETURNING id
-    `, [numero, obsTexto, usuario_id, competencia, guia_id]);
+    `, [numero, obsTexto, usuario_id, competencia, guia_id, guia.periodo_id]);
 
     const pedido_id = pedidoResult.rows[0].id;
 
@@ -2071,6 +2098,16 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 0 });
     await client.query('BEGIN');
 
+    const { periodo: periodoLetivo, erro: periodoErro } = await obterPeriodoOperacional(job.usuario_id);
+    if (periodoErro) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: periodoErro.data.error,
+      });
+      return;
+    }
+
     const erros: string[] = [];
 
     // Calcular demanda para cada período
@@ -2125,7 +2162,7 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     // Buscar ou criar guia
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 45 });
     
-    const guiaExistente = await client.query(`SELECT id FROM guias WHERE competencia_mes_ano = $1`, [competenciaMesAno]);
+    const guiaExistente = await client.query(`SELECT id FROM guias WHERE competencia_mes_ano = $1 AND periodo_id = $2`, [competenciaMesAno, periodoLetivo!.id]);
     let guia_id: number;
 
     if (guiaExistente.rows.length > 0) {
@@ -2143,10 +2180,10 @@ async function processarGeracaoGuiasBackground(jobId: number) {
       const codigo_guia = codigoResult.rows[0].codigo;
       
       const guiaResult = await client.query(`
-        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, codigo_guia, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, $7, NOW(), NOW())
+        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, codigo_guia, periodo_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, $7, $8, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, jobId, codigo_guia]);
+      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, jobId, codigo_guia, periodoLetivo!.id]);
       guia_id = guiaResult.rows[0].id;
     }
 
@@ -2393,7 +2430,10 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 5 });
     
     const guiaResult = await client.query(`
-      SELECT id, mes, ano, competencia_mes_ano, nome FROM guias WHERE id = $1
+      SELECT g.id, g.mes, g.ano, g.competencia_mes_ano, g.nome, g.periodo_id, per.fechado
+      FROM guias g
+      LEFT JOIN periodos per ON per.id = g.periodo_id
+      WHERE g.id = $1
     `, [guia_id]);
 
     if (guiaResult.rows.length === 0) {
@@ -2406,6 +2446,14 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     }
 
     const guia = guiaResult.rows[0];
+    if (guia.fechado) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'Nao e possivel gerar pedido de guia em periodo fechado',
+      });
+      return;
+    }
     const competencia = guia.competencia_mes_ano || `${guia.ano}-${String(guia.mes).padStart(2, '0')}`;
     const [ano, mes] = competencia.split('-').map(Number);
     const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -2546,8 +2594,8 @@ async function processarGeracaoPedidoBackground(jobId: number) {
 
     const maxResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
-      FROM pedidos WHERE competencia_mes_ano = $1
-    `, [competencia]);
+      FROM pedidos WHERE competencia_mes_ano = $1 AND periodo_id = $2
+    `, [competencia, guia.periodo_id]);
     const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${seq}`;
 
@@ -2559,10 +2607,10 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     ].filter(Boolean).join(' | ');
 
     const pedidoResult = await client.query(`
-      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, guia_id)
-      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5)
+      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, guia_id, periodo_id)
+      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5, $6)
       RETURNING id
-    `, [numero, obsTexto, usuario_id, competencia, guia_id]);
+    `, [numero, obsTexto, usuario_id, competencia, guia_id, guia.periodo_id]);
 
     const pedido_id = pedidoResult.rows[0].id;
 

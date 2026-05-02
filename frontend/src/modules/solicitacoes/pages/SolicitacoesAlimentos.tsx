@@ -9,7 +9,7 @@ import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { listarTodasSolicitacoes, Solicitacao } from "../../../services/solicitacoesAlimentos";
 import { useQuery } from "@tanstack/react-query";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { ColumnDef } from "@tanstack/react-table";
 
 interface EscolaAgrupada {
@@ -147,9 +147,9 @@ export default function SolicitacoesAlimentos() {
           />
         </Box>
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             title={aba === 0 ? "Escolas com Pendencias" : "Escolas Concluidas"}
             data={escolasFiltradas}
             columns={columns}

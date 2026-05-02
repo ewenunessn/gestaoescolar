@@ -12,18 +12,19 @@ const STORAGE_KEY = 'app-theme-mode';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const CustomThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [mode, setModeState] = useState<AppThemeMode>('light');
+const getInitialTheme = (): AppThemeMode => {
+  if (typeof window === 'undefined') return 'light';
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem(STORAGE_KEY) as AppThemeMode | null;
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      setModeState(savedTheme);
-    }
-  }, []);
+  const savedTheme = window.localStorage.getItem(STORAGE_KEY);
+  return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'light';
+};
+
+export const CustomThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [mode, setModeState] = useState<AppThemeMode>(getInitialTheme);
 
   useEffect(() => {
     document.documentElement.dataset.theme = mode;
+    document.documentElement.style.colorScheme = mode;
     window.desktopShell?.setTitleBarTheme?.(mode);
   }, [mode]);
 

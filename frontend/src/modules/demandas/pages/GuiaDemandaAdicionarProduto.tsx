@@ -29,6 +29,7 @@ import { formatarQuantidade } from "../../../utils/formatters";
 import api from "../../../services/api";
 import type { Produto } from "../../../types/produto";
 import { getNextIdByDirection } from "../utils/keyboardNavigation";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface EscolaOpcao {
   id: number;
@@ -122,6 +123,7 @@ export default function GuiaDemandaAdicionarProduto() {
   const navigate = useNavigate();
   const { guiaId } = useParams<{ guiaId: string }>();
   const toast = useToast();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const { setPageTitle, setBackPath } = usePageTitle();
 
   const [loading, setLoading] = useState(true);
@@ -218,6 +220,10 @@ export default function GuiaDemandaAdicionarProduto() {
   }, [escolas]);
 
   async function salvar() {
+    if (periodoBloqueado) {
+      toast.error(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+      return;
+    }
     if (!guia || !produtoSelecionado || !dataEntrega || itensComQuantidade.length === 0) return;
 
     setSaving(true);
@@ -264,7 +270,7 @@ export default function GuiaDemandaAdicionarProduto() {
             variant="contained"
             startIcon={saving ? <CircularProgress color="inherit" size={16} /> : <SaveIcon />}
             onClick={salvar}
-            disabled={saving || !produtoSelecionado || !dataEntrega || itensComQuantidade.length === 0}
+            disabled={saving || periodoBloqueado || !produtoSelecionado || !dataEntrega || itensComQuantidade.length === 0}
           >
             Salvar
           </Button>
@@ -277,6 +283,7 @@ export default function GuiaDemandaAdicionarProduto() {
       </PageHeader>
 
       {erro && <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>}
+      {periodoBloqueado && <Alert severity="warning" sx={{ mb: 2 }}>{motivoBloqueio}</Alert>}
       {saving && <LinearProgress sx={{ mb: 1 }} />}
 
       <Box
@@ -343,7 +350,7 @@ export default function GuiaDemandaAdicionarProduto() {
             escola={escola}
             quantidade={quantidades[escola.id] || ''}
             status={statusPorEscola[escola.id] || 'pendente'}
-            disabled={saving || !produtoSelecionado}
+          disabled={saving || periodoBloqueado || !produtoSelecionado}
             onQuantidadeChange={handleQuantidadeChange}
             onStatusChange={handleStatusChange}
             onQuantidadeFocus={handleQuantidadeFocus}

@@ -10,7 +10,7 @@ function read(path: string): string {
 
 describe('portal escola navigation contract', () => {
   it('exposes all primary portal pages in the school user menu', () => {
-    const layout = read('frontend/src/components/LayoutModerno.tsx');
+    const layout = read('frontend/src/components/layout/AppShellLayout.tsx');
 
     expect(layout).toContain('path: "/portal-escola"');
     expect(layout).toContain('path: "/portal-escola/cardapio"');

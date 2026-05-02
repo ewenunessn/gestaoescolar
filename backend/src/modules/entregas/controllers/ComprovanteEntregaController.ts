@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
 import ComprovanteEntregaModel from '../models/ComprovanteEntrega';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
+
+async function obterPeriodoId(req: Request): Promise<number | undefined> {
+  const periodo = await obterPeriodoContexto(req.user?.id);
+  return periodo?.id;
+}
 
 class ComprovanteEntregaController {
   /**
@@ -45,6 +51,7 @@ class ComprovanteEntregaController {
 
       const comprovante = await ComprovanteEntregaModel.criar({
         escola_id,
+        periodo_id: await obterPeriodoId(req),
         nome_quem_entregou,
         nome_quem_recebeu,
         cargo_recebedor,
@@ -119,10 +126,11 @@ class ComprovanteEntregaController {
       const comprovantes = await ComprovanteEntregaModel.listarPorEscola(
         parseInt(escolaId),
         limit,
-        offset
+        offset,
+        await obterPeriodoId(req)
       );
 
-      const total = await ComprovanteEntregaModel.contarPorEscola(parseInt(escolaId));
+      const total = await ComprovanteEntregaModel.contarPorEscola(parseInt(escolaId), await obterPeriodoId(req));
 
       res.json({
         comprovantes,
@@ -147,7 +155,7 @@ class ComprovanteEntregaController {
       const dataInicio = req.query.data_inicio as string;
       const dataFim = req.query.data_fim as string;
 
-      const comprovantes = await ComprovanteEntregaModel.listar(limit, offset, dataInicio, dataFim);
+      const comprovantes = await ComprovanteEntregaModel.listar(limit, offset, dataInicio, dataFim, await obterPeriodoId(req));
 
       res.json({
         comprovantes,

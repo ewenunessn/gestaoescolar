@@ -46,7 +46,7 @@ import {
   useDeleteModalidade,
 } from "../../../hooks/queries/useModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { FormDialog, ConfirmDialog } from "../../../components/BaseDialog";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -437,9 +437,9 @@ const ModalidadesPage = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             title="Modalidades"
             data={modalidadesFiltradas}
             columns={columns}

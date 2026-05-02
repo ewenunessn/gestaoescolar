@@ -36,11 +36,11 @@ const loginTheme = createTheme({
   },
 });
 
-interface LoginWrapperProps {
+interface AuthPageShellProps {
   children: React.ReactNode;
 }
 
-export default function LoginWrapper({ children }: LoginWrapperProps) {
+export default function AuthPageShell({ children }: AuthPageShellProps) {
   return (
     <ThemeProvider theme={loginTheme}>
       <CssBaseline />

@@ -10,7 +10,7 @@ import { formatarQuantidade } from "../../../utils/formatters";
 import { DataGrid } from "@mui/x-data-grid";
 import { ptBR as dataGridPtBR } from "@mui/x-data-grid/locales";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
@@ -739,7 +739,7 @@ const Romaneio: React.FC = () => {
             </Alert>
           ) : (
             <Box sx={{ height: 'calc(100vh - 400px)', minHeight: 400, width: '100%' }}>
-              <DataTableAdvanced
+              <OperationalDataTable
                 title="Itens do Romaneio"
                 data={dataGridRows}
                 columns={tableColumns}

@@ -1575,7 +1575,7 @@ CONFIRMADO:
 
 - `fornecedorService` usa `createCrudService('fornecedores')`.
 - `useFornecedores` aplica filtros locais por busca, ativo e cidade, e calcula totais.
-- `Fornecedores.tsx` lista em `DataTable`, filtra por status e tipo, exporta Excel, abre modal de criacao/edicao e modal de importacao.
+- `Fornecedores.tsx` lista em `EntityListTable`, filtra por status e tipo, exporta Excel, abre modal de criacao/edicao e modal de importacao.
 - `Fornecedores.tsx` valida no cliente nome obrigatorio, CNPJ obrigatorio e 14 digitos numericos.
 - Tipos exibidos na UI: `CONVENCIONAL`, `AGRICULTURA_FAMILIAR`, `COOPERATIVA_AF`, `ASSOCIACAO_AF`.
 - Campos DAP/CAF aparecem somente para tipos de agricultura familiar/cooperativa/associacao.
@@ -1978,7 +1978,7 @@ CONFIRMADO:
 
 - `getComprovantesEscola` lista `comprovantes_entrega` da escola, agregando total de itens e quantidade entregue.
 - `getComprovanteDetalhes` valida id e escola do token, retorna dados do comprovante e itens.
-- `ComprovantesPage` lista em DataTable, abre dialog de detalhes e gera PDF com codigo de barras do numero do comprovante.
+- `ComprovantesPage` lista em EntityListTable, abre dialog de detalhes e gera PDF com codigo de barras do numero do comprovante.
 
 ### Solicitacoes de Alimentos
 

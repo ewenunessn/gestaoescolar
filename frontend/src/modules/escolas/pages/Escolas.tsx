@@ -44,7 +44,7 @@ import { useToast } from "../../../hooks/useToast";
 import ImportacaoEscolas from "../../../components/ImportacaoEscolas";
 import LocationSelector from "../../../components/LocationSelector";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import FiltrosEscolas from "../../../components/FiltrosEscolas";
@@ -430,9 +430,9 @@ const EscolasPage = () => {
           </Alert>
         )}
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={escolasFiltradas}
             columns={columns}
             loading={loading}

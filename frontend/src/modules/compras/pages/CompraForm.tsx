@@ -34,6 +34,7 @@ import pedidosService from "../../../services/pedidos";
 import { ContratoProduto, PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 const formatarNumero = (numero: number): string => {
     const numeroFormatado = parseFloat(numero.toString());
@@ -59,6 +60,7 @@ export default function CompraForm() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const isEdit = !!id;
+    const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
 
     const [loading, setLoading] = useState(false);
     const [carregando, setCarregando] = useState(isEdit);
@@ -156,6 +158,10 @@ export default function CompraForm() {
     };
 
     const handleCriarCompraInicial = async () => {
+        if (periodoBloqueado) {
+            setErro(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+            return;
+        }
         if (!competenciaTemp) {
             setErro('Informe a competência');
             return;
@@ -327,6 +333,10 @@ export default function CompraForm() {
     };
 
     const handleSalvar = async () => {
+        if (periodoBloqueado) {
+            setErro(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+            return;
+        }
         if (itens.length === 0) {
             setErro('Adicione pelo menos um item à compra');
             return;
@@ -422,6 +432,13 @@ export default function CompraForm() {
                             </Typography>
                         </Alert>
                     )}
+                    {periodoBloqueado && (
+                        <Alert severity="warning" sx={{ mb: 1.5, py: 0.5 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                                {motivoBloqueio}
+                            </Typography>
+                        </Alert>
+                    )}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <TextField
                             fullWidth
@@ -453,7 +470,7 @@ export default function CompraForm() {
                     <Button 
                         onClick={handleCriarCompraInicial}
                         variant="contained"
-                        disabled={loading || !competenciaTemp}
+                        disabled={loading || !competenciaTemp || periodoBloqueado}
                     >
                         {loading ? 'Criando...' : 'Criar Compra'}
                     </Button>
@@ -556,7 +573,7 @@ export default function CompraForm() {
                             variant="contained"
                             startIcon={<SaveIcon />}
                             onClick={handleSalvar}
-                            disabled={loading || itens.length === 0}
+                            disabled={loading || itens.length === 0 || periodoBloqueado}
                             sx={{ textTransform: 'none' }}
                         >
                             {loading ? 'Salvando...' : 'Salvar'}
@@ -606,6 +623,11 @@ export default function CompraForm() {
                         {erro}
                     </Alert>
                 )}
+                {periodoBloqueado && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                        {motivoBloqueio}
+                    </Alert>
+                )}
             </Box>
 
             {/* Área da Tabela */}
@@ -636,6 +658,7 @@ export default function CompraForm() {
                             size="small"
                             startIcon={<AddIcon />}
                             onClick={abrirDialogAdicionar}
+                            disabled={periodoBloqueado}
                             sx={{ textTransform: 'none' }}
                         >
                             Adicionar item
@@ -767,6 +790,7 @@ export default function CompraForm() {
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => abrirDialogEditar(index)}
+                                                        disabled={periodoBloqueado}
                                                         sx={{ 
                                                             color: 'text.secondary', 
                                                             '&:hover': { 
@@ -780,6 +804,7 @@ export default function CompraForm() {
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => removerItem(index)}
+                                                        disabled={periodoBloqueado}
                                                         sx={{ 
                                                             color: 'text.secondary', 
                                                             '&:hover': { 
@@ -963,7 +988,7 @@ export default function CompraForm() {
                         size="small"
                         onClick={itemEditando !== null ? handleAtualizarItem : handleAdicionarItem}
                         variant="contained"
-                        disabled={!produtoSelecionado || quantidade <= 0}
+                        disabled={!produtoSelecionado || quantidade <= 0 || periodoBloqueado}
                     >
                         {itemEditando !== null ? 'Atualizar' : 'Adicionar'}
                     </Button>

@@ -36,7 +36,7 @@ Gerado pelo Reversa Visor em 2026-04-29 a partir dos screenshots enviados.
 
 | Componente | Ocorrencias | Comportamento visivel |
 | --- | --- | --- |
-| DataTable | Escolas, Cardapios, Entregas, Estoque Central | Colunas com ordenacao, acoes por linha, paginacao |
+| EntityListTable | Escolas, Cardapios, Entregas, Estoque Central | Colunas com ordenacao, acoes por linha, paginacao |
 | Cards metricos | Dashboard, Entregas, Estoque Central | Numeros grandes, legenda curta, cores de status |
 | Quick actions | Dashboard | Lista de atalhos com icone e seta |
 | Calendario | Cardapio calendario | Alterna mensal/semanal; itens coloridos por tipo |

@@ -46,7 +46,7 @@ import {
   useDuplicarRefeicao
 } from "../../../hooks/queries/useRefeicaoQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Refeicao } from "../../../types/refeicao";
 import { formatarCalorias } from "../../../utils/formatters";
@@ -358,9 +358,9 @@ const PreparacoesPage: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={preparacoesFiltradas}
             columns={columns}
             loading={loading}

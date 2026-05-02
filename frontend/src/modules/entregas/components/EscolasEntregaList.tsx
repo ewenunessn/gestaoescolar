@@ -39,7 +39,7 @@ import { entregaService } from "../services/entregaService";
 import { guiaService } from "../../../services/guiaService";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
 import { formatarQuantidade } from "../../../utils/formatters";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import { ErrorState } from "../../../components/StateFeedback";
 import { initPdfMake, buildPdfDoc, buildQrFooter, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import api from "../../../services/api";
@@ -955,8 +955,8 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         </Box>
       )}
 
-      {/* DataTable com estatísticas e filtros no toolbar */}
-      <DataTableAdvanced
+      {/* EntityListTable com estatísticas e filtros no toolbar */}
+      <OperationalDataTable
         title="Escolas para Entrega"
         data={escolas}
         columns={columns}

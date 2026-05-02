@@ -9,6 +9,7 @@ import {
   handleDatabaseError
 } from "../../../utils/errorHandler";
 import { publishRealtimeEvent } from "../../../services/realtimeEvents";
+import { obterPeriodoContexto } from "../../../utils/periodoUsuarioHelper";
 
 const STATUS_COMPRA = {
   pendente: { label: 'Pendente', color: 'warning' },
@@ -31,13 +32,40 @@ function publicarCompraAlterada(
   });
 }
 
+async function buscarPeriodoPedidoEditavel(client: any, pedidoId: number | string) {
+  const pedidoResult = await client.query(`
+    SELECT p.status, p.numero, p.periodo_id, per.fechado
+    FROM pedidos p
+    LEFT JOIN periodos per ON per.id = p.periodo_id
+    WHERE p.id = $1
+  `, [pedidoId]);
+
+  if (pedidoResult.rows.length === 0) {
+    return { pedido: null, error: 'Pedido nao encontrado' };
+  }
+
+  const pedido = pedidoResult.rows[0];
+  if (pedido.fechado) {
+    return { pedido, error: 'Nao e possivel alterar pedido de periodo fechado' };
+  }
+
+  return { pedido, error: null };
+}
+
 export async function listarCompras(req: Request, res: Response) {
   try {
     const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
+    const periodo = await obterPeriodoContexto(req.user?.id);
 
     let whereClause = '1=1';
     const params: any[] = [];
     let paramCount = 0;
+
+    if (periodo) {
+      paramCount++;
+      whereClause += ` AND p.periodo_id = $${paramCount}`;
+      params.push(periodo.id);
+    }
 
     if (status) {
       paramCount++;
@@ -212,6 +240,19 @@ export async function criarCompra(req: Request, res: Response) {
     } = req.body;
 
     const usuario_criacao_id = req.user?.id;
+    if (!usuario_criacao_id) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ success: false, message: 'Usuario nao autenticado' });
+    }
+    const periodo = await obterPeriodoContexto(usuario_criacao_id);
+    if (!periodo) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Nenhum periodo selecionado ou ativo encontrado' });
+    }
+    if (periodo.fechado) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Nao e possivel criar compra em periodo fechado' });
+    }
     if (!usuario_criacao_id) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
 
     // Permitir criar compra vazia (será preenchida depois)
@@ -229,8 +270,8 @@ export async function criarCompra(req: Request, res: Response) {
     const maxNumeroResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_sequencial
       FROM pedidos 
-      WHERE competencia_mes_ano = $1
-    `, [competencia]);
+      WHERE competencia_mes_ano = $1 AND periodo_id = $2
+    `, [competencia, periodo.id]);
 
     const proximoSequencial = (parseInt(maxNumeroResult.rows[0].max_sequencial) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${proximoSequencial}`;
@@ -280,11 +321,11 @@ export async function criarCompra(req: Request, res: Response) {
 
     const compraResult = await client.query(`
       INSERT INTO pedidos (
-        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano
+        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, periodo_id
       )
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, competencia]);
+    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, competencia, periodo.id]);
 
     const compra_id = compraResult.rows[0].id;
 
@@ -368,16 +409,18 @@ export async function atualizarCompra(req: Request, res: Response) {
     const { id } = req.params;
     const { observacoes, itens, competencia_mes_ano } = req.body;
 
-    const pedidoResult = await client.query(`
-      SELECT status FROM pedidos WHERE id = $1
-    `, [id]);
+    const { pedido, error: periodoError } = await buscarPeriodoPedidoEditavel(client, id);
 
-    if (pedidoResult.rows.length === 0) {
+    if (!pedido) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: "Pedido não encontrado"
       });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
     }
 
     // Permitir edição em qualquer status
@@ -585,15 +628,16 @@ export async function atualizarStatusCompra(req: Request, res: Response) {
       });
     }
 
-    const pedidoResult = await db.query(`
-      SELECT status, numero FROM pedidos WHERE id = $1
-    `, [id]);
+    const { pedido, error: periodoError } = await buscarPeriodoPedidoEditavel(db, id);
 
-    if (pedidoResult.rows.length === 0) {
+    if (!pedido) {
       return res.status(404).json({
         success: false,
         message: "Pedido não encontrado"
       });
+    }
+    if (periodoError) {
+      return res.status(400).json({ success: false, message: periodoError });
     }
 
     // Adicionar motivo às observações se fornecido
@@ -648,20 +692,22 @@ export async function excluirCompra(req: Request, res: Response) {
 
     const { id } = req.params;
 
-    const pedidoResult = await client.query(`
-      SELECT status, numero FROM pedidos WHERE id = $1
-    `, [id]);
+    const { pedido, error: periodoError } = await buscarPeriodoPedidoEditavel(client, id);
 
-    if (pedidoResult.rows.length === 0) {
+    if (!pedido) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: "Pedido não encontrado"
       });
     }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
 
-    const status = pedidoResult.rows[0].status;
-    const numero = pedidoResult.rows[0].numero;
+    const status = pedido.status;
+    const numero = pedido.numero;
 
     // Permitir excluir pedidos em qualquer status
 
@@ -719,6 +765,10 @@ export async function excluirCompra(req: Request, res: Response) {
 
 export async function obterEstatisticasCompras(req: Request, res: Response) {
   try {
+    const periodo = await obterPeriodoContexto(req.user?.id);
+    const periodoWhere = periodo ? 'WHERE periodo_id = $1' : '';
+    const periodoParams = periodo ? [periodo.id] : [];
+
     const statsResult = await db.query(`
       SELECT 
         COUNT(*) as total_pedidos,
@@ -732,7 +782,8 @@ export async function obterEstatisticasCompras(req: Request, res: Response) {
         COALESCE(SUM(valor_total) FILTER (WHERE status = 'aprovado'), 0) as valor_aprovado,
         COALESCE(SUM(valor_total) FILTER (WHERE status = 'entregue'), 0) as valor_entregue
       FROM pedidos
-    `);
+      ${periodoWhere}
+    `, periodoParams);
 
     const porMesResult = await db.query(`
       SELECT 
@@ -741,9 +792,10 @@ export async function obterEstatisticasCompras(req: Request, res: Response) {
         COALESCE(SUM(valor_total), 0) as valor_total
       FROM pedidos
       WHERE data_pedido >= CURRENT_DATE - INTERVAL '12 months'
+        ${periodo ? 'AND periodo_id = $1' : ''}
       GROUP BY DATE_TRUNC('month', data_pedido)
       ORDER BY mes DESC
-    `);
+    `, periodoParams);
 
     const porEscolaResult = await db.query(`
       SELECT 
@@ -751,12 +803,12 @@ export async function obterEstatisticasCompras(req: Request, res: Response) {
         COUNT(p.id) as total_pedidos,
         COALESCE(SUM(p.valor_total), 0) as valor_total
       FROM escolas e
-      LEFT JOIN pedidos p ON e.id = p.escola_id
+      LEFT JOIN pedidos p ON e.id = p.escola_id ${periodo ? 'AND p.periodo_id = $1' : ''}
       GROUP BY e.id, e.nome
       HAVING COUNT(p.id) > 0
       ORDER BY COUNT(p.id) DESC
       LIMIT 10
-    `);
+    `, periodoParams);
 
     res.json({
       success: true,

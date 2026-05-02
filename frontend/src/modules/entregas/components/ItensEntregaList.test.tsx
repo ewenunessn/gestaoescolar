@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ItensEntregaList } from './ItensEntregaList';
 import type { EscolaEntrega } from '../types';
 
-vi.mock('../../../components/DataTableAdvanced', () => ({
-  DataTableAdvanced: ({ title, toolbarActions }: { title: string; toolbarActions?: React.ReactNode }) => (
+vi.mock('../../../components/data-display/OperationalDataTable', () => ({
+  OperationalDataTable: ({ title, toolbarActions }: { title: string; toolbarActions?: React.ReactNode }) => (
     <section aria-label={title}>
       {toolbarActions}
     </section>

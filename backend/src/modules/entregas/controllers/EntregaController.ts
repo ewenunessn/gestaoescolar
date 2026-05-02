@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import EntregaModel from '../models/Entrega';
 import { publishRealtimeEvent } from '../../../services/realtimeEvents';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
 import {
   asyncHandler,
   ValidationError,
@@ -46,14 +47,21 @@ export function parseRotaIdsParam(value: unknown): number[] | undefined {
   return ids.length > 0 ? Array.from(new Set(ids)) : undefined;
 }
 
+async function obterPeriodoId(req: Request): Promise<number | undefined> {
+  const periodo = await obterPeriodoContexto(req.user?.id);
+  return periodo?.id;
+}
+
 class EntregaController {
   async obterOfflineBundle(req: Request, res: Response) {
     try {
       const { rotaIds, guiaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
+      const periodoId = await obterPeriodoId(req);
 
       const bundle = await EntregaModel.obterOfflineBundle({
         rotaIds: parseRotaIdsParam(rotaIds),
         guiaId: guiaId ? Number(guiaId) : undefined,
+        periodoId,
         dataEntrega: typeof dataEntrega === 'string' ? dataEntrega : undefined,
         dataInicio: typeof dataInicio === 'string' ? dataInicio : undefined,
         dataFim: typeof dataFim === 'string' ? dataFim : undefined,
@@ -73,7 +81,10 @@ class EntregaController {
   async listarMudancas(req: Request, res: Response) {
     try {
       const { since } = req.query;
-      const changes = await EntregaModel.listarMudancasEntregas(typeof since === 'string' ? since : undefined);
+      const changes = await EntregaModel.listarMudancasEntregas(
+        typeof since === 'string' ? since : undefined,
+        await obterPeriodoId(req)
+      );
       res.json(changes);
     } catch (error) {
       console.error('Erro ao listar mudancas de entregas:', error);
@@ -87,6 +98,7 @@ class EntregaController {
   async listarEscolas(req: Request, res: Response) {
     try {
       const { guiaId, rotaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
+      const periodoId = await obterPeriodoId(req);
       
       const escolas = await EntregaModel.listarEscolasComEntregas(
         guiaId ? Number(guiaId) : undefined,
@@ -94,7 +106,8 @@ class EntregaController {
         typeof dataEntrega === 'string' ? dataEntrega : undefined,
         typeof dataInicio === 'string' ? dataInicio : undefined,
         typeof dataFim === 'string' ? dataFim : undefined,
-        somentePendentes === 'true'
+        somentePendentes === 'true',
+        periodoId
       );
       res.json(escolas);
     } catch (error) {
@@ -110,6 +123,7 @@ class EntregaController {
     try {
       const { escolaId } = req.params;
       const { guiaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
+      const periodoId = await obterPeriodoId(req);
       
       if (!escolaId || isNaN(Number(escolaId))) {
         return res.status(400).json({ error: 'ID da escola é obrigatório e deve ser um número' });
@@ -121,7 +135,8 @@ class EntregaController {
         typeof dataEntrega === 'string' ? dataEntrega : undefined,
         typeof dataInicio === 'string' ? dataInicio : undefined,
         typeof dataFim === 'string' ? dataFim : undefined,
-        somentePendentes === 'true'
+        somentePendentes === 'true',
+        periodoId
       );
       res.json(itens);
     } catch (error) {
@@ -301,6 +316,7 @@ class EntregaController {
   async obterEstatisticas(req: Request, res: Response) {
     try {
       const { guiaId, rotaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
+      const periodoId = await obterPeriodoId(req);
       
       const estatisticas = await EntregaModel.obterEstatisticasEntregas(
         guiaId ? Number(guiaId) : undefined,
@@ -308,7 +324,8 @@ class EntregaController {
         typeof dataEntrega === 'string' ? dataEntrega : undefined,
         typeof dataInicio === 'string' ? dataInicio : undefined,
         typeof dataFim === 'string' ? dataFim : undefined,
-        somentePendentes === 'true'
+        somentePendentes === 'true',
+        periodoId
       );
       res.json(estatisticas);
     } catch (error) {

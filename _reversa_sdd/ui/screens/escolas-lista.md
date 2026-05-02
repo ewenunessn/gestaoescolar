@@ -10,7 +10,7 @@
 
 - Sidebar com grupo `Cadastros` expandido e item `Escolas` ativo.
 - Header em card com breadcrumb `Dashboard > Cadastros > Escolas`, titulo `Escolas`, subtitulo `Exibindo 54 resultados` e botao primario `+ Nova Escola`.
-- DataTable com toolbar no canto superior direito:
+- EntityListTable com toolbar no canto superior direito:
   - icone de busca.
   - icone de filtro.
   - menu de mais opcoes.

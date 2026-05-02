@@ -12,7 +12,7 @@ import {
 const GREEN = "#22c55e";
 const NAVY = "#0f172a";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import PageHeader from "../../../components/PageHeader";
 import { 
   School as SchoolIcon, Inventory as InventoryIcon, CheckCircle as CheckCircleIcon, 
@@ -637,7 +637,7 @@ export default function PortalEscola() {
           ) : comprovantes.length === 0 ? (
             <Alert severity="info">Nenhum comprovante de entrega registrado ainda.</Alert>
           ) : (
-            <DataTable
+            <EntityListTable
               title="Comprovantes"
               data={comprovantes}
               columns={comprovantesColumns}

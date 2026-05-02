@@ -1,6 +1,6 @@
 # Espacamento e Layout
 
-Fontes principais: `frontend/src/components/LayoutModerno.tsx`, `PageContainer.tsx`, `PageHeader.tsx`, `DataTable.tsx`, `BaseDialog.tsx` e `frontend/src/theme/theme.ts`.
+Fontes principais: `frontend/src/components/layout/AppShellLayout.tsx`, `PageContainer.tsx`, `PageHeader.tsx`, `frontend/src/components/data-display/EntityListTable.tsx`, `BaseDialog.tsx` e `frontend/src/theme/theme.ts`.
 
 ## Medidas estruturais canonicas
 

@@ -7,7 +7,7 @@ import {
   Typography
 } from "@mui/material";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { 
   ShoppingCart as ShoppingCartIcon, Add as AddIcon, Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon
@@ -346,7 +346,7 @@ export default function SolicitacoesPage() {
           </Button>
         </Box>
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {solicitacoes.length === 0 && !erro ? (
             <EmptyState
@@ -356,7 +356,7 @@ export default function SolicitacoesPage() {
               onAction={() => setNovaOpen(true)}
             />
           ) : (
-            <DataTable title="Solicitações" columns={columns} data={solicitacoes} />
+            <EntityListTable title="Solicitações" columns={columns} data={solicitacoes} />
           )}
         </Box>
       </PageContainer>

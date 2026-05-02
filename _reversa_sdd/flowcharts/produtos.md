@@ -10,7 +10,7 @@ flowchart TD
   G --> I["Calcula tem_contrato"]
   H --> J["Retorna lista"]
   I --> J
-  J --> K["DataTable filtra status/categoria/busca no frontend"]
+  J --> K["EntityListTable filtra status/categoria/busca no frontend"]
   K --> L{"Acao do usuario"}
   L -->|Novo| M["POST /api/produtos"]
   L -->|Editar detalhe| N["PUT /api/produtos/:id"]

@@ -3,7 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import { useNavigate } from "react-router-dom";
 import {
     Box,
@@ -332,7 +332,7 @@ const GestaoRotas: React.FC = () => {
                         <Button variant="outlined" onClick={loadRotas}>Tentar Novamente</Button>
                     </Box>
                 ) : (
-                    <DataTableAdvanced
+                    <OperationalDataTable
                         title="Rotas"
                         data={filteredRotas}
                         columns={columns}

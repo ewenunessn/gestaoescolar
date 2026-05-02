@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
 import { useToast } from "../../../hooks/useToast";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog";
@@ -37,13 +38,14 @@ import { ColumnDef } from "@tanstack/react-table";
 import pedidosService from "../../../services/pedidos";
 import { Pedido, STATUS_PEDIDO } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 
 const PedidosPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setPageTitle } = usePageTitle();
   const toast = useToast();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const isProgramacaoView = searchParams.get('etapa') === 'programacao';
 
   useEffect(() => {
@@ -232,18 +234,21 @@ const PedidosPage = () => {
             </IconButton>
           </Tooltip>
           <Tooltip title="Excluir">
-            <IconButton
-              size="small"
-              color="delete"
-              onClick={() => openDeleteModal(row.original)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
+            <span>
+              <IconButton
+                size="small"
+                color="delete"
+                onClick={() => openDeleteModal(row.original)}
+                disabled={periodoBloqueado}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
       ),
     },
-  ], [isProgramacaoView, navigate]);
+  ], [isProgramacaoView, navigate, periodoBloqueado]);
 
   const handleRowClick = useCallback((pedido: Pedido) => {
     navigate(isProgramacaoView ? `/compras/${pedido.id}/programacoes-ajuste` : `/compras/${pedido.id}`);
@@ -306,11 +311,15 @@ const PedidosPage = () => {
                 </Button>
               )}
               <Button variant="outlined" color="primary" startIcon={<ShoppingCart />} onClick={() => setDialogGerarDaGuia(true)}
+                disabled={periodoBloqueado}
+                title={motivoBloqueio}
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Gerar da Guia
               </Button>
               {!isProgramacaoView && (
                 <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
+                  disabled={periodoBloqueado}
+                  title={motivoBloqueio}
                   sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                   Novo Pedido
                 </Button>
@@ -319,9 +328,9 @@ const PedidosPage = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={pedidosFiltrados}
             columns={columns}
             loading={loading}
@@ -459,7 +468,7 @@ const PedidosPage = () => {
           <Button onClick={closeDeleteModal} disabled={deleting}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
+          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting || periodoBloqueado}>
             {deleting ? <CircularProgress size={20} /> : 'Excluir'}
           </Button>
         </DialogActions>

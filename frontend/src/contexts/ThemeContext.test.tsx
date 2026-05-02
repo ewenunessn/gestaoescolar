@@ -53,4 +53,16 @@ describe('CustomThemeProvider', () => {
 
     await waitFor(() => expect(setTitleBarTheme).toHaveBeenLastCalledWith('dark'));
   });
+
+  it('inicia com o tema salvo antes do primeiro efeito', () => {
+    localStorage.setItem('app-theme-mode', 'dark');
+
+    render(
+      <CustomThemeProvider>
+        <ThemeProbe />
+      </CustomThemeProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'dark' })).toBeInTheDocument();
+  });
 });

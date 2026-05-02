@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useToast } from "../../../hooks/useToast";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import JsBarcode from "jsbarcode";
 import {
   Box,
@@ -84,6 +85,7 @@ interface Escola {
 export default function ComprovantesEntrega() {
   const { setPageTitle } = usePageTitle();
   const toast = useToast();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const [comprovantes, setComprovantes] = useState<Comprovante[]>([]);
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(true);
@@ -453,14 +455,15 @@ export default function ComprovantesEntrega() {
             size="small"
             color="error"
             onClick={() => excluirComprovante(row.original.id, row.original.numero_comprovante)}
-            title="Excluir permanentemente"
+            title={motivoBloqueio || "Excluir permanentemente"}
+            disabled={periodoBloqueado}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
       )
     }
-  ], []);
+  ], [periodoBloqueado, motivoBloqueio]);
 
   // Estatísticas
   const estatisticas = useMemo(() => ({
@@ -503,8 +506,13 @@ export default function ComprovantesEntrega() {
             {error}
           </Alert>
         )}
+        {periodoBloqueado && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {motivoBloqueio}
+          </Alert>
+        )}
 
-        <DataTableAdvanced
+        <OperationalDataTable
           title="Comprovantes de Entrega"
           data={comprovantes}
           columns={columns}

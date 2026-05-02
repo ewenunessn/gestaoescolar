@@ -1,6 +1,7 @@
 // Controller para funcionalidades PNAE (Lei 11.947/2009)
 import { Request, Response } from 'express';
 import db from '../../../database';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
 
 /**
  * Obter relatório de agricultura familiar
@@ -8,23 +9,26 @@ import db from '../../../database';
  */
 export const getRelatorioAgriculturaFamiliar = async (req: Request, res: Response) => {
   try {
-    const { ano, mes_inicio, mes_fim } = req.query;
+    const { mes_inicio, mes_fim } = req.query;
+    const periodo = await obterPeriodoContexto(req.user?.id);
 
-    let whereClause = '1=1';
-    const params: any[] = [];
-
-    if (ano) {
-      whereClause += ` AND EXTRACT(YEAR FROM data_pedido) = $${params.length + 1}`;
-      params.push(ano);
+    if (!periodo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nenhum periodo selecionado ou ativo encontrado.'
+      });
     }
 
+    let whereClause = 'p.periodo_id = $1';
+    const params: any[] = [periodo.id];
+
     if (mes_inicio) {
-      whereClause += ` AND EXTRACT(MONTH FROM data_pedido) >= $${params.length + 1}`;
+      whereClause += ` AND EXTRACT(MONTH FROM v.data_pedido) >= $${params.length + 1}`;
       params.push(mes_inicio);
     }
 
     if (mes_fim) {
-      whereClause += ` AND EXTRACT(MONTH FROM data_pedido) <= $${params.length + 1}`;
+      whereClause += ` AND EXTRACT(MONTH FROM v.data_pedido) <= $${params.length + 1}`;
       params.push(mes_fim);
     }
 
@@ -43,7 +47,8 @@ export const getRelatorioAgriculturaFamiliar = async (req: Request, res: Respons
           THEN true 
           ELSE false 
         END as atende_requisito_30_porcento
-      FROM vw_pnae_agricultura_familiar
+      FROM vw_pnae_agricultura_familiar v
+      JOIN pedidos p ON p.id = v.pedido_id
       WHERE ${whereClause}
     `;
 
@@ -58,7 +63,8 @@ export const getRelatorioAgriculturaFamiliar = async (req: Request, res: Respons
         COUNT(DISTINCT pedido_id) as total_pedidos,
         SUM(valor_itens) as valor_total,
         SUM(valor_agricultura_familiar) as valor_agricultura_familiar
-      FROM vw_pnae_agricultura_familiar
+      FROM vw_pnae_agricultura_familiar v
+      JOIN pedidos p ON p.id = v.pedido_id
       WHERE ${whereClause}
       GROUP BY fornecedor_id, fornecedor_nome, tipo_fornecedor
       ORDER BY valor_total DESC
@@ -72,7 +78,10 @@ export const getRelatorioAgriculturaFamiliar = async (req: Request, res: Respons
         resumo: result.rows[0],
         detalhamento_fornecedores: detalhamento.rows,
         periodo: {
-          ano: ano || 'Todos',
+          id: periodo.id,
+          ano: periodo.ano,
+          data_inicio: periodo.data_inicio,
+          data_fim: periodo.data_fim,
           mes_inicio: mes_inicio || 'Todos',
           mes_fim: mes_fim || 'Todos'
         }
@@ -388,21 +397,15 @@ export const listarRelatorios = async (req: Request, res: Response) => {
 export const getDashboardPNAE = async (req: Request, res: Response) => {
   try {
     // Buscar período ativo
-    const periodoQuery = await db.query(`
-      SELECT id, ano, data_inicio, data_fim
-      FROM periodos
-      WHERE ativo = true
-      LIMIT 1
-    `);
+    const periodoAtivo = await obterPeriodoContexto(req.user?.id);
 
-    if (periodoQuery.rows.length === 0) {
+    if (!periodoAtivo) {
       return res.status(400).json({
         success: false,
         message: 'Nenhum período ativo encontrado. Configure um período ativo no sistema.'
       });
     }
 
-    const periodoAtivo = periodoQuery.rows[0];
     const anoAtual = periodoAtivo.ano;
 
     // Calcular valor total recebido do FNDE (soma dos repasses * parcelas das modalidades)
@@ -420,11 +423,12 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
         SUM(valor_itens) as valor_total,
         SUM(valor_agricultura_familiar) as valor_af,
         COUNT(DISTINCT pedido_id) as total_pedidos
-      FROM vw_pnae_agricultura_familiar
-      WHERE EXTRACT(YEAR FROM TO_DATE(competencia_mes_ano || '-01', 'YYYY-MM-DD')) = $1
+      FROM vw_pnae_agricultura_familiar v
+      JOIN pedidos p ON p.id = v.pedido_id
+      WHERE p.periodo_id = $1
     `;
 
-    const afResult = await db.query(afQuery, [anoAtual]);
+    const afResult = await db.query(afQuery, [periodoAtivo.id]);
     const valorAF = parseFloat(afResult.rows[0].valor_af || 0);
     const valorTotal = parseFloat(afResult.rows[0].valor_total || 0);
     
@@ -466,8 +470,9 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
           END as mes_nome,
           SUM(valor_itens) as valor_total,
           SUM(valor_agricultura_familiar) as valor_af
-        FROM vw_pnae_agricultura_familiar
-        WHERE EXTRACT(YEAR FROM TO_DATE(competencia_mes_ano || '-01', 'YYYY-MM-DD')) = $1
+        FROM vw_pnae_agricultura_familiar v
+        JOIN pedidos p ON p.id = v.pedido_id
+        WHERE p.periodo_id = $1
         GROUP BY competencia_mes_ano, CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER)
       )
       SELECT 
@@ -481,7 +486,7 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
       ORDER BY mes
     `;
 
-    const evolucaoResult = await db.query(evolucaoQuery, [anoAtual]);
+    const evolucaoResult = await db.query(evolucaoQuery, [periodoAtivo.id]);
     
     // Calcular percentual acumulado sobre valor recebido FNDE
     const evolucaoMensal = evolucaoResult.rows.map(row => ({
@@ -503,7 +508,8 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
           id: periodoAtivo.id,
           ano: periodoAtivo.ano,
           data_inicio: periodoAtivo.data_inicio,
-          data_fim: periodoAtivo.data_fim
+          data_fim: periodoAtivo.data_fim,
+          fechado: periodoAtivo.fechado
         },
         valor_recebido_fnde: valorTotalFNDE,
         percentual_minimo_obrigatorio: percentualMinimoObrigatorio,

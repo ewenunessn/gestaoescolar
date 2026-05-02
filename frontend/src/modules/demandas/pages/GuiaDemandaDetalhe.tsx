@@ -17,7 +17,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog";
 import ViewTabs from "../../../components/ViewTabs";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
@@ -29,6 +29,7 @@ import api from "../../../services/api";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { PerformanceMonitor } from "../../../utils/performanceMonitor";
 import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface EscolaGuia {
   id: number;
@@ -57,6 +58,7 @@ interface ItemGuia {
 
 
 const GuiaDemandaDetalhe: React.FC = () => {
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const navigate = useNavigate();
   const { guiaId } = useParams<{ guiaId: string }>();
   const toast = useToast();
@@ -723,10 +725,14 @@ const GuiaDemandaDetalhe: React.FC = () => {
         startIcon={<AddIcon />}
         size="small"
         onClick={() => navigate(`/guias-demanda/${guiaId}/adicionar-produto`)}
+        disabled={periodoBloqueado}
+        title={motivoBloqueio}
       >
         Adicionar Produto
       </Button>
       <Button 
+        disabled={periodoBloqueado}
+        title={motivoBloqueio}
         variant="contained" 
         startIcon={<ShoppingCartIcon />} 
         size="small"
@@ -741,6 +747,8 @@ const GuiaDemandaDetalhe: React.FC = () => {
   // Right toolbar actions (próximo ao search)
   const rightToolbarActions = (
     <Button 
+      disabled={periodoBloqueado}
+      title={motivoBloqueio}
       variant="outlined" 
       startIcon={<TuneIcon />} 
       size="small"
@@ -825,7 +833,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         {/* ── Aba 0: Por Produto ── */}
         {tabAtiva === 0 && (
           <Box sx={{ flex: 1, minHeight: 0 }}>
-            <DataTableAdvanced
+            <OperationalDataTable
               title="Por Produto"
               data={produtosAgrupados}
               columns={produtosColumns}
@@ -841,7 +849,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         {/* ── Aba 1: Por Escola ── */}
         {tabAtiva === 1 && (
           <Box sx={{ flex: 1, minHeight: 0 }}>
-            <DataTableAdvanced
+            <OperationalDataTable
               title="Por Escola"
               data={escolasComItens}
               columns={escolasColumns}
@@ -863,7 +871,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                 <Typography variant="h6" color="text.secondary">Nenhum dado para consolidar</Typography>
               </Box>
             ) : (
-              <DataTableAdvanced
+              <OperationalDataTable
                 title="Matriz Consolidada"
                 data={matrizConsolidada.matriz}
                 columns={consolidadaColumns}
@@ -895,7 +903,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   <IconButton 
                     size="small" 
                     onClick={() => setModoSelecao(true)}
-                    disabled={excluindoItens}
+                    disabled={excluindoItens || periodoBloqueado}
                   >
                     <CheckBoxIcon />
                   </IconButton>
@@ -909,7 +917,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                         setModoSelecao(false);
                         setItensSelecionados(new Set());
                       }}
-                      disabled={excluindoItens}
+                      disabled={excluindoItens || periodoBloqueado}
                     >
                       <ClearIcon />
                     </IconButton>
@@ -919,7 +927,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                       size="small" 
                       color="error"
                       onClick={handleExcluirSelecionados}
-                      disabled={itensSelecionados.size === 0 || excluindoItens}
+                      disabled={itensSelecionados.size === 0 || excluindoItens || periodoBloqueado}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -963,7 +971,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                         <Checkbox
                           checked={itensSelecionados.has(item.id)}
                           onChange={() => handleToggleSelecao(item.id)}
-                          disabled={excluindoItens}
+                          disabled={excluindoItens || periodoBloqueado}
                         />
                       </TableCell>
                     )}
@@ -1005,7 +1013,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                               size="small" 
                               color="primary"
                               onClick={() => handleAbrirEditar(item)}
-                              disabled={excluindoItens}
+                              disabled={excluindoItens || periodoBloqueado}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -1015,7 +1023,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                               size="small" 
                               color="error"
                               onClick={() => handleExcluirIndividual(item)}
-                              disabled={excluindoItens}
+                              disabled={excluindoItens || periodoBloqueado}
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -1159,7 +1167,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogEditarOpen(false)} disabled={salvandoEdicao}>Cancelar</Button>
-          <Button onClick={handleSalvarEdicao} variant="contained" disabled={salvandoEdicao || !unidadeIdSelecionada}>Salvar</Button>
+          <Button onClick={handleSalvarEdicao} variant="contained" disabled={salvandoEdicao || !unidadeIdSelecionada || periodoBloqueado}>Salvar</Button>
         </DialogActions>
       </Dialog>
 

@@ -33,7 +33,8 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import { guiaService, GuiaProdutoEscola } from "../../../services/guiaService";
 import { produtoService, Produto } from "../../../services/produtoService";
 import { useToast } from "../../../hooks/useToast";
@@ -72,6 +73,7 @@ const getUnidadeCompleta = (sigla: string): string => {
 };
 
 const GuiaDemandaEscolaItens: React.FC = () => {
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   const navigate = useNavigate();
   const { guiaId, escolaId } = useParams<{ guiaId: string; escolaId: string }>();
   const toast = useToast();
@@ -84,7 +86,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Paginação removida - será gerenciada pela DataTableAdvanced
+  // Paginação removida - será gerenciada pela OperationalDataTable
   
   // Modal
   const [openModal, setOpenModal] = useState(false);
@@ -313,7 +315,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     }
   };
 
-  // Colunas para a DataTableAdvanced
+  // Colunas para a OperationalDataTable
   const columns = useMemo<ColumnDef<GuiaProdutoEscola>[]>(() => [
     {
       accessorKey: 'produto_nome',
@@ -389,6 +391,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               size="small"
               color="secondary"
               onClick={() => handleOpenModal(row.original)}
+              disabled={periodoBloqueado}
+              title={motivoBloqueio}
             >
               <EditIcon fontSize="small" />
             </IconButton>
@@ -398,6 +402,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               size="small"
               color="error"
               onClick={() => handleDelete(row.original.id)}
+              disabled={periodoBloqueado}
+              title={motivoBloqueio}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -413,6 +419,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       variant="contained"
       startIcon={<AddIcon />}
       onClick={() => handleOpenModal()}
+      disabled={periodoBloqueado}
+      title={motivoBloqueio}
       size="small"
       sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
     >
@@ -534,7 +542,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <DataTableAdvanced
+            <OperationalDataTable
               title="Itens da Demanda"
               data={itens}
               columns={columns}
@@ -606,7 +614,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || formData.quantidade <= 0}>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || formData.quantidade <= 0 || periodoBloqueado}>
             Salvar
           </Button>
         </DialogActions>

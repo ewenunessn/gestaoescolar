@@ -582,7 +582,7 @@ const GerenciarEscolasRota: React.FC = () => {
                 </Box>
             </Box>}
 
-                {/* Lista de Escolas na Rota com DataTable */}
+                {/* Lista de Escolas na Rota com EntityListTable */}
                 <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
                     {escolasRota.length > 0 ? (
                         <DndContext

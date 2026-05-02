@@ -3,7 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import StatusIndicator from "../../../components/StatusIndicator";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import TableFilter, { FilterField } from "../../../components/TableFilter";
 import CompactPagination from "../../../components/CompactPagination";
 import {
@@ -886,7 +886,14 @@ const SaldoContratosModalidades: React.FC = () => {
     return agruparPorProduto(dados);
   }, [dados]);
 
-  // Definir colunas do DataTable
+  const estatisticasSaldo = useMemo(() => ({
+    totalProdutos: produtosAgrupados.length,
+    totalDisponiveis: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length,
+    totalBaixoEstoque: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length,
+    totalEsgotados: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length,
+  }), [produtosAgrupados]);
+
+  // Definir colunas do EntityListTable
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
       accessorKey: 'produto_nome',
@@ -1057,36 +1064,29 @@ const SaldoContratosModalidades: React.FC = () => {
           ]}
         />
 
-        {/* Legenda de Status */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {produtosAgrupados.length} {produtosAgrupados.length === 1 ? 'produto' : 'produtos'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {(() => {
-              const statusLegend = [
-                { status: 'success', label: 'DISPONÍVEL', count: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length },
-                { status: 'warning', label: 'BAIXO ESTOQUE', count: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length },
-                { status: 'error', label: 'ESGOTADO', count: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length }
-              ];
-              return statusLegend.map((item) => (
-                <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <StatusIndicator status={item.status} size="small" />
-                  <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {item.label}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                    {item.count}
-                  </Typography>
-                </Box>
-              ));
-            })()}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {[
+              { label: 'Produtos', value: estatisticasSaldo.totalProdutos, color: 'text.secondary' },
+              { label: 'Disponíveis', value: estatisticasSaldo.totalDisponiveis, color: 'success.main' },
+              { label: 'Baixo estoque', value: estatisticasSaldo.totalBaixoEstoque, color: 'warning.main' },
+              { label: 'Esgotados', value: estatisticasSaldo.totalEsgotados, color: 'error.main' },
+            ].map((item) => (
+              <Box key={item.label} sx={{ textAlign: 'center', minWidth: 72 }}>
+                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: item.color, fontSize: '0.9rem' }}>
+                  {item.value}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         </Box>
 
-        {/* DataTableAdvanced */}
+        {/* OperationalDataTable */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTableAdvanced
+          <OperationalDataTable
             title="Saldo de Contratos por Modalidade"
             data={produtosAgrupados}
             columns={columns}

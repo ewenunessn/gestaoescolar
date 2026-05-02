@@ -47,7 +47,7 @@ import ConfirmacaoExclusaoFornecedor from "../../../components/ConfirmacaoExclus
 import * as XLSX from "xlsx";
 import { formatarDocumento } from "../../../utils/validacaoDocumento";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { ColumnDef } from "@tanstack/react-table";
 
 // Interfaces
@@ -396,9 +396,9 @@ const FornecedoresPage: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={fornecedoresFiltrados}
             columns={columns}
             loading={loading}

@@ -18,7 +18,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('app-theme-mode');
+        if (theme !== 'dark' && theme !== 'light') theme = 'light';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch (_) {
+        document.documentElement.dataset.theme = 'light';
+        document.documentElement.style.colorScheme = 'light';
+      }
+    })();
+  </script>
   <style>
+    :root {
+      color-scheme: light;
+      background: #eeeeee;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      background: #000000;
+    }
+
     * {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
@@ -32,11 +55,48 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
       padding: 0;
+      background: #eeeeee;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
     /* Animação do spinner */
+    :root[data-theme="dark"] body {
+      background: #000000;
+      color: #f7f7f8;
+    }
+
+    #initial-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    :root[data-theme="dark"] #initial-loader {
+      background: #000000;
+    }
+
+    .initial-loader-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e3e5e8;
+      border-top: 3px solid #28d99a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    :root[data-theme="dark"] .initial-loader-spinner {
+      border-color: rgba(255, 255, 255, 0.14);
+      border-top-color: #2fe4cf;
+    }
+
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -47,26 +107,8 @@
 <body>
   <div id="root">
     <!-- Loading inicial - será substituído pelo React -->
-    <div id="initial-loader" style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    ">
-      <div style="
-        width: 40px;
-        height: 40px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #1976d2;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      "></div>
+    <div id="initial-loader">
+      <div class="initial-loader-spinner"></div>
     </div>
   </div>
   <script type="module" src="/src/main.tsx"></script>

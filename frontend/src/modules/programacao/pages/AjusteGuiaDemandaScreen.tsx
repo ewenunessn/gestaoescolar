@@ -16,6 +16,7 @@ import { useToast } from "../../../hooks/useToast";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { toNum } from "../../../utils/formatters";
 import api from "../../../services/api";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface EscolaQtd { id: number; nome: string; quantidade: number; quantidade_demanda: number; item_id: number; }
 interface GrupoItem {
@@ -42,6 +43,7 @@ export default function AjusteGuiaDemandaScreen() {
   const navigate = useNavigate();
   const toast = useToast();
   const { setPageTitle, setBackPath } = usePageTitle();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
 
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -195,6 +197,10 @@ export default function AjusteGuiaDemandaScreen() {
   }
 
   async function salvarCol(ci: number) {
+    if (periodoBloqueado) {
+      toast.error(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+      return;
+    }
     const gi = cols[ci].grupoIdx;
     if (gi === null || gi === undefined) return;
     const grupo = grupos[gi];
@@ -254,10 +260,10 @@ export default function AjusteGuiaDemandaScreen() {
                     </Button>
                     {colConfigured(ci) && (
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
-                        <Tooltip title="Ajuste em lote"><IconButton size="small" onClick={() => { setAjModal({ open: true, ci }); setAjPct(''); setAjMin(''); setAjMax(''); setAjArred('none'); }}><TuneIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
-                        <Tooltip title="Replicar"><IconButton size="small" onClick={() => { setRepModal({ open: true, from: ci }); setRepTo(''); }}><CopyIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
-                        <Tooltip title="Resetar para demanda calculada"><IconButton size="small" color="warning" onClick={() => resetarCol(ci)}><ResetIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
-                        <Tooltip title="Salvar"><IconButton size="small" color="success" onClick={() => salvarCol(ci)} disabled={!!salvando[ci]}>{salvando[ci] ? <CircularProgress size={12} /> : <SaveIcon sx={{ fontSize: 14 }} />}</IconButton></Tooltip>
+                        <Tooltip title="Ajuste em lote"><IconButton size="small" disabled={periodoBloqueado} onClick={() => { setAjModal({ open: true, ci }); setAjPct(''); setAjMin(''); setAjMax(''); setAjArred('none'); }}><TuneIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+                        <Tooltip title="Replicar"><IconButton size="small" disabled={periodoBloqueado} onClick={() => { setRepModal({ open: true, from: ci }); setRepTo(''); }}><CopyIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+                        <Tooltip title="Resetar para demanda calculada"><IconButton size="small" color="warning" disabled={periodoBloqueado} onClick={() => resetarCol(ci)}><ResetIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+                        <Tooltip title="Salvar"><IconButton size="small" color="success" onClick={() => salvarCol(ci)} disabled={!!salvando[ci] || periodoBloqueado}>{salvando[ci] ? <CircularProgress size={12} /> : <SaveIcon sx={{ fontSize: 14 }} />}</IconButton></Tooltip>
                       </Box>
                     )}
                   </Box>
@@ -385,10 +391,10 @@ export default function AjusteGuiaDemandaScreen() {
               </Box>
             </DialogContent>
             <DialogActions sx={{ justifyContent: 'space-between', px: 3 }}>
-              <Button color="warning" onClick={() => { resetarCol(ci); setAjModal(null); }}>Resetar para demanda</Button>
+              <Button color="warning" disabled={periodoBloqueado} onClick={() => { resetarCol(ci); setAjModal(null); }}>Resetar para demanda</Button>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button onClick={() => setAjModal(null)}>Cancelar</Button>
-                <Button variant="contained" onClick={() => aplicarAjuste(ci)}>Aplicar</Button>
+                <Button variant="contained" disabled={periodoBloqueado} onClick={() => aplicarAjuste(ci)}>Aplicar</Button>
               </Box>
             </DialogActions>
           </Dialog>
@@ -411,7 +417,7 @@ export default function AjusteGuiaDemandaScreen() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRepModal(null)}>Cancelar</Button>
-          <Button variant="contained" disabled={repTo === ''} onClick={() => repModal && repTo !== '' && replicar(repModal.from, repTo as number)}>Replicar</Button>
+          <Button variant="contained" disabled={repTo === '' || periodoBloqueado} onClick={() => repModal && repTo !== '' && replicar(repModal.from, repTo as number)}>Replicar</Button>
         </DialogActions>
       </Dialog>
     </Box>

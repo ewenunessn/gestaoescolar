@@ -6,7 +6,7 @@ import {
   TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { 
   Description as DescriptionIcon, Visibility as VisibilityIcon, 
   Print as PrintIcon, ArrowBack as ArrowBackIcon
@@ -287,7 +287,7 @@ export default function ComprovantesPage() {
           Voltar ao Portal
         </Button>
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {comprovantes.length === 0 && !erro ? (
             <EmptyState
@@ -297,7 +297,7 @@ export default function ComprovantesPage() {
               onAction={carregarComprovantes}
             />
           ) : (
-            <DataTable title="Comprovantes" columns={columns} data={comprovantes} />
+            <EntityListTable title="Comprovantes" columns={columns} data={comprovantes} />
           )}
         </Box>
       </PageContainer>

@@ -119,6 +119,7 @@ export interface CreateGuiaData {
   ano: number;
   nome?: string;
   observacao?: string;
+  periodo_id?: number;
 }
 
 export interface CreateGuiaProdutoEscolaData {
@@ -160,8 +161,14 @@ export async function createEssentialTables() {
 }
 
 class GuiaModel {
-  async listarGuias(): Promise<Guia[]> {
+  async listarGuias(periodoId?: number | null): Promise<Guia[]> {
     try {
+      const params: any[] = [];
+      const periodoFilter = periodoId
+        ? 'g.periodo_id = $1'
+        : '(per.ocultar_dados = false OR per.ocultar_dados IS NULL)';
+      if (periodoId) params.push(periodoId);
+
       const result = await db.all(`
         SELECT 
           g.*,
@@ -170,10 +177,10 @@ class GuiaModel {
         FROM guias g
         LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
         LEFT JOIN periodos per ON g.periodo_id = per.id
-        WHERE (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
+        WHERE ${periodoFilter}
         GROUP BY g.id, g.mes, g.ano, g.nome, g.observacao, g.status, g.created_at, g.updated_at
         ORDER BY g.created_at DESC
-      `);
+      `, params);
       return result;
     } catch (error) {
       console.error('❌ [GuiaModel] Erro ao listar guias:', error);
@@ -181,10 +188,14 @@ class GuiaModel {
     }
   }
 
-  async buscarGuiaPorMesAno(mes: number, ano: number): Promise<Guia | undefined> {
+  async buscarGuiaPorMesAno(mes: number, ano: number, periodoId?: number | null): Promise<Guia | undefined> {
+    const params: any[] = [mes, ano];
+    const periodoFilter = periodoId ? ' AND periodo_id = $3' : '';
+    if (periodoId) params.push(periodoId);
+
     const result = await db.get(`
-      SELECT * FROM guias WHERE mes = $1 AND ano = $2
-    `, [mes, ano]);
+      SELECT * FROM guias WHERE mes = $1 AND ano = $2${periodoFilter}
+    `, params);
     return result;
   }
 
@@ -201,10 +212,10 @@ class GuiaModel {
     const codigo_guia = codigoResult.rows[0]?.codigo;
     
     const result = await db.query(`
-      INSERT INTO guias (mes, ano, nome, observacao, status, codigo_guia, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'aberta', $5, NOW(), NOW())
+      INSERT INTO guias (mes, ano, nome, observacao, status, codigo_guia, periodo_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'aberta', $5, $6, NOW(), NOW())
       RETURNING *
-    `, [data.mes, data.ano, data.nome || null, data.observacao || null, codigo_guia]);
+    `, [data.mes, data.ano, data.nome || null, data.observacao || null, codigo_guia, data.periodo_id || null]);
 
     return result.rows[0];
   }
@@ -289,7 +300,7 @@ class GuiaModel {
     }
   }
 
-  async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; rotaIds?: number[]; status?: string }): Promise<any[]> {
+  async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; rotaIds?: number[]; status?: string; periodoId?: number | null }): Promise<any[]> {
     try {
       
       // Query otimizada: usa subquery para rotas ao invés de JOIN + GROUP BY
@@ -310,6 +321,7 @@ class GuiaModel {
             WHERE res.escola_id = e.id
           ) as escola_rota
         FROM guia_produto_escola gpe
+        JOIN guias g ON g.id = gpe.guia_id
         JOIN produtos p ON gpe.produto_id = p.id
         JOIN escolas e ON gpe.escola_id = e.id
         WHERE 1=1
@@ -317,6 +329,12 @@ class GuiaModel {
       
       const params: any[] = [];
       let paramCount = 1;
+
+      if (filtros.periodoId) {
+        query += ` AND g.periodo_id = $${paramCount}`;
+        params.push(filtros.periodoId);
+        paramCount++;
+      }
 
       if (filtros.dataInicio) {
         query += ` AND gpe.data_entrega >= $${paramCount}`;
@@ -704,7 +722,11 @@ class GuiaModel {
   }
 
   // Listar competências com resumo de status
-  async listarCompetencias(): Promise<any[]> {
+  async listarCompetencias(periodoId?: number | null): Promise<any[]> {
+    const params: any[] = [];
+    const periodoWhere = periodoId ? 'WHERE g.periodo_id = $1' : '';
+    if (periodoId) params.push(periodoId);
+
     const query = `
       SELECT 
         g.mes,
@@ -724,11 +746,12 @@ class GuiaModel {
         COUNT(DISTINCT CASE WHEN gpe.status = 'cancelado' THEN gpe.id END) as qtd_cancelado
       FROM guias g
       LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
+      ${periodoWhere}
       GROUP BY g.mes, g.ano, g.id, g.nome, g.status, g.competencia_mes_ano, g.periodo_inicio, g.periodo_fim
       ORDER BY g.ano DESC, g.mes DESC, g.periodo_inicio ASC NULLS LAST
     `;
 
-    const rows = await db.all(query);
+    const rows = await db.all(query, params);
     
     return rows.map((row: any) => ({
       mes: row.mes,

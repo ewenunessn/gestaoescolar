@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createColumnHelper } from "@tanstack/react-table";
-import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import PageHeader from "../../../components/PageHeader";
 import AdicionarIngredienteDialog from "../../../components/AdicionarIngredienteDialog";
 import AdicionarGrupoIngredientesDialog from "../../../components/AdicionarGrupoIngredientesDialog";
@@ -88,7 +88,7 @@ interface preparacaoProduto {
   per_capita_efetivo?: number;
 }
 
-// Definição das colunas do DataTable
+// Definição das colunas do EntityListTable
 const columnHelper = createColumnHelper<preparacaoProduto>();
 
 export default function PreparacaoDetalhe() {
@@ -141,7 +141,7 @@ export default function PreparacaoDetalhe() {
     modalidadeSelecionada
   );
 
-  // Definição das colunas do DataTable
+  // Definição das colunas do EntityListTable
   const columns = useMemo(() => [
     columnHelper.accessor('produto.nome', {
       id: 'produto',
@@ -606,7 +606,7 @@ export default function PreparacaoDetalhe() {
             {/* Coluna esquerda: Adicionar + Tabela */}
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box sx={{ flex: 1, minHeight: isMobile ? 400 : 0 }}>
-                <DataTableAdvanced<preparacaoProduto>
+                <OperationalDataTable<preparacaoProduto>
                   title="Ingredientes"
                   data={associacoes as preparacaoProduto[]}
                   columns={columns}

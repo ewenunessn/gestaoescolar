@@ -10,7 +10,7 @@
 
 - Sidebar com grupo `Cardapios` expandido e item `Cardapios` ativo.
 - Header com breadcrumb `Dashboard > Cardapios`, titulo `Cardapios`, subtitulo `Exibindo 2 resultados` e botao primario `+ Novo Cardapio`.
-- DataTable com toolbar de busca/filtro.
+- EntityListTable com toolbar de busca/filtro.
 - Colunas:
   - `ID`
   - `Nome`

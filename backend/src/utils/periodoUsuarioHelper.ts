@@ -1,5 +1,16 @@
 import db from '../database';
 
+export interface PeriodoContexto {
+  id: number;
+  ano: number;
+  descricao?: string | null;
+  data_inicio: string;
+  data_fim: string;
+  ativo: boolean;
+  fechado: boolean;
+  ocultar_dados?: boolean;
+}
+
 /**
  * Obtém o período do usuário ou período ativo global
  * @param userId ID do usuário autenticado
@@ -29,4 +40,30 @@ export async function obterPeriodoUsuario(userId?: number): Promise<number | nul
   }
   
   return periodoId;
+}
+
+/**
+ * Retorna o contexto completo do periodo selecionado pelo usuario.
+ * Se o usuario nao tiver selecao propria, usa o periodo ativo global.
+ */
+export async function obterPeriodoContexto(userId?: number): Promise<PeriodoContexto | null> {
+  const periodoId = await obterPeriodoUsuario(userId);
+
+  if (!periodoId) {
+    return null;
+  }
+
+  const periodo = await db.query(
+    `SELECT id, ano, descricao, data_inicio, data_fim, ativo, fechado, ocultar_dados
+     FROM periodos
+     WHERE id = $1
+     LIMIT 1`,
+    [periodoId]
+  );
+
+  return periodo.rows[0] ?? null;
+}
+
+export function isPeriodoFechado(periodo: Pick<PeriodoContexto, 'fechado'> | null | undefined): boolean {
+  return Boolean(periodo?.fechado);
 }

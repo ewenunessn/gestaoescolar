@@ -18,7 +18,7 @@ Ao mesmo tempo, ha drift visual em partes do frontend: alguns componentes e tela
 
 ### Layout principal
 
-- `LayoutModerno` define o shell canonico: sidebar lateral, topbar compacta, busca global, seletor de ano letivo e acoes de usuario. `🟢`
+- `AppShellLayout` define o shell canonico: sidebar lateral, topbar compacta, busca global, seletor de ano letivo e acoes de usuario. `🟢`
 - O menu lateral recolhe de `248px` para `78px`, preservando o fluxo de navegacao por icones e secoes. `🟢`
 - O tema escuro e confirmado tanto no codigo quanto nas screenshots de dashboard, escolas, cardapios, entregas e estoque. `🟡`
 
@@ -31,10 +31,10 @@ Ao mesmo tempo, ha drift visual em partes do frontend: alguns componentes e tela
 
 | Componente / padrao | Papel | Evidencia |
 | --- | --- | --- |
-| `LayoutModerno` | shell de navegacao e estrutura global | codigo `🟢`, screenshots `🟡` |
+| `AppShellLayout` | shell de navegacao e estrutura global | codigo `🟢`, screenshots `🟡` |
 | `PageHeader` | cabecalho de pagina com breadcrumb e CTA | codigo `🟢` |
 | `PageContainer` | moldura e espacamento padrao | codigo `🟢` |
-| `DataTable` | tabela densa com busca, acoes e responsividade | codigo `🟢`, screenshots `🟡` |
+| `EntityListTable` | tabela densa com busca, acoes e responsividade | codigo `🟢`, screenshots `🟡` |
 | `BaseDialog` | modal padronizado com radius `12px` | codigo `🟢` |
 | `SafeButton` | camada comportamental para acao segura | codigo `🟢` |
 | `StatusIndicator` | representacao simplificada de estado | codigo `🟢`, paleta paralela `🟡` |
@@ -69,8 +69,8 @@ Ao mesmo tempo, ha drift visual em partes do frontend: alguns componentes e tela
 Para reimplementar a interface com alta fidelidade, a ordem mais segura e:
 
 1. Recriar `theme.ts` como fonte canonica de cor, tipografia e shape. `🟢`
-2. Reproduzir o shell de `LayoutModerno` com suas larguras, alturas e padroes de navegacao. `🟢`
-3. Reaplicar `PageContainer`, `PageHeader`, `DataTable` e `BaseDialog` como primitives de composicao. `🟢`
+2. Reproduzir o shell de `AppShellLayout` com suas larguras, alturas e padroes de navegacao. `🟢`
+3. Reaplicar `PageContainer`, `PageHeader`, `EntityListTable` e `BaseDialog` como primitives de composicao. `🟢`
 4. Isolar e reabsorver cores hardcoded em tokens semanticos unificados. `🟡`
 
 ## Arquivos desta entrega

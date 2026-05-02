@@ -49,6 +49,7 @@ import { modalidadeService } from "../../../services/modalidades";
 import { criarFaturamento, atualizarFaturamento, ItemFaturamento as ItemFaturamentoAPI, listarFaturamentosPedido } from "../../../services/faturamentos";
 import { PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda } from "../../../utils/dateUtils";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface Modalidade {
   id: number;
@@ -77,6 +78,7 @@ interface ModalidadeFaturamento {
 export default function FaturamentoModalidades() {
   const { id, faturamentoId } = useParams<{ id: string; faturamentoId: string }>();
   const navigate = useNavigate();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   
   const [pedido, setPedido] = useState<PedidoDetalhado | null>(null);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
@@ -881,6 +883,7 @@ export default function FaturamentoModalidades() {
             color="secondary"
             startIcon={<AutoFixHighIcon />}
             onClick={abrirDialogAutomatico}
+            disabled={periodoBloqueado}
           >
             Alocamento Automático
           </Button>
@@ -896,6 +899,7 @@ export default function FaturamentoModalidades() {
 
       {erro && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>{erro}</Alert>}
       {sucesso && <Alert severity="success" sx={{ mb: 3 }}>{sucesso}</Alert>}
+      {periodoBloqueado && <Alert severity="warning" sx={{ mb: 3 }}>{motivoBloqueio}</Alert>}
 
       <Grid container spacing={3}>
         {faturamentos.map((faturamento) => (
@@ -919,6 +923,7 @@ export default function FaturamentoModalidades() {
                     size="small"
                     startIcon={<AddIcon />}
                     onClick={() => abrirDialogAdicionar(faturamento.modalidade_id)}
+                    disabled={periodoBloqueado}
                   >
                     Adicionar Itens
                   </Button>
@@ -1008,6 +1013,7 @@ export default function FaturamentoModalidades() {
                                       color="add"
                                       onClick={salvarFaturamento}
                                       title="Salvar"
+                                      disabled={periodoBloqueado}
                                     >
                                       <SaveIcon fontSize="small" />
                                     </IconButton>
@@ -1039,6 +1045,7 @@ export default function FaturamentoModalidades() {
                                       size="small"
                                       color="delete"
                                       onClick={() => removerItem(faturamento.modalidade_id, item.contrato_produto_id)}
+                                      disabled={periodoBloqueado}
                                       title="Excluir"
                                     >
                                       <DeleteIcon fontSize="small" />
@@ -1066,7 +1073,7 @@ export default function FaturamentoModalidades() {
               color="primary"
               startIcon={<SaveIcon />}
               onClick={salvarFaturamento}
-              disabled={loading}
+              disabled={loading || periodoBloqueado}
               size="large"
             >
               {loading ? 'Salvando...' : 'Salvar Faturamento'}
@@ -1168,7 +1175,7 @@ export default function FaturamentoModalidades() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogAberto(false)}>Cancelar</Button>
-          <Button onClick={adicionarItens} variant="contained">
+          <Button onClick={adicionarItens} variant="contained" disabled={periodoBloqueado}>
             Adicionar
           </Button>
         </DialogActions>
@@ -1327,7 +1334,7 @@ export default function FaturamentoModalidades() {
           ) : (
             <>
               <Button onClick={voltarParaEtapa1}>Voltar</Button>
-              <Button onClick={confirmarAlocamentoAutomatico} variant="contained">
+              <Button onClick={confirmarAlocamentoAutomatico} variant="contained" disabled={periodoBloqueado}>
                 Confirmar Alocamento
               </Button>
             </>

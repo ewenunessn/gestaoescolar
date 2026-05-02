@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
 
 interface ItemFaturamento {
   pedido_item_id: number;
@@ -33,6 +34,39 @@ async function atualizarStatusFaturamentoPorItens(client: any, faturamentoId: nu
   );
 
   return status;
+}
+
+async function obterPeriodoSelecionado(req: Request) {
+  return obterPeriodoContexto(req.user?.id);
+}
+
+async function buscarPedidoPeriodo(client: any, pedidoId: number) {
+  const result = await client.query(`
+    SELECT p.id, p.status, p.periodo_id, per.fechado
+    FROM pedidos p
+    LEFT JOIN periodos per ON per.id = p.periodo_id
+    WHERE p.id = $1
+  `, [pedidoId]);
+  return result.rows[0] ?? null;
+}
+
+async function validarFaturamentoEditavel(client: any, faturamentoId: number) {
+  const result = await client.query(`
+    SELECT fp.id, fp.pedido_id, p.periodo_id, per.fechado
+    FROM faturamentos_pedidos fp
+    JOIN pedidos p ON p.id = fp.pedido_id
+    LEFT JOIN periodos per ON per.id = p.periodo_id
+    WHERE fp.id = $1
+  `, [faturamentoId]);
+
+  const faturamento = result.rows[0];
+  if (!faturamento) {
+    return { faturamento: null, error: 'Faturamento nao encontrado' };
+  }
+  if (faturamento.fechado) {
+    return { faturamento, error: 'Nao e possivel alterar faturamento de periodo fechado' };
+  }
+  return { faturamento, error: null };
 }
 
 const detalhesFaturamentoQuery = `
@@ -117,20 +151,32 @@ export async function criarFaturamento(req: Request, res: Response) {
     await client.query('BEGIN');
 
     // Verificar se pedido existe e capturar status inicial
-    const pedidoCheck = await client.query(
-      'SELECT id, status FROM pedidos WHERE id = $1',
-      [pedido_id]
-    );
+    const pedido = await buscarPedidoPeriodo(client, pedido_id);
 
-    if (pedidoCheck.rows.length === 0) {
+    if (!pedido) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: 'Pedido não encontrado'
       });
     }
+    if (pedido.fechado) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Nao e possivel criar faturamento em periodo fechado'
+      });
+    }
+    const periodoSelecionado = await obterPeriodoSelecionado(req);
+    if (periodoSelecionado?.id && pedido.periodo_id && Number(periodoSelecionado.id) !== Number(pedido.periodo_id)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Pedido pertence a outro periodo'
+      });
+    }
 
-    const statusInicial = pedidoCheck.rows[0].status;
+    const statusInicial = pedido.status;
 
     // Validar quantidades alocadas não excedem quantidade do pedido
     for (const item of itens) {
@@ -240,12 +286,14 @@ export async function criarFaturamento(req: Request, res: Response) {
 export async function listarFaturamentosPedido(req: Request, res: Response) {
   try {
     const { pedidoId } = req.params;
+    const periodo = await obterPeriodoSelecionado(req);
 
     const faturamentos = await db.query(`
       ${detalhesFaturamentoQuery}
       WHERE fp.pedido_id = $1
+        ${periodo?.id ? 'AND p.periodo_id = $2' : ''}
       ORDER BY data_faturamento DESC, modalidade_nome NULLS LAST, produto_nome NULLS LAST
-    `, [pedidoId]);
+    `, periodo?.id ? [pedidoId, periodo.id] : [pedidoId]);
 
     res.json({
       success: true,
@@ -265,12 +313,15 @@ export async function listarFaturamentosPedido(req: Request, res: Response) {
 export async function resumoFaturamentoPedido(req: Request, res: Response) {
   try {
     const { pedidoId } = req.params;
+    const periodo = await obterPeriodoSelecionado(req);
 
     const resumo = await db.query(`
-      SELECT * FROM vw_faturamentos_resumo_modalidades
-      WHERE pedido_id = $1
+      SELECT v.* FROM vw_faturamentos_resumo_modalidades v
+      JOIN pedidos p ON p.id = v.pedido_id
+      WHERE v.pedido_id = $1
+        ${periodo?.id ? 'AND p.periodo_id = $2' : ''}
       ORDER BY modalidade_nome
-    `, [pedidoId]);
+    `, periodo?.id ? [pedidoId, periodo.id] : [pedidoId]);
 
     res.json({
       success: true,
@@ -335,20 +386,21 @@ export async function atualizarFaturamento(req: Request, res: Response) {
 
     await client.query('BEGIN');
 
-    const faturamentoCheck = await client.query(
-      'SELECT pedido_id FROM faturamentos_pedidos WHERE id = $1',
-      [id]
-    );
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
 
-    if (faturamentoCheck.rows.length === 0) {
+    if (!faturamento) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: 'Faturamento não encontrado'
       });
     }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
 
-    const pedido_id = faturamentoCheck.rows[0].pedido_id;
+    const pedido_id = faturamento.pedido_id;
 
     // Validar quantidades (excluindo o faturamento atual)
     for (const item of itens) {
@@ -440,18 +492,18 @@ export async function deletarFaturamento(req: Request, res: Response) {
 
     const { id } = req.params;
 
-    // Verificar se faturamento existe
-    const faturamentoCheck = await client.query(
-      'SELECT id FROM faturamentos_pedidos WHERE id = $1',
-      [id]
-    );
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
 
-    if (faturamentoCheck.rows.length === 0) {
+    if (!faturamento) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message: 'Faturamento não encontrado'
       });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
     }
 
     // Deletar itens (cascade já faz isso, mas explicitamos para clareza)
@@ -634,6 +686,14 @@ export async function atualizarStatusFaturamento(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: 'Status invalido' });
     }
 
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(db, Number(id));
+    if (!faturamento) {
+      return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
+    }
+    if (periodoError) {
+      return res.status(400).json({ success: false, message: periodoError });
+    }
+
     const result = await db.query(
       'UPDATE faturamentos_pedidos SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [status, id]
@@ -655,6 +715,16 @@ export async function registrarConsumoFaturamento(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
     const { id } = req.params;
+
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
+    if (!faturamento) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
 
     await client.query(`
       UPDATE faturamentos_itens
@@ -680,6 +750,16 @@ export async function registrarConsumoItem(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
     const { id, itemId } = req.params;
+
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
+    if (!faturamento) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
 
     const result = await client.query(`
       UPDATE faturamentos_itens
@@ -712,6 +792,16 @@ export async function reverterConsumoItem(req: Request, res: Response) {
     await client.query('BEGIN');
     const { id, itemId } = req.params;
 
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
+    if (!faturamento) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
+
     const result = await client.query(`
       UPDATE faturamentos_itens
       SET consumo_registrado = false, data_consumo = NULL, updated_at = CURRENT_TIMESTAMP
@@ -743,6 +833,16 @@ export async function removerItensModalidade(req: Request, res: Response) {
     await client.query('BEGIN');
     const { id } = req.params;
     const { contrato_id, modalidade_id } = req.body;
+
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
+    if (!faturamento) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
+    }
+    if (periodoError) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: periodoError });
+    }
 
     if (!contrato_id || !modalidade_id) {
       await client.query('ROLLBACK');

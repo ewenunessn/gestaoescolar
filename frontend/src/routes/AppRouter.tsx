@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { Box, Typography } from "@mui/material";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
-import LayoutModerno from "../components/LayoutModerno";
+import AppShellLayout from "../components/layout/AppShellLayout";
 import PermissionGuard from "../components/PermissionGuard";
 import { EscolasProvider } from "../contexts/EscolasContext";
 import { desktopSans } from "../theme/theme";
@@ -10,7 +10,7 @@ import { ROUTE_PERMISSION_SLUGS } from "./permissionSlugs";
 
 // Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
-import LoginWrapper from "../components/LoginWrapper";
+import AuthPageShell from "../components/layout/AuthPageShell";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
 
@@ -191,7 +191,7 @@ function PublicRoute({ children }: { children: JSX.Element }) {
 function LazyRoute({ children, moduloSlug }: { children: JSX.Element; moduloSlug?: string }) {
   return (
     <PrivateRoute>
-      <LayoutModerno>
+      <AppShellLayout>
         <Suspense fallback={<PageLoader />}>
           {moduloSlug ? (
             <PermissionGuard moduloSlug={moduloSlug}>
@@ -201,7 +201,7 @@ function LazyRoute({ children, moduloSlug }: { children: JSX.Element; moduloSlug
             children
           )}
         </Suspense>
-      </LayoutModerno>
+      </AppShellLayout>
     </PrivateRoute>
   );
 }
@@ -238,9 +238,9 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             {/* Login administrativo */}
             <Route path="/login" element={
               <PublicRoute>
-                <LoginWrapper>
+                <AuthPageShell>
                   <Login />
-                </LoginWrapper>
+                </AuthPageShell>
               </PublicRoute>
             } />
 
@@ -255,9 +255,9 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/dashboard"
               element={
                 <PrivateRoute>
-                  <LayoutModerno>
+                  <AppShellLayout>
                     <Dashboard />
-                  </LayoutModerno>
+                  </AppShellLayout>
                 </PrivateRoute>
               }
             />
@@ -265,9 +265,9 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/app"
               element={
                 <PrivateRoute>
-                  <LayoutModerno>
+                  <AppShellLayout>
                     <Dashboard />
-                  </LayoutModerno>
+                  </AppShellLayout>
                 </PrivateRoute>
               }
             />

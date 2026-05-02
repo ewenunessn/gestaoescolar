@@ -14,9 +14,9 @@ import {
   useTheme,
 } from '@mui/material';
 import { CalendarToday, Public, Person } from '@mui/icons-material';
-import { usePeriodos, usePeriodoAtivo, useSelecionarPeriodo } from '../hooks/queries/usePeriodosQueries';
+import { usePeriodos, usePeriodoAtivo, useSelecionarPeriodo } from '../../hooks/queries/usePeriodosQueries';
 
-export const SeletorPeriodo: React.FC = () => {
+export const ActivePeriodSelector: React.FC = () => {
   const theme = useTheme();
   const { data: periodos, isLoading: loadingPeriodos } = usePeriodos();
   const { data: periodoAtivo, isLoading: loadingAtivo } = usePeriodoAtivo();
@@ -159,6 +159,17 @@ export const SeletorPeriodo: React.FC = () => {
             </Box>
           )}
         />
+        {periodoSelecionado?.fechado && (
+          <Tooltip title="Periodo fechado: dados disponiveis apenas para consulta.">
+            <Chip
+              label="Consulta"
+              size="small"
+              color="warning"
+              variant="outlined"
+              sx={{ height: 22, fontSize: '0.68rem' }}
+            />
+          </Tooltip>
+        )}
       </Box>
 
       <Backdrop

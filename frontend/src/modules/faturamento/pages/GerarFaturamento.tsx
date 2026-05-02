@@ -46,10 +46,12 @@ import type { PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import { exportarContratoParaExcel } from "../../../utils/exportarFaturamentoExcel";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 function GerarFaturamento() {
     const { pedidoId } = useParams<{ pedidoId: string }>();
     const navigate = useNavigate();
+    const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
 
     const [loading, setLoading] = useState(false);
     const [carregando, setCarregando] = useState(true);
@@ -117,6 +119,10 @@ function GerarFaturamento() {
     };
 
     const gerarFaturamento = async () => {
+        if (periodoBloqueado) {
+            setErro(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+            return;
+        }
         try {
             setLoading(true);
             setErro('');
@@ -238,6 +244,11 @@ function GerarFaturamento() {
                             💡 Acesse "Saldo por Modalidade" para ajustar os saldos disponíveis.
                         </Typography>
                     )}
+                </Alert>
+            )}
+            {periodoBloqueado && (
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                    {motivoBloqueio}
                 </Alert>
             )}
 
@@ -505,7 +516,7 @@ function GerarFaturamento() {
                                                 variant="outlined"
                                                 startIcon={<CalculateIcon />}
                                                 onClick={calcularPrevia}
-                                                disabled={loading}
+                                                disabled={loading || periodoBloqueado}
                                             >
                                                 Recalcular
                                             </Button>
@@ -513,7 +524,7 @@ function GerarFaturamento() {
                                                 variant="contained"
                                                 startIcon={<SendIcon />}
                                                 onClick={confirmarGeracao}
-                                                disabled={loading}
+                                                disabled={loading || periodoBloqueado}
                                             >
                                                 Gerar Faturamento
                                             </Button>
@@ -564,7 +575,7 @@ function GerarFaturamento() {
                     <Button
                         onClick={gerarFaturamento}
                         variant="contained"
-                        disabled={loading}
+                        disabled={loading || periodoBloqueado}
                     >
                         {loading ? 'Gerando...' : 'Confirmar Geração'}
                     </Button>

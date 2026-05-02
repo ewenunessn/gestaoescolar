@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
 import HistoricoEntregaModel from '../models/HistoricoEntrega';
+import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
+
+async function obterPeriodoId(req: Request): Promise<number | undefined> {
+  const periodo = await obterPeriodoContexto(req.user?.id);
+  return periodo?.id;
+}
 
 class HistoricoEntregaController {
   /**
@@ -38,7 +44,8 @@ class HistoricoEntregaController {
 
       const historico = await HistoricoEntregaModel.listarPorEscola(
         Number(escolaId),
-        guiaId ? Number(guiaId) : undefined
+        guiaId ? Number(guiaId) : undefined,
+        await obterPeriodoId(req)
       );
       
       res.json(historico);
@@ -88,7 +95,8 @@ class HistoricoEntregaController {
 
       const itens = await HistoricoEntregaModel.listarItensComHistorico(
         Number(escolaId),
-        guiaId ? Number(guiaId) : undefined
+        guiaId ? Number(guiaId) : undefined,
+        await obterPeriodoId(req)
       );
       
       res.json(itens);

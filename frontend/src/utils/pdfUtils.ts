@@ -565,7 +565,7 @@ export const buildPdfDoc = ({
 
 // ─── Helpers de tabela padrão ─────────────────────────────────────────────────
 
-/** Cria um layout de tabela no estilo DataTable do sistema (cabeçalho cinza claro, bordas sutis) */
+/** Cria um layout de tabela no estilo EntityListTable do sistema (cabeçalho cinza claro, bordas sutis) */
 export interface PdfInfoPanelItem {
   label: string;
   value: string | number | null | undefined;
@@ -704,7 +704,7 @@ export const buildTable = (
           fillColor: PDF_COLORS.headerBg,
           margin: headerMargin,
         })),
-        // Linhas de dados: fundo branco, sem alternância (igual ao DataTable)
+        // Linhas de dados: fundo branco, sem alternância (igual ao EntityListTable)
         ...rows.map((row, rowIndex) =>
           row.map(cell => ({
             text: String(cell ?? ''),

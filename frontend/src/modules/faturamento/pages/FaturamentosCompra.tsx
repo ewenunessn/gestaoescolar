@@ -29,6 +29,7 @@ import pedidosService from "../../../services/pedidos";
 import { listarFaturamentosPedido, deletarFaturamento, criarFaturamento } from "../../../services/faturamentos";
 import { PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
+import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
 
 interface FaturamentoResumo {
   faturamento_id: number;
@@ -42,6 +43,7 @@ interface FaturamentoResumo {
 export default function FaturamentosPedido() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { bloqueado: periodoBloqueado, motivoBloqueio } = usePeriodoOperacional();
   
   const [pedido, setPedido] = useState<PedidoDetalhado | null>(null);
   const [faturamentos, setFaturamentos] = useState<FaturamentoResumo[]>([]);
@@ -118,6 +120,10 @@ export default function FaturamentosPedido() {
   };
 
   const criarNovoFaturamento = async () => {
+    if (periodoBloqueado) {
+      setErro(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+      return;
+    }
     try {
       setLoading(true);
       
@@ -145,6 +151,10 @@ export default function FaturamentosPedido() {
   };
 
   const excluirFaturamento = async (faturamentoId: number) => {
+    if (periodoBloqueado) {
+      setErro(motivoBloqueio || 'Periodo fechado: consulta apenas.');
+      return;
+    }
     if (!confirm('Tem certeza que deseja excluir este faturamento?')) {
       return;
     }
@@ -186,7 +196,8 @@ export default function FaturamentosPedido() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={criarNovoFaturamento}
-            disabled={loading}
+            disabled={loading || periodoBloqueado}
+            title={motivoBloqueio}
           >
             Criar Faturamento
           </Button>
@@ -202,6 +213,7 @@ export default function FaturamentosPedido() {
 
       {erro && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>{erro}</Alert>}
       {sucesso && <Alert severity="success" sx={{ mb: 3 }}>{sucesso}</Alert>}
+      {periodoBloqueado && <Alert severity="warning" sx={{ mb: 3 }}>{motivoBloqueio}</Alert>}
 
       <Card>
         <CardContent>
@@ -261,6 +273,7 @@ export default function FaturamentosPedido() {
                           color="delete"
                           onClick={() => excluirFaturamento(fat.faturamento_id)}
                           title="Excluir"
+                          disabled={periodoBloqueado}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>

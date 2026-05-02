@@ -43,7 +43,7 @@ import {
   useRemoverCardapioModalidade
 } from "../../../hooks/queries/useCardapioModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 
@@ -424,9 +424,9 @@ const CardapiosModalidadePage: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={cardapiosFiltrados}
             columns={columns}
             loading={loading}

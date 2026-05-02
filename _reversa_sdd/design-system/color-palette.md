@@ -64,7 +64,7 @@ Essas cores aparecem em componentes especificos, mas nao foram definidas no tema
 | Local | Cores vistas | Observacao | Confianca |
 | --- | --- | --- | --- |
 | `frontend/src/components/StatusIndicator.tsx` | `#ff9800`, `#2196f3`, `#4caf50`, `#f44336`, `#9e9e9e` | escala propria de status, paralela ao tema | 🟡 |
-| `frontend/src/components/LoginWrapper.tsx` | `#2563eb`, branco, cinzas claros | experiencia de login segue linguagem mais clara e promocional | 🟡 |
+| `frontend/src/components/layout/AuthPageShell.tsx` | `#2563eb`, branco, cinzas claros | experiencia de login segue linguagem mais clara e promocional | 🟡 |
 | paginas e widgets isolados | azuis e verdes hardcoded variados | coexistem tons nao tokenizados no frontend | 🟡 |
 
 ## Leitura visual consolidada

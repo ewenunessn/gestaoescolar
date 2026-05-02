@@ -30,7 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { listarContratos, removerContrato } from "../../../services/contratos";
 import { fornecedorService } from "../../../services/fornecedores";
 import { useToast } from "../../../hooks/useToast";
-import { DataTable } from "../../../components/DataTable";
+import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 
@@ -304,9 +304,9 @@ const ContratosPage: React.FC = () => {
           }
         />
 
-        {/* DataTable com altura fixa para scroll */}
+        {/* EntityListTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <DataTable
+          <EntityListTable
             data={contratosFiltrados}
             columns={columns}
             loading={loading}
