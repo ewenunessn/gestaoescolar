@@ -219,7 +219,6 @@ export default function FaturamentosPedido() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>ID</TableCell>
                     <TableCell>Data</TableCell>
                     <TableCell>Usuário</TableCell>
                     <TableCell align="center">Itens</TableCell>
@@ -232,7 +231,6 @@ export default function FaturamentosPedido() {
                 <TableBody>
                   {faturamentos.map((fat) => (
                     <TableRow key={fat.faturamento_id} hover>
-                      <TableCell>#{fat.faturamento_id}</TableCell>
                       <TableCell>{formatarData(fat.data_faturamento)}</TableCell>
                       <TableCell>{fat.usuario_nome}</TableCell>
                       <TableCell align="center">{fat.total_itens}</TableCell>

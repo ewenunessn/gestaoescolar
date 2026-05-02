@@ -53,6 +53,10 @@ const getToken = (theme: Theme) => ({
   canvasSub: theme.palette.background.default,
 });
 
+const hiddenSystemColumns = {
+  id: false,
+};
+
 type MobileRowData = {
   data_inicio?: string;
   data_fim?: string;
@@ -156,7 +160,10 @@ export const DataTable = memo(function DataTable<TData>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [columnVisibility, setColumnVisibility] = useState(initialColumnVisibility);
+  const [columnVisibility, setColumnVisibility] = useState({
+    ...initialColumnVisibility,
+    ...hiddenSystemColumns,
+  });
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: isMobile ? 10 : initialPageSize,

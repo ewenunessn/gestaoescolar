@@ -279,7 +279,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         const linhasVazias = ITENS_POR_PAGINA - itensPagina.length;
 
         // Preparar dados da tabela para esta página
-        const headers = ['ID', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
+        const headers = ['#', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
         const rows = [
           ...itensPagina.map((item, idx) => {
             // Pegar a data e recebedor do histórico mais recente (se houver)
@@ -536,7 +536,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           const itensPagina = itensOrdenados.slice(inicio, fim);
           const linhasVazias = ITENS_POR_PAGINA - itensPagina.length;
 
-          const headers = ['ID', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
+          const headers = ['#', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
           const rows = [
             ...itensPagina.map((item, idx) => {
               let dataEntregaFormatada = '';

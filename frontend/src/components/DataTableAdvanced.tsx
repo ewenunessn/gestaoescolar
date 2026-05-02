@@ -65,6 +65,10 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const hiddenSystemColumns: VisibilityState = {
+  id: false,
+};
+
 interface DataTableAdvancedProps<TData> {
   data: TData[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,7 +114,7 @@ export function DataTableAdvanced<TData>({
   const [globalFilter, setGlobalFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [rowSelection, setRowSelection] = useState({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(hiddenSystemColumns);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -572,7 +576,7 @@ export function DataTableAdvanced<TData>({
             </Typography>
           </MenuItem>
           {table.getAllLeafColumns().map((column) => {
-            if (column.id === 'actions' || column.id === 'select') return null;
+            if (column.id === 'actions' || column.id === 'select' || column.id === 'id') return null;
             return (
               <MenuItem key={column.id} dense onClick={column.getToggleVisibilityHandler()}
                 sx={{
