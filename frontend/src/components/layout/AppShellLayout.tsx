@@ -1,54 +1,65 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   alpha,
-  AppBar,
+  Badge,
   Box,
   Button,
   CircularProgress,
   Collapse,
+  Divider,
   Drawer,
   IconButton,
-  InputBase,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
-  Toolbar,
   Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import {
-  AdminPanelSettings,
-  Apps as AppsIcon,
-  Assignment,
-  Agriculture,
-  Business,
-  CalendarToday,
-  Category,
-  Dashboard,
-  DarkModeOutlined,
-  Description,
-  ExpandMore,
-  HomeWork,
-  Inventory,
-  LightModeOutlined,
-  ListAlt,
-  LocalShipping,
-  Logout,
+  AppWindow,
+  BarChart3,
+  BellRing,
+  BookOpen,
+  Boxes,
+  BriefcaseBusiness,
+  Building2,
+  CalendarCheck,
+  CalendarDays,
+  ChefHat,
+  ChevronDown,
+  CircleUserRound,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  Home,
+  LayoutDashboard,
+  ListChecks,
+  LogOut,
+  Map,
   Menu as MenuIcon,
-  MenuBook,
-  NotificationsActive,
-  RequestPage,
-  Restaurant,
-  Schedule,
+  Moon,
+  Package2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Palette,
   School,
-  Search as SearchIcon,
   Settings,
-} from "@mui/icons-material";
+  ShieldCheck,
+  ShoppingBasket,
+  SlidersHorizontal,
+  Sprout,
+  Store,
+  Sun,
+  Truck,
+  UsersRound,
+  Utensils,
+  Warehouse,
+} from "lucide-react";
 import type { Theme } from "@mui/material/styles";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -61,7 +72,6 @@ import { useConfigChangeIndicator } from "../../hooks/useConfigChangeIndicator";
 import { useUserPermissions } from "../../hooks/useUserPermissions";
 import { useUserRole } from "../../hooks/useUserRole";
 import { ActivePeriodSelector } from "../navigation/ActivePeriodSelector";
-import { GlobalSearchDropdown, useGlobalSearch } from "../navigation/GlobalSearch";
 import NotificacoesEscolaMenu from "../NotificacoesEscolaMenu";
 import NotificacoesMenu from "../NotificacoesMenu";
 import { DesktopTitlebarMenu } from "./DesktopTitlebarMenu";
@@ -71,6 +81,12 @@ import { ROUTE_PERMISSION_SLUGS } from "../../routes/permissionSlugs";
 const drawerWidth = 248;
 const collapsedDrawerWidth = 78;
 const desktopTitleBarHeight = 32;
+const navInset = 0.75;
+const navIconWidth = 30;
+const navItemPaddingX = 1.25;
+const sidebarFontFamily = '"Segoe UI Variable", "Segoe UI", "Inter", "Roboto", sans-serif';
+const iconProps = { size: 15, strokeWidth: 1.75 };
+const compactIconProps = { size: 14, strokeWidth: 1.75 };
 
 type LayoutTokens = {
   bgPrimary: string;
@@ -117,26 +133,26 @@ const getLayoutTokens = (theme: Theme): LayoutTokens => ({
 });
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Principal: <Dashboard fontSize="small" />,
-  Abastecimento: <LocalShipping fontSize="small" />,
-  Cadastros: <School fontSize="small" />,
-  "Cardápios": <MenuBook fontSize="small" />,
-  Compras: <Assignment fontSize="small" />,
-  Entregas: <LocalShipping fontSize="small" />,
-  Estoque: <Inventory fontSize="small" />,
-  "Configurações": <Settings fontSize="small" />,
-  "Portal Escola": <HomeWork fontSize="small" />,
+  Principal: <LayoutDashboard {...iconProps} />,
+  Abastecimento: <AppWindow {...iconProps} />,
+  Cadastros: <UsersRound {...iconProps} />,
+  "Cardápios": <Utensils {...iconProps} />,
+  Compras: <ShoppingBasket {...iconProps} />,
+  Entregas: <Truck {...iconProps} />,
+  Estoque: <Package2 {...iconProps} />,
+  "Configurações": <Settings {...iconProps} />,
+  "Portal Escola": <Building2 {...iconProps} />,
 };
 
 const MENU_ESCOLA = [
   {
     category: "Portal Escola",
     items: [
-      { text: "Minha Escola", icon: <HomeWork fontSize="small" />, path: "/portal-escola" },
-      { text: "Cardápio", icon: <Restaurant fontSize="small" />, path: "/portal-escola/cardapio" },
-      { text: "Solicitações", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
-      { text: "Comprovantes", icon: <Description fontSize="small" />, path: "/portal-escola/comprovantes" },
-      { text: "Alunos", icon: <School fontSize="small" />, path: "/portal-escola/alunos" },
+      { text: "Minha Escola", icon: <Home {...iconProps} />, path: "/portal-escola" },
+      { text: "Cardápio", icon: <Utensils {...iconProps} />, path: "/portal-escola/cardapio" },
+      { text: "Solicitações", icon: <FileText {...iconProps} />, path: "/portal-escola/solicitacoes" },
+      { text: "Comprovantes", icon: <ShieldCheck {...iconProps} />, path: "/portal-escola/comprovantes" },
+      { text: "Alunos", icon: <UsersRound {...iconProps} />, path: "/portal-escola/alunos" },
     ],
   },
 ];
@@ -144,63 +160,68 @@ const MENU_ESCOLA = [
 const getMenuConfig = (_cfg: unknown) => [
   {
     standalone: true,
-    item: { text: "Dashboard", icon: <Dashboard fontSize="small" />, path: "/dashboard" },
+    item: { text: "Dashboard", icon: <LayoutDashboard {...iconProps} />, path: "/dashboard" },
   },
   {
     category: "Cadastros",
     items: [
-      { text: "Escolas", icon: <School fontSize="small" />, path: "/escolas" },
-      { text: "Modalidades", icon: <Category fontSize="small" />, path: "/modalidades" },
-      { text: "Produtos", icon: <Inventory fontSize="small" />, path: "/produtos" },
-      { text: "Nutricionistas", icon: <Restaurant fontSize="small" />, path: "/nutricionistas" },
-      { text: "Fornecedores", icon: <Business fontSize="small" />, path: "/fornecedores" },
-      { text: "Contratos", icon: <Assignment fontSize="small" />, path: "/contratos" },
+      { text: "Escolas", icon: <School {...iconProps} />, path: "/escolas" },
+      { text: "Modalidades", icon: <SlidersHorizontal {...iconProps} />, path: "/modalidades" },
+      { text: "Produtos", icon: <Package2 {...iconProps} />, path: "/produtos" },
+      { text: "Nutricionistas", icon: <Utensils {...iconProps} />, path: "/nutricionistas" },
+      { text: "Fornecedores", icon: <Store {...iconProps} />, path: "/fornecedores" },
+      { text: "Contratos", icon: <ClipboardList {...iconProps} />, path: "/contratos" },
     ],
   },
   {
     category: "Cardápios",
     items: [
-      { text: "Preparações", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
-      { text: "Cardápios", icon: <MenuBook fontSize="small" />, path: "/cardapios" },
-      { text: "Tipos de Refeição", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
+      { text: "Preparações", icon: <ChefHat {...iconProps} />, path: "/preparacoes" },
+      { text: "Cardápios", icon: <BookOpen {...iconProps} />, path: "/cardapios" },
+      { text: "Tipos de Refeição", icon: <CalendarDays {...iconProps} />, path: "/tipos-refeicao" },
     ],
   },
   {
     category: "Compras",
     items: [
-      { text: "Saldo Contratos", icon: <Category fontSize="small" />, path: "/saldos-contratos-modalidades" },
-      { text: "Dashboard PNAE", icon: <Agriculture fontSize="small" />, path: "/pnae/dashboard" },
+      { text: "Saldos de Contratos", icon: <BriefcaseBusiness {...iconProps} />, path: "/saldos-contratos-modalidades" },
+      { text: "Dashboard PNAE", icon: <Sprout {...iconProps} />, path: "/pnae/dashboard" },
     ],
   },
   {
     category: "Abastecimento",
     items: [
-      { text: "Visao Geral", icon: <Dashboard fontSize="small" />, path: "/abastecimento" },
-      { text: "Guias de Demanda", icon: <ListAlt fontSize="small" />, path: "/guias-demanda" },
-      { text: "Compras / Pedidos", icon: <RequestPage fontSize="small" />, path: "/compras" },
-      { text: "Entregas", icon: <LocalShipping fontSize="small" />, path: "/entregas" },
-      { text: "Comprovantes", icon: <Description fontSize="small" />, path: "/comprovantes-entrega" },
-      { text: "Rotas", icon: <Business fontSize="small" />, path: "/gestao-rotas" },
+      { text: "Visao Geral", icon: <BarChart3 {...iconProps} />, path: "/abastecimento" },
+      { text: "Guias de Demanda", icon: <ListChecks {...iconProps} />, path: "/guias-demanda" },
+      { text: "Compras / Pedidos", icon: <ShoppingBasket {...iconProps} />, path: "/compras" },
+      { text: "Entregas", icon: <Truck {...iconProps} />, path: "/entregas" },
+      { text: "Comprovantes", icon: <ClipboardCheck {...iconProps} />, path: "/comprovantes-entrega" },
+      { text: "Rotas", icon: <Map {...iconProps} />, path: "/gestao-rotas" },
     ],
   },
   {
     category: "Estoque",
     items: [
-      { text: "Estoque Central", icon: <Inventory fontSize="small" />, path: "/estoque-central" },
-      { text: "Estoque Escolar", icon: <School fontSize="small" />, path: "/estoque-escolar" },
-      { text: "Solicitações Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
+      { text: "Estoque Central", icon: <Warehouse {...iconProps} />, path: "/estoque-central" },
+      { text: "Estoque Escolar", icon: <Boxes {...iconProps} />, path: "/estoque-escolar" },
+      { text: "Solicitações Recebidas", icon: <CalendarCheck {...iconProps} />, path: "/solicitacoes-alimentos" },
     ],
   },
-  {
-    category: "Configurações",
-    items: [
-      { text: "Instituição", icon: <Settings fontSize="small" />, path: "/configuracao-instituicao" },
-      { text: "Calendário Letivo", icon: <CalendarToday fontSize="small" />, path: "/calendario-letivo" },
-      { text: "Períodos", icon: <CalendarToday fontSize="small" />, path: "/periodos", adminOnly: true },
-      { text: "Usuários", icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios", adminOnly: true },
-      { text: "Disparos", icon: <NotificationsActive fontSize="small" />, path: "/disparos-notificacao", adminOnly: true },
-    ],
-  },
+];
+
+type MenuItemConfig = {
+  text: string;
+  icon: React.ReactNode;
+  path: string;
+  adminOnly?: boolean;
+};
+
+const SETTINGS_MENU_ITEMS: MenuItemConfig[] = [
+  { text: "Instituição", icon: <Building2 {...iconProps} />, path: "/configuracao-instituicao" },
+  { text: "Calendário Letivo", icon: <CalendarDays {...iconProps} />, path: "/calendario-letivo" },
+  { text: "Períodos", icon: <CalendarCheck {...iconProps} />, path: "/periodos", adminOnly: true },
+  { text: "Usuários", icon: <ShieldCheck {...iconProps} />, path: "/gerenciamento-usuarios", adminOnly: true },
+  { text: "Disparos", icon: <BellRing {...iconProps} />, path: "/disparos-notificacao", adminOnly: true },
 ];
 
 const MODULO_SLUGS: Record<string, string> = {
@@ -219,7 +240,7 @@ const MODULO_SLUGS: Record<string, string> = {
   "Tipos de Refeição": "tipos_refeicao",
   "Guias de Demanda": ROUTE_PERMISSION_SLUGS.guiasDemanda,
   Pedidos: ROUTE_PERMISSION_SLUGS.compras,
-  "Saldo Contratos": "saldo_contratos",
+  "Saldos de Contratos": "saldo_contratos",
   "Dashboard PNAE": "pnae",
   "Gestão de Rotas": "rotas",
   Romaneio: "romaneio",
@@ -253,15 +274,13 @@ const NavItem = ({
   showIcon?: boolean;
 }) => {
   const active = isActivePath(pathname, item.path);
-  const isSubItem = !showIcon && !collapsed;
   const content = (
     <ListItemButton
       onClick={() => onNavigate(item.path)}
       sx={{
-        ml: collapsed ? 0.75 : isSubItem ? 5.9 : 1.25,
-        mr: collapsed ? 0.75 : 1.25,
+        mx: navInset,
         my: 0.18,
-        px: collapsed ? 1 : 1.25,
+        px: collapsed ? 1 : navItemPaddingX,
         py: 0.72,
         minHeight: 32,
         borderRadius: 1.25,
@@ -278,15 +297,16 @@ const NavItem = ({
       {showIcon && (
         <ListItemIcon
           sx={{
-            minWidth: collapsed ? 0 : 30,
+            minWidth: collapsed ? 0 : navIconWidth,
             color: "inherit",
             justifyContent: "center",
-            "& .MuiSvgIcon-root": { fontSize: 18 },
+            "& svg": { width: 15, height: 15 },
           }}
         >
           {item.icon}
         </ListItemIcon>
       )}
+      {!showIcon && !collapsed && <Box aria-hidden="true" sx={{ width: navIconWidth, flexShrink: 0 }} />}
       {!collapsed && (
         <ListItemText
           primary={item.text}
@@ -328,7 +348,7 @@ const CategoryGroup = ({
     if (hasActive) setOpen(true);
   }, [hasActive]);
 
-  const icon = CATEGORY_ICONS[category] ?? <AppsIcon fontSize="small" />;
+  const icon = CATEGORY_ICONS[category] ?? <AppWindow {...iconProps} />;
 
   if (collapsed) {
     return (
@@ -364,7 +384,7 @@ const CategoryGroup = ({
         <ListItemButton
           onClick={() => setOpen((value) => !value)}
           sx={{
-            mx: 0.75,
+            mx: navInset,
             my: 0.35,
             minHeight: 38,
             borderRadius: 1.25,
@@ -387,8 +407,8 @@ const CategoryGroup = ({
       <ListItemButton
         onClick={() => setOpen((value) => !value)}
         sx={{
-          mx: 1.25,
-          px: 1.25,
+          mx: navInset,
+          px: navItemPaddingX,
           py: 0.55,
           minHeight: 30,
           borderRadius: 1,
@@ -397,7 +417,16 @@ const CategoryGroup = ({
           "&:hover": { backgroundColor: "transparent", color: tokens.textPrimary },
         }}
       >
-        <ListItemIcon sx={{ minWidth: 30, color: "inherit", "& .MuiSvgIcon-root": { fontSize: 17 } }}>{icon}</ListItemIcon>
+        <ListItemIcon
+          sx={{
+            minWidth: navIconWidth,
+            color: "inherit",
+            justifyContent: "center",
+            "& svg": { width: 15, height: 15 },
+          }}
+        >
+          {icon}
+        </ListItemIcon>
         <ListItemText
           primary={category}
           primaryTypographyProps={{
@@ -408,7 +437,14 @@ const CategoryGroup = ({
             color: tokens.textMuted,
           }}
         />
-        <ExpandMore sx={{ fontSize: 18, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s ease" }} />
+        <ChevronDown
+          size={15}
+          strokeWidth={1.75}
+          style={{
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.18s ease",
+          }}
+        />
       </ListItemButton>
       <Collapse in={open} timeout={180} unmountOnExit>
         <List dense disablePadding sx={{ pb: 0.5 }}>
@@ -429,50 +465,309 @@ const CategoryGroup = ({
   );
 };
 
-const ThemeSwitcher = ({ compact = false }: { compact?: boolean }) => {
-  const { mode, setTheme } = useThemePreference();
-  const theme = useTheme();
-  const tokens = getLayoutTokens(theme);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const icon = mode === "dark" ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />;
+const SidebarNotifications = ({
+  collapsed,
+  isMobile,
+  isEscolaUser,
+  tokens,
+}: {
+  collapsed: boolean;
+  isMobile: boolean;
+  isEscolaUser: boolean;
+  tokens: LayoutTokens;
+}) => {
+  const isCollapsed = collapsed && !isMobile;
 
   return (
     <>
-      <Tooltip title="Tema">
-        <IconButton
+      {isEscolaUser ? (
+        <NotificacoesEscolaMenu
+          placement="sidebar"
+          renderTrigger={({ onClick, naoLidas }) => (
+            <NotificationSidebarTrigger
+              collapsed={isCollapsed}
+              naoLidas={naoLidas}
+              onClick={onClick}
+              tokens={tokens}
+            />
+          )}
+        />
+      ) : (
+        <NotificacoesMenu
+          placement="sidebar"
+          renderTrigger={({ onClick, naoLidas }) => (
+            <NotificationSidebarTrigger
+              collapsed={isCollapsed}
+              naoLidas={naoLidas}
+              onClick={onClick}
+              tokens={tokens}
+            />
+          )}
+        />
+      )}
+    </>
+  );
+};
+
+const NotificationSidebarTrigger = ({
+  collapsed,
+  naoLidas,
+  onClick,
+  tokens,
+}: {
+  collapsed: boolean;
+  naoLidas: number;
+  onClick: (event: React.MouseEvent<HTMLElement>) => void;
+  tokens: LayoutTokens;
+}) => (
+  <Button
+    onClick={onClick}
+    startIcon={
+      <Badge badgeContent={naoLidas || undefined} color="error" max={99}>
+        <BellRing {...iconProps} />
+      </Badge>
+    }
+    sx={{
+      justifyContent: collapsed ? "center" : "flex-start",
+      minWidth: 0,
+      minHeight: 32,
+      width: "auto",
+      mx: navInset,
+      my: 0.18,
+      px: collapsed ? 1 : navItemPaddingX,
+      py: 0.72,
+      borderRadius: 1.25,
+      color: tokens.textSecondary,
+      backgroundColor: "transparent",
+      textTransform: "none",
+      "& .MuiButton-startIcon": {
+        minWidth: collapsed ? 0 : navIconWidth,
+        mr: collapsed ? 0 : 0,
+        ml: 0,
+        justifyContent: "center",
+        color: tokens.textPrimary,
+        "& svg": { width: 15, height: 15 },
+      },
+      "&:hover": {
+        backgroundColor: tokens.bgElevated,
+        color: tokens.textPrimary,
+      },
+    }}
+  >
+    {!collapsed && (
+      <Typography noWrap sx={{ fontSize: "0.8rem", fontWeight: 650, lineHeight: 1.1, color: tokens.textPrimary }}>
+        Notificações
+      </Typography>
+    )}
+  </Button>
+);
+
+const AccountSettingsMenu = ({
+  collapsed,
+  isMobile,
+  user,
+  tokens,
+  settingsItems,
+  onNavigate,
+  onLogout,
+}: {
+  collapsed: boolean;
+  isMobile: boolean;
+  user: { nome?: string; email?: string; tipo?: string; perfil?: string } | null;
+  tokens: LayoutTokens;
+  settingsItems: MenuItemConfig[];
+  onNavigate: (path: string) => void;
+  onLogout: () => void;
+}) => {
+  const { mode, setTheme } = useThemePreference();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const displayName = user?.nome || user?.email || "Usuário";
+  const displayEmail = user?.email || user?.perfil || user?.tipo || "Conta do sistema";
+  const isCollapsed = collapsed && !isMobile;
+
+  return (
+    <>
+      <Tooltip title={isCollapsed ? "Configurações" : ""}>
+        <Button
           onClick={(event) => setAnchorEl(event.currentTarget)}
+          startIcon={<Settings {...iconProps} />}
           sx={{
+            justifyContent: isCollapsed ? "center" : "flex-start",
+            minWidth: 0,
+            minHeight: 32,
+            width: "auto",
+            mx: navInset,
+            my: 0.18,
+            px: isCollapsed ? 1 : navItemPaddingX,
+            py: 0.72,
+            borderRadius: 1.25,
             color: tokens.textSecondary,
-            border: `1px solid ${tokens.borderSubtle}`,
-            backgroundColor: compact ? "transparent" : tokens.bgSecondary,
-            "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
+            backgroundColor: open ? tokens.bgElevated : "transparent",
+            textTransform: "none",
+            "& .MuiButton-startIcon": {
+              minWidth: isCollapsed ? 0 : navIconWidth,
+              mr: isCollapsed ? 0 : 0,
+              ml: 0,
+              justifyContent: "center",
+              color: tokens.textPrimary,
+              "& svg": { width: 15, height: 15 },
+            },
+            "&:hover": {
+              backgroundColor: tokens.bgElevated,
+              color: tokens.textPrimary,
+            },
           }}
         >
-          {icon}
-        </IconButton>
+          {!isCollapsed && (
+            <Box sx={{ minWidth: 0, textAlign: "left" }}>
+              <Typography noWrap sx={{ fontSize: "0.8rem", fontWeight: 650, lineHeight: 1.1, color: tokens.textPrimary }}>
+                Configurações
+              </Typography>
+            </Box>
+          )}
+        </Button>
       </Tooltip>
+
       <Menu
         anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+        open={open}
         onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "left" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
         PaperProps={{
           sx: {
-            mt: 1,
-            minWidth: 180,
+            mb: 1,
+            width: 282,
+            maxWidth: "calc(100vw - 24px)",
             borderRadius: 1.5,
             border: `1px solid ${tokens.borderSubtle}`,
+            backgroundColor: tokens.bgSecondary,
             boxShadow: tokens.shadow,
+            fontFamily: sidebarFontFamily,
+            "& .MuiTypography-root, & .MuiButton-root, & .MuiMenuItem-root": {
+              fontFamily: sidebarFontFamily,
+            },
+            "& svg": {
+              flexShrink: 0,
+            },
           },
         }}
       >
-        <MenuItem selected={mode === "light"} onClick={() => { setTheme("light"); setAnchorEl(null); }}>
-          <LightModeOutlined sx={{ mr: 1.25, fontSize: 18 }} />
-          Claro
-        </MenuItem>
-        <MenuItem selected={mode === "dark"} onClick={() => { setTheme("dark"); setAnchorEl(null); }}>
-          <DarkModeOutlined sx={{ mr: 1.25, fontSize: 18 }} />
-          Escuro
+        <Box sx={{ px: 1.5, pt: 1.25, pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 30,
+              height: 30,
+              borderRadius: 1,
+              display: "grid",
+              placeItems: "center",
+              backgroundColor: tokens.bgElevated,
+              color: tokens.textPrimary,
+              flexShrink: 0,
+            }}
+          >
+            <CircleUserRound size={16} strokeWidth={1.75} />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography noWrap sx={{ fontSize: "0.82rem", fontWeight: 700, color: tokens.textPrimary }}>
+              {displayName}
+            </Typography>
+            <Typography noWrap sx={{ fontSize: "0.74rem", color: tokens.textMuted }}>
+              {displayEmail}
+            </Typography>
+          </Box>
+        </Box>
+        <Divider />
+        {settingsItems.length > 0 && (
+          <Box sx={{ py: 0.5 }}>
+            <Typography
+              sx={{
+                px: 1.5,
+                py: 0.75,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: tokens.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Configurações
+            </Typography>
+            {settingsItems.map((item) => (
+              <MenuItem
+                key={item.path}
+                onClick={() => {
+                  setAnchorEl(null);
+                  onNavigate(item.path);
+                }}
+                sx={{ minHeight: 36, px: 1.25, py: 0.72, fontSize: "0.82rem", gap: 0 }}
+              >
+                <Box sx={{ width: 30, display: "grid", placeItems: "center", color: tokens.textSecondary, flexShrink: 0 }}>
+                  {item.icon}
+                </Box>
+                {item.text}
+              </MenuItem>
+            ))}
+          </Box>
+        )}
+        <Divider />
+        <Box sx={{ px: 1.5, py: 1 }}>
+          <Box sx={{ mb: 0.75, display: "flex", alignItems: "center", gap: 1, color: tokens.textSecondary }}>
+            <Palette size={15} strokeWidth={1.75} />
+            <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: tokens.textPrimary }}>Tema</Typography>
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0.75 }}>
+            <Button
+              size="small"
+              onClick={() => setTheme("light")}
+              startIcon={<Sun {...compactIconProps} />}
+              sx={{
+                minHeight: 32,
+                borderRadius: 1,
+                border: `1px solid ${mode === "light" ? alpha(tokens.primary, 0.42) : tokens.borderSubtle}`,
+                color: mode === "light" ? tokens.textPrimary : tokens.textSecondary,
+                backgroundColor: mode === "light" ? tokens.primaryTint : "transparent",
+                textTransform: "none",
+                fontSize: "0.76rem",
+              }}
+            >
+              Claro
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setTheme("dark")}
+              startIcon={<Moon {...compactIconProps} />}
+              sx={{
+                minHeight: 32,
+                borderRadius: 1,
+                border: `1px solid ${mode === "dark" ? alpha(tokens.primary, 0.42) : tokens.borderSubtle}`,
+                color: mode === "dark" ? tokens.textPrimary : tokens.textSecondary,
+                backgroundColor: mode === "dark" ? tokens.primaryTint : "transparent",
+                textTransform: "none",
+                fontSize: "0.76rem",
+              }}
+            >
+              Escuro
+            </Button>
+          </Box>
+        </Box>
+        <Box sx={{ px: 1.5, py: 1 }}>
+          <Typography sx={{ mb: 0.75, fontSize: "0.72rem", fontWeight: 700, color: tokens.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Período
+          </Typography>
+          <ActivePeriodSelector placement="accountMenu" />
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            onLogout();
+          }}
+          sx={{ minHeight: 38, fontSize: "0.82rem", gap: 1.25, color: tokens.danger }}
+        >
+          <LogOut size={15} strokeWidth={1.75} />
+          Sair
         </MenuItem>
       </Menu>
     </>
@@ -491,16 +786,15 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
 
   const navigate = useNavigate();
   const location = useLocation();
-  const search = useGlobalSearch();
   const desktopShell = window.desktopShell;
   const isDesktopShell = Boolean(desktopShell?.isDesktop);
   const titleBarOffset = isDesktopShell ? desktopTitleBarHeight : 0;
-  const mobileTopOffset = `calc(${titleBarOffset}px + 60px)`;
-  const desktopTopOffset = `calc(${titleBarOffset}px + 68px)`;
+  const mobileTopOffset = `${titleBarOffset}px`;
+  const desktopTopOffset = `${titleBarOffset}px`;
 
   const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
-  const { isAdmin, isEscolaUser } = useUserRole();
+  const { user, isAdmin, isEscolaUser } = useUserRole();
   const { hasLeitura } = useUserPermissions();
 
   useEffect(() => {
@@ -527,6 +821,15 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
       .filter((section: any) => section.standalone || section.items.length > 0);
   }, [configModuloSaldo, hasLeitura, isAdmin, isEscolaUser]);
 
+  const settingsMenuItems = useMemo(() => {
+    return SETTINGS_MENU_ITEMS.filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      if (isAdmin) return true;
+      const slug = MODULO_SLUGS[item.text];
+      return slug ? hasLeitura(slug) : true;
+    });
+  }, [hasLeitura, isAdmin]);
+
   const handleDrawerToggle = useCallback(() => setMobileOpen((value) => !value), []);
   const handleCollapseToggle = useCallback(() => {
     setCollapsed((value: boolean) => {
@@ -548,9 +851,67 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isMobile, navigate]);
 
   const drawerContent = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: tokens.bgPrimary }}>
-      <Box sx={{ px: 1.5, pt: 1.5, pb: 1 }}>
-        {hasRecentChange && !loadingConfig && (
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: tokens.bgPrimary,
+        fontFamily: sidebarFontFamily,
+        "& .MuiTypography-root, & .MuiButton-root, & .MuiListItemText-primary": {
+          fontFamily: sidebarFontFamily,
+        },
+        "& svg": {
+          flexShrink: 0,
+        },
+      }}
+    >
+      <Box
+        sx={{
+          px: collapsed && !isMobile ? 1 : 1.5,
+          pt: 1.5,
+          pb: 1,
+          display: "grid",
+          gap: 1,
+        }}
+      >
+        <Box
+          sx={{
+            minHeight: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed && !isMobile ? "center" : "space-between",
+            px: collapsed && !isMobile ? 0 : 0.75,
+            gap: 1,
+          }}
+        >
+          {(!collapsed || isMobile) && <NutriLogLogo />}
+          {!isMobile && (
+            <Tooltip title={collapsed ? "Expandir menu" : "Recolher menu"} placement="right">
+              <IconButton
+                aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+                onClick={handleCollapseToggle}
+                sx={{
+                  width: 20,
+                  height: 20,
+                  p: 0,
+                  border: 0,
+                  borderRadius: 0,
+                  color: tokens.textSecondary,
+                  backgroundColor: "transparent",
+                  flexShrink: 0,
+                  "&:hover": {
+                    backgroundColor: "transparent",
+                    color: tokens.textPrimary,
+                  },
+                }}
+              >
+                {collapsed ? <PanelLeftOpen {...iconProps} /> : <PanelLeftClose {...iconProps} />}
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        {hasRecentChange && !loadingConfig && (!collapsed || isMobile) && (
           <Box
             sx={{
               px: 1.25,
@@ -609,45 +970,27 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
 
       <Box
         sx={{
-          p: 1.5,
+          py: 1.5,
           borderTop: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.06 : 0.08)}`,
           display: "grid",
           gap: 0.35,
         }}
       >
-        {!isMobile && (
-          <Button
-            onClick={handleCollapseToggle}
-            startIcon={<MenuIcon />}
-            sx={{
-              justifyContent: collapsed ? "center" : "flex-start",
-              minHeight: 34,
-              borderRadius: 1.25,
-              color: tokens.textSecondary,
-              backgroundColor: "transparent",
-              "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
-            }}
-          >
-            {!collapsed && "Recolher menu"}
-          </Button>
-        )}
-        {isMobile && <ThemeSwitcher compact />}
-        <Button
-          onClick={handleLogout}
-          startIcon={<Logout sx={{ color: tokens.danger }} />}
-          sx={{
-            justifyContent: collapsed && !isMobile ? "center" : "flex-start",
-            minHeight: 34,
-            borderRadius: 1.25,
-            color: tokens.textSecondary,
-            "&:hover": {
-              backgroundColor: tokens.dangerTint,
-              color: tokens.danger,
-            },
-          }}
-        >
-          {(!collapsed || isMobile) && "Sair"}
-        </Button>
+        <SidebarNotifications
+          collapsed={collapsed}
+          isMobile={isMobile}
+          isEscolaUser={isEscolaUser}
+          tokens={tokens}
+        />
+        <AccountSettingsMenu
+          collapsed={collapsed}
+          isMobile={isMobile}
+          user={user}
+          tokens={tokens}
+          settingsItems={settingsMenuItems}
+          onNavigate={handleNavigation}
+          onLogout={handleLogout}
+        />
       </Box>
     </Box>
   );
@@ -698,142 +1041,26 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
           />
         </>
       )}
-      <AppBar
-        position="fixed"
-        color="transparent"
+      <IconButton
+        aria-label="Abrir menu"
+        onClick={handleDrawerToggle}
         sx={{
-          top: titleBarOffset,
-          backdropFilter: "blur(18px)",
-          backgroundColor: alpha(tokens.bgPrimary, theme.palette.mode === "light" ? 0.9 : 0.82),
-          borderBottom: `1px solid ${tokens.borderSubtle}`,
+          display: { xs: "inline-flex", md: "none" },
+          position: "fixed",
+          top: `calc(${titleBarOffset}px + 8px)`,
+          left: 8,
           zIndex: (muiTheme) => muiTheme.zIndex.drawer + 1,
+          width: 36,
+          height: 36,
+          borderRadius: 1,
+          color: tokens.textPrimary,
+          backgroundColor: alpha(tokens.bgPrimary, theme.palette.mode === "light" ? 0.9 : 0.82),
+          border: `1px solid ${tokens.borderSubtle}`,
+          "&:hover": { backgroundColor: tokens.bgElevated },
         }}
       >
-        <Toolbar
-          sx={{
-            minHeight: { xs: 60, md: 64 },
-            gap: { xs: 1, md: 1.25 },
-            px: { xs: 1.25, md: 0 },
-          }}
-        >
-          <Box
-            sx={{
-              width: { xs: "auto", md: collapsed ? collapsedDrawerWidth : drawerWidth },
-              px: { xs: 0.75, md: 2.25 },
-              pl: { xs: 1.25, md: 2.5 },
-              display: "flex",
-              alignItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <NutriLogLogo compact={collapsed && !isMobile} />
-          </Box>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ display: { xs: "inline-flex", md: "none" }, color: tokens.textPrimary }}
-          >
-            <MenuIcon />
-          </IconButton>
-
-          <Box
-            sx={{
-              flex: { xs: 1, md: "0 1 440px" },
-              maxWidth: { xs: "none", md: 440, xl: 500 },
-              minWidth: { xs: 0, md: 320 },
-              position: "relative",
-              ml: { xs: 0, md: 2 },
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                minHeight: 38,
-                borderRadius: 1.25,
-                backgroundColor: alpha(tokens.bgSecondary, theme.palette.mode === "light" ? 0.82 : 0.72),
-                border: `1px solid ${search.open ? alpha(tokens.primary, 0.35) : tokens.borderSubtle}`,
-                boxShadow: search.open ? `0 0 0 3px ${alpha(tokens.primary, 0.12)}` : "none",
-              }}
-            >
-              <Box sx={{ pl: 1.75, pr: 1, display: "flex", alignItems: "center", color: tokens.textMuted }}>
-                <SearchIcon sx={{ fontSize: 18 }} />
-              </Box>
-              <InputBase
-                inputRef={search.inputRef}
-                value={search.query}
-                onChange={(event) => {
-                  search.setQuery(event.target.value);
-                  search.setOpen(true);
-                }}
-                onFocus={() => search.setOpen(true)}
-                onBlur={() => setTimeout(() => search.setOpen(false), 150)}
-                placeholder="Buscar páginas..."
-                sx={{
-                  flex: 1,
-                  py: 1,
-                  color: tokens.textPrimary,
-                  fontSize: "0.88rem",
-                  "& input::placeholder": {
-                    color: tokens.textMuted,
-                    opacity: 1,
-                  },
-                }}
-              />
-              <Box
-                sx={{
-                  display: { xs: "none", lg: "flex" },
-                  alignItems: "center",
-                  gap: 0.5,
-                  mr: 1.25,
-                  px: 1,
-                  py: 0.3,
-                  borderRadius: 1,
-                  backgroundColor: tokens.bgAccent,
-                  border: `1px solid ${tokens.borderSubtle}`,
-                  color: tokens.textMuted,
-                  fontFamily: "monospace",
-                  fontSize: "0.68rem",
-                  fontWeight: 700,
-                }}
-              >
-                <span>Ctrl</span>
-                <span>K</span>
-              </Box>
-            </Box>
-
-            {search.open && (
-              <GlobalSearchDropdown
-                query={search.query}
-                loading={search.loading}
-                results={search.results}
-                onNavigate={search.handleNavigate}
-                onClose={search.handleClose}
-              />
-            )}
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              ml: "auto",
-              pr: { xs: 0, md: 1.25 },
-              "& .MuiIconButton-root": {
-                width: 36,
-                height: 36,
-              },
-            }}
-          >
-            <ThemeSwitcher />
-            <ActivePeriodSelector />
-            {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
-          </Box>
-        </Toolbar>
-      </AppBar>
-
+        <MenuIcon {...iconProps} />
+      </IconButton>
       <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer
           variant="temporary"
@@ -845,7 +1072,7 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               mt: mobileTopOffset,
-              height: `calc(100% - ${titleBarOffset}px - 60px)`,
+              height: `calc(100% - ${titleBarOffset}px)`,
               boxSizing: "border-box",
             },
           }}
@@ -860,7 +1087,7 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
             "& .MuiDrawer-paper": {
               width: collapsed ? collapsedDrawerWidth : drawerWidth,
               mt: desktopTopOffset,
-              height: `calc(100% - ${titleBarOffset}px - 68px)`,
+              height: `calc(100% - ${titleBarOffset}px)`,
               overflowX: "hidden",
               transition: "width 0.22s ease",
             },
