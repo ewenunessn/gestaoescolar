@@ -35,14 +35,14 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Save as SaveIcon,
-  ArrowBack as ArrowBackIcon,
   AutoFixHigh as AutoFixHighIcon,
   Edit as EditIcon,
   Cancel as CancelIcon,
   TableChart as ExcelIcon,
   Assessment as AssessmentIcon
 } from "@mui/icons-material";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
+import LoadingScreen from "../../../components/LoadingScreen";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import pedidosService from "../../../services/pedidos";
 import { modalidadeService } from "../../../services/modalidades";
@@ -93,7 +93,7 @@ export default function FaturamentoModalidades() {
   const [modalidadeSelecionada, setModalidadeSelecionada] = useState<number | null>(null);
   const [itensSelecionados, setItensSelecionados] = useState<{[key: number]: number}>({});
 
-  // Dialog para alocamento automático
+  // Dialog para alocamento automatico
   const [dialogAutomaticoAberto, setDialogAutomaticoAberto] = useState(false);
   const [etapaAutomatico, setEtapaAutomatico] = useState<1 | 2>(1);
   const [itensAutomaticoSelecionados, setItensAutomaticoSelecionados] = useState<number[]>([]);
@@ -731,16 +731,16 @@ export default function FaturamentoModalidades() {
         headerTableRow.values = ['Nº', 'ITEM', 'UNIDADE DE MEDIDA', 'QUANTIDADE', 'PREÇO UNITÁRIO', 'CUSTO POR ITEM'];
         headerTableRow.font = { bold: true, size: 10 };
         headerTableRow.alignment = { horizontal: 'center', vertical: 'middle' };
-        headerTableRow.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFC896' } // Laranja claro
-        };
         headerTableRow.height = 20;
         
         // Bordas do cabeçalho
         for (let col = 1; col <= 6; col++) {
           const cell = worksheet.getCell(3, col);
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFC896' } // Laranja claro
+          };
           cell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -810,17 +810,17 @@ export default function FaturamentoModalidades() {
         totalRow.values = ['', '', '', '', 'TOTAL GERAL', totalModalidade];
         totalRow.font = { bold: true, size: 11 };
         totalRow.alignment = { horizontal: 'center', vertical: 'middle' };
-        totalRow.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFADD8E6' } // Azul claro
-        };
         totalRow.getCell(6).numFmt = 'R$ #,##0.00';
         totalRow.height = 22;
 
         // Bordas do total
-        for (let col = 1; col <= 6; col++) {
+        for (let col = 5; col <= 6; col++) {
           const cell = totalRow.getCell(col);
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFADD8E6' } // Azul claro
+          };
           cell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -839,7 +839,7 @@ export default function FaturamentoModalidades() {
   };
 
   if (loading) {
-    return <Box sx={{ p: 3 }}><Typography>Carregando...</Typography></Box>;
+    return <LoadingScreen message="Carregando faturamento..." />;
   }
 
   if (!pedido) {
@@ -848,54 +848,45 @@ export default function FaturamentoModalidades() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <PageBreadcrumbs 
-        items={[
+      <PageHeader
+        onBack={() => navigate(`/compras/${id}/faturamentos`)}
+        breadcrumbs={[
           { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
           { label: `Compra ${pedido.numero}`, path: `/compras/${id}` },
           { label: 'Faturamentos', path: `/compras/${id}/faturamentos` },
           { label: `Faturamento #${faturamentoId}` }
         ]}
+        title="Faturamento por Modalidades"
+        action={
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              color="info"
+              startIcon={<AssessmentIcon />}
+              onClick={() => navigate(`/compras/${id}/faturamento/${faturamentoId}/relatorio-tipo`)}
+            >
+              Relatorio por Tipo
+            </Button>
+            <Button
+              variant="contained" color="add"
+              startIcon={<ExcelIcon />}
+              onClick={gerarExcel}
+              disabled={faturamentos.every(f => f.itens.length === 0)}
+            >
+              Gerar Excel
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<AutoFixHighIcon />}
+              onClick={abrirDialogAutomatico}
+              disabled={periodoBloqueado}
+            >
+      {/* Dialog de Alocamento Automatico */}
+            </Button>
+          </Box>
+        }
       />
-
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Faturamento por Modalidades
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            color="info"
-            startIcon={<AssessmentIcon />}
-            onClick={() => navigate(`/compras/${id}/faturamento/${faturamentoId}/relatorio-tipo`)}
-          >
-            Relatório por Tipo
-          </Button>
-          <Button
-            variant="contained" color="add"
-            startIcon={<ExcelIcon />}
-            onClick={gerarExcel}
-            disabled={faturamentos.every(f => f.itens.length === 0)}
-          >
-            Gerar Excel
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<AutoFixHighIcon />}
-            onClick={abrirDialogAutomatico}
-            disabled={periodoBloqueado}
-          >
-            Alocamento Automático
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/compras/${id}/faturamentos`)}
-          >
-            Voltar
-          </Button>
-        </Box>
-      </Box>
 
       {erro && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>{erro}</Alert>}
       {sucesso && <Alert severity="success" sx={{ mb: 3 }}>{sucesso}</Alert>}
@@ -1181,7 +1172,7 @@ export default function FaturamentoModalidades() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog de Alocamento Automático */}
+      {/* Dialog de Alocamento Automatico */}
       <Dialog 
         open={dialogAutomaticoAberto} 
         onClose={() => setDialogAutomaticoAberto(false)} 
@@ -1189,7 +1180,7 @@ export default function FaturamentoModalidades() {
         fullWidth
       >
         <DialogTitle>
-          Alocamento Automático
+              Alocamento Automatico
           <Stepper activeStep={etapaAutomatico - 1} sx={{ mt: 2 }}>
             <Step>
               <StepLabel>Selecionar Itens</StepLabel>

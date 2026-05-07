@@ -76,10 +76,10 @@ console.log("- Após configurar, faça um redeploy completo");
 
 console.log("\n✅ VERIFICAÇÃO PÓS-CONFIGURAÇÃO:\n");
 console.log("1. Faça login no sistema");
-console.log("2. Copie o token do console (F12)");
-console.log("3. Execute: node decode-token.js");
-console.log("4. Verifique se o token não está expirado");
-console.log("5. Recarregue a página - deve permanecer logado");
+console.log("2. Acesse /bff/web/usuarios/me com o token retornado");
+console.log("3. Execute logout e confirme que o token antigo retorna 401");
+console.log("4. Recarregue a pagina e confirme que volta para o login");
+
 
 console.log("\n" + "=" .repeat(70) + "\n");
 

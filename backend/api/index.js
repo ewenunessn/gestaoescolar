@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
       VERCEL: process.env.VERCEL,
       POSTGRES_URL: process.env.POSTGRES_URL ? '✅ Configurado' : '❌ Ausente',
       DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente',
-      JWT_SECRET: process.env.JWT_SECRET ? `✅ Configurado (${process.env.JWT_SECRET.substring(0, 10)}...)` : '❌ AUSENTE'
+      JWT_SECRET: process.env.JWT_SECRET ? 'CONFIGURADO' : 'AUSENTE'
     });
     
     // Log adicional para debug

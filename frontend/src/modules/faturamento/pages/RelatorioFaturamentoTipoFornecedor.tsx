@@ -18,10 +18,10 @@ import {
   Chip
 } from "@mui/material";
 import {
-  ArrowBack as ArrowBackIcon,
   Assessment as AssessmentIcon
 } from "@mui/icons-material";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
+import LoadingScreen from "../../../components/LoadingScreen";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { relatorioTipoFornecedorModalidade } from "../../../services/faturamentos";
 import { formatarMoeda } from "../../../utils/dateUtils";
@@ -103,42 +103,34 @@ export default function RelatorioFaturamentoTipoFornecedor() {
   };
 
   if (loading) {
-    return <Box sx={{ p: 3 }}><Typography>Carregando...</Typography></Box>;
+    return <LoadingScreen message="Carregando relatorio..." />;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <PageBreadcrumbs 
-        items={[
+      <PageHeader
+        onBack={() => navigate(`/compras/${id}/faturamento/${faturamentoId}`)}
+        breadcrumbs={[
           { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
           { label: `Compra ${dados[0]?.pedido_numero || ''}`, path: `/compras/${id}` },
           { label: 'Faturamentos', path: `/compras/${id}/faturamentos` },
           { label: `Faturamento #${faturamentoId}`, path: `/compras/${id}/faturamento/${faturamentoId}` },
-          { label: 'Relatório por Tipo' }
+          { label: 'Relatorio por Tipo' }
         ]}
-      />
-
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <AssessmentIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Relatório por Tipo de Fornecedor
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Distribuição do faturamento por tipo de fornecedor e modalidade
-            </Typography>
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AssessmentIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                Relatorio por Tipo de Fornecedor
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Distribuicao do faturamento por tipo de fornecedor e modalidade
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/compras/${id}/faturamento/${faturamentoId}`)}
-        >
-          Voltar
-        </Button>
-      </Box>
-
+        }
+      />
       {erro && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>{erro}</Alert>}
 
       {dados.length === 0 ? (

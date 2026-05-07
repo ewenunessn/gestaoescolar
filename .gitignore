@@ -157,3 +157,5 @@ release/
 # Local agent/user config
 .reversa/config.user.toml
 .kiro/skills/
+
+.vercel

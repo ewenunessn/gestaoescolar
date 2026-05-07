@@ -20,10 +20,10 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon
+  Delete as DeleteIcon
 } from "@mui/icons-material";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
+import LoadingScreen from "../../../components/LoadingScreen";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import pedidosService from "../../../services/pedidos";
 import { listarFaturamentosPedido, deletarFaturamento, criarFaturamento } from "../../../services/faturamentos";
@@ -170,7 +170,7 @@ export default function FaturamentosPedido() {
   };
 
   if (loading) {
-    return <Box sx={{ p: 3 }}><Typography>Carregando...</Typography></Box>;
+    return <LoadingScreen message="Carregando faturamentos..." />;
   }
 
   if (!pedido) {
@@ -179,19 +179,15 @@ export default function FaturamentosPedido() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <PageBreadcrumbs 
-        items={[
+      <PageHeader
+        onBack={() => navigate(`/compras/${id}`)}
+        breadcrumbs={[
           { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
           { label: `Compra ${pedido.numero}`, path: `/compras/${id}` },
           { label: 'Faturamentos' }
         ]}
-      />
-
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Faturamentos do Pedido {pedido.numero}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        title={`Faturamentos do Pedido ${pedido.numero}`}
+        action={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -201,15 +197,8 @@ export default function FaturamentosPedido() {
           >
             Criar Faturamento
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/compras/${id}`)}
-          >
-            Voltar
-          </Button>
-        </Box>
-      </Box>
+        }
+      />
 
       {erro && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>{erro}</Alert>}
       {sucesso && <Alert severity="success" sx={{ mb: 3 }}>{sucesso}</Alert>}
