@@ -6,12 +6,11 @@ import {
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
@@ -179,13 +178,9 @@ const TiposRefeicaoPage: React.FC = () => {
       accessorKey: 'ativo',
       header: 'Status',
       size: 100,
-      cell: ({ getValue, row }) => (
+      cell: ({ getValue }) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
-          {getValue() ? (
-            <Chip label="Ativo" size="small" color="success" variant="outlined" icon={<CheckCircleIcon fontSize="small" />} />
-          ) : (
-            <Chip label="Inativo" size="small" color="error" variant="outlined" icon={<CancelIcon fontSize="small" />} />
-          )}
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
         </Box>
       ),
     },

@@ -96,19 +96,22 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
     }
   }
 
-  async function handleGerar() {
+  async function handleGerar(contratosOverride?: typeof contratosSelecionados) {
+    if (gerando || jobProgressOpen) return;
+
     if (!guiaSelecionada) {
       toast.warning('Selecione uma guia de demanda');
       return;
     }
 
+    const selecaoContratos = contratosOverride ?? contratosSelecionados;
 
     setGerando(true);
     try {
       // SEMPRE usar chamada síncrona primeiro para verificações
       const resultado = await validarCompraDaGuia({
         guia_id: guiaSelecionada.id,
-        contratos_selecionados: contratosSelecionados.length > 0 ? contratosSelecionados : undefined,
+        contratos_selecionados: selecaoContratos.length > 0 ? selecaoContratos : undefined,
       });
       
       
@@ -138,11 +141,9 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       }
       
       // Se chegou aqui, pode gerar o pedido - usar sistema ASSÍNCRONO
-      setGerando(false);
-      
       const response = await iniciarGeracaoPedidoAsync(
         guiaSelecionada.id,
-        contratosSelecionados.length > 0 ? contratosSelecionados : undefined,
+        selecaoContratos.length > 0 ? selecaoContratos : undefined,
         false // não ignorar produtos sem contrato (já foi verificado)
       );
       
@@ -152,6 +153,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       // Abrir modal de progresso
       setCurrentJobId(response.job_id);
       setJobProgressOpen(true);
+      setGerando(false);
       
     } catch (error: any) {
       console.error('❌ Erro ao gerar pedido:', error);
@@ -163,9 +165,10 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
   }
 
   async function handleConfirmarComSemContrato() {
-    if (!guiaSelecionada) return;
+    if (!guiaSelecionada || gerando || jobProgressOpen) return;
 
     setMostrarConfirmacao(false);
+    setGerando(true);
     
     try {
       // AQUI usar o sistema assíncrono com job
@@ -182,11 +185,13 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       // Abrir modal de progresso
       setCurrentJobId(response.job_id);
       setJobProgressOpen(true);
+      setGerando(false);
       
     } catch (error: any) {
       console.error('❌ Erro ao iniciar geração de pedido:', error);
       const mensagem = error.response?.data?.error || 'Erro ao iniciar geração de pedido';
       toast.error(mensagem);
+      setGerando(false);
     }
   }
 
@@ -225,7 +230,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
     setDialogSelecaoContratos(false);
     
     // Tentar gerar pedido novamente com a seleção
-    setTimeout(() => handleGerar(), 100);
+    void handleGerar(selecao);
   }
 
   function handleCancelarSelecaoContratos() {
@@ -366,7 +371,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
                 Cancelar
               </Button>
               <Button
-                onClick={handleGerar}
+                onClick={() => void handleGerar()}
                 variant="contained"
                 disabled={!guiaSelecionada || gerando || loading || periodoBloqueado}
                 startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}

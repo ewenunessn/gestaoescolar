@@ -1,4 +1,9 @@
-import { Box, Typography } from '@mui/material';
+import { alpha, Box, Typography } from '@mui/material';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 
 interface StatusIndicatorProps {
   status: string;
@@ -80,9 +85,109 @@ const getSizePixels = (size: 'small' | 'medium' | 'large'): number => {
   }
 };
 
+const getStatusIcon = (status: string) => {
+  const statusLower = status.toLowerCase();
+
+  if (
+    statusLower === 'ativo' ||
+    statusLower.includes('aprovado') ||
+    statusLower.includes('concluido') ||
+    statusLower.includes('concluÃƒÂ­do') ||
+    statusLower.includes('finalizado') ||
+    statusLower.includes('entregue') ||
+    statusLower.includes('pago') ||
+    statusLower.includes('confirmado') ||
+    statusLower.includes('vigente') ||
+    statusLower === 'success' ||
+    statusLower === 'normal'
+  ) {
+    return CheckCircleOutlineIcon;
+  }
+
+  if (
+    statusLower === 'inativo' ||
+    statusLower.includes('cancelado') ||
+    statusLower.includes('rejeitado') ||
+    statusLower.includes('expirado') ||
+    statusLower.includes('suspenso') ||
+    statusLower.includes('bloqueado') ||
+    statusLower === 'default' ||
+    statusLower === 'sem estoque'
+  ) {
+    return CancelOutlinedIcon;
+  }
+
+  if (
+    statusLower.includes('erro') ||
+    statusLower.includes('falha') ||
+    statusLower.includes('recusado') ||
+    statusLower.includes('vencido') ||
+    statusLower === 'error' ||
+    statusLower === 'com vencidos'
+  ) {
+    return ErrorOutlineIcon;
+  }
+
+  if (
+    statusLower.includes('pendente') ||
+    statusLower.includes('aguardando') ||
+    statusLower.includes('em_andamento') ||
+    statusLower.includes('em andamento') ||
+    statusLower.includes('processando') ||
+    statusLower.includes('rascunho') ||
+    statusLower.includes('parcial') ||
+    statusLower === 'warning' ||
+    statusLower === 'vence em breve'
+  ) {
+    return ScheduleOutlinedIcon;
+  }
+
+  return InfoOutlinedIcon;
+};
+
 export default function StatusIndicator({ status, text, size = 'medium' }: StatusIndicatorProps) {
   const color = getStatusColor(status);
   const dotSize = getSizePixels(size);
+  const Icon = getStatusIcon(status);
+
+  if (text) {
+    const iconSize = size === 'large' ? 16 : 14;
+
+    return (
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 0.5,
+          width: 'fit-content',
+          minWidth: size === 'small' ? 58 : 68,
+          height: size === 'large' ? 28 : 24,
+          px: size === 'small' ? 0.75 : 1,
+          borderRadius: '999px',
+          border: `1px solid ${alpha(color, 0.72)}`,
+          bgcolor: alpha(color, 0.14),
+          color,
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <Icon sx={{ fontSize: iconSize, flexShrink: 0 }} />
+        <Typography
+          component="span"
+          sx={{
+            color: 'inherit',
+            fontSize: size === 'large' ? '0.78rem' : '0.72rem',
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          {text}
+        </Typography>
+      </Box>
+    );
+  }
   
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

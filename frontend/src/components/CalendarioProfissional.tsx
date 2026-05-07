@@ -62,11 +62,6 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
     [eventos]
   );
 
-  const monthLabel = useMemo(() => {
-    const m = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    return `${m[mes - 1]} ${ano}`;
-  }, [ano, mes]);
-
   // Unique event types for legend
   const tiposLegend = useMemo(() => {
     const seen = new Set<string>();
@@ -83,19 +78,35 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   }, [eventos]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Paper
+      elevation={0}
+      sx={{
+        minWidth: 0,
+        overflow: 'hidden',
+        borderRadius: 1,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+      }}
+    >
       {/* ═══ TOOLBAR ═══ */}
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 1.5,
-      }}>
-        {/* Month label + badge */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
-            {monthLabel}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'minmax(220px, 1fr) auto auto' },
+          alignItems: 'center',
+          gap: { xs: 1, sm: 1.25 },
+          px: { xs: 1.5, md: 2 },
+          py: 1.25,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'rgba(0,0,0,0.012)',
+        }}
+      >
+        {/* Month status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.86rem', letterSpacing: 0, lineHeight: 1.2, color: 'text.secondary' }}>
+            Preparacoes do mes
           </Typography>
           <Chip
             label={`${totalRef} refeic${totalRef !== 1 ? 'oes' : 'ao'}`}
@@ -114,8 +125,9 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
+          justifySelf: { xs: 'start', sm: 'end' },
           bgcolor: 'action.hover',
-          borderRadius: 1.5,
+          borderRadius: 1,
           p: 0.25,
           border: '1px solid',
           borderColor: 'divider',
@@ -152,15 +164,18 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
 
         {/* PDF menu */}
         {(onExportarCalendario || onExportarFrequencia || onRelatorioDetalhado || onGerarPDFTabela) && (
-          <Box sx={{ position: 'relative', display: 'inline-block' }}>
+          <Box sx={{ position: 'relative', display: 'inline-block', justifySelf: { xs: 'start', sm: 'end' } }}>
             <IconButton
               onClick={(e) => setAnchorElPdf(anchorElPdf ? null : e.currentTarget)}
               size="small"
               sx={{
                 width: 32,
                 height: 32,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
                 color: 'text.secondary',
-                '&:hover': { color: 'primary.main' },
+                '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
               }}
               title="Exportar PDF"
             >
@@ -230,6 +245,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
           onDiaClick={onDiaClick}
           onEventoClick={onEventoClick}
           readonly={readonly}
+          embedded
         />
       ) : (
         <CalendarioMensal
@@ -241,12 +257,13 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
           onMesAnterior={onMesAnterior}
           onProximoMes={onProximoMes}
           readonly={readonly}
+          embedded
         />
       )}
 
       {/* ═══ LEGEND ═══ */}
       {tiposLegend.length > 0 && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, pt: 1 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, px: 2, py: 1.25, borderTop: '1px solid', borderColor: 'divider' }}>
           <Typography variant="caption" color="text.secondary" sx={{ mr: 1, fontWeight: 600, fontSize: '0.7rem' }}>
             Legenda:
           </Typography>
@@ -266,7 +283,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
           ))}
         </Box>
       )}
-    </Box>
+    </Paper>
   );
 };
 

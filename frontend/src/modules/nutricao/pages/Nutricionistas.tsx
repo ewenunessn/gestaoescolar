@@ -41,6 +41,7 @@ import {
 import { Nutricionista } from "../../../services/nutricionistas";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { ColumnDef } from "@tanstack/react-table";
 
 const NutricionistasPage = () => {
@@ -152,15 +153,7 @@ const NutricionistasPage = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
         </Tooltip>
       ),
     },
@@ -281,7 +274,15 @@ const NutricionistasPage = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - var(--app-top-offset, 0px))',
+        bgcolor: 'background.default',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
         <PageHeader
           title="Nutricionistas"
@@ -292,8 +293,8 @@ const NutricionistasPage = () => {
             { label: 'Nutricionistas' },
           ]}
           action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}
-              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => openModal()}
+              sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Novo Nutricionista
             </Button>
           }

@@ -38,14 +38,17 @@ import ClearIcon from '@mui/icons-material/Clear';
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { sidebarFontFamily } from '../layout/AppShellConfig';
 
 // ── Theme-derived tokens (centralized in theme.ts) ──
 const getToken = (theme: Theme) => ({
   green: theme.palette.success.main,
-  bg: theme.palette.background.default,
-  canvas: theme.palette.background.paper,
+  bg: theme.palette.mode === 'light' ? theme.palette.background.default : '#1d1d1d',
+  canvas: theme.palette.mode === 'light' ? theme.palette.background.paper : '#232323',
+  header: theme.palette.mode === 'light' ? theme.palette.background.default : '#1d1d1d',
+  surface: theme.palette.mode === 'light' ? theme.palette.background.paper : '#232323',
   border: theme.palette.divider,
-  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : 'rgba(255,255,255,0.14)',
+  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : '#343434',
   text: theme.palette.text.primary,
   muted: theme.palette.text.secondary,
   sub: theme.palette.mode === 'light' ? '#7b8492' : '#8893a5',
@@ -117,12 +120,13 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
           key={cell.id}
           sx={{
             width: cell.column.cardSize?.() ?? cell.column.getSize(),
-            fontSize: isMobile ? '0.75rem' : '0.8125rem',
+            fontFamily: sidebarFontFamily,
+            fontSize: isMobile ? '0.75rem' : '0.82rem',
             padding: isMobile ? '8px 4px' : '8px 12px',
             borderBottom: `1px solid ${t.border}`,
             borderColor: t.border,
             color: t.text,
-            bgcolor: 'transparent',
+            bgcolor: t.surface,
             lineHeight: 1.5,
           }}
         >
@@ -205,6 +209,7 @@ export const EntityListTable = memo(function EntityListTable<TData>({
 
   return (
     <Paper
+      elevation={0}
       className="data-table-paper"
       sx={{
         width: '100%',
@@ -212,6 +217,14 @@ export const EntityListTable = memo(function EntityListTable<TData>({
         flexDirection: 'column',
         height: '100%',
         overflow: 'hidden',
+        boxShadow: 'none',
+        fontFamily: sidebarFontFamily,
+        '& .MuiTableCell-root, & .MuiTypography-root, & .MuiInputBase-root, & .MuiButton-root, & .MuiTablePagination-root': {
+          fontFamily: sidebarFontFamily,
+        },
+        '& .MuiTableCell-root': {
+          fontSize: isMobile ? '0.75rem' : '0.82rem',
+        },
       }}
     >
       {/* ── Toolbar ── */}
@@ -318,6 +331,7 @@ export const EntityListTable = memo(function EntityListTable<TData>({
           sx={{
             flex: 1,
             overflow: 'auto',
+            backgroundColor: t.surface,
           }}
         >
           <Table
@@ -327,6 +341,7 @@ export const EntityListTable = memo(function EntityListTable<TData>({
               borderCollapse: 'separate',
               borderSpacing: 0,
               minWidth: 650,
+              backgroundColor: t.surface,
             }}
           >
             <TableHead>
@@ -337,6 +352,7 @@ export const EntityListTable = memo(function EntityListTable<TData>({
                       key={header.id}
                       className="data-table-header-cell"
                       sx={{
+                        backgroundColor: `${t.header} !important`,
                         width: header.getSize(),
                         '&:last-child': { borderRight: 'none' },
                       }}
@@ -380,13 +396,13 @@ export const EntityListTable = memo(function EntityListTable<TData>({
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8, bgcolor: t.surface }}>
                     <CircularProgress sx={{ color: t.muted }} size={24} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8, bgcolor: t.surface }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                       <Typography sx={{ color: t.muted, fontSize: '0.8125rem' }}>
                         Nenhum registro encontrado
@@ -601,7 +617,7 @@ export const EntityListTable = memo(function EntityListTable<TData>({
         }
         sx={{
           borderTop: `1px solid ${t.border}`,
-          backgroundColor: t.canvas,
+          backgroundColor: t.surface,
           '.MuiTablePagination-toolbar': {
             minHeight: 44,
             paddingLeft: 2,
@@ -623,6 +639,9 @@ export const EntityListTable = memo(function EntityListTable<TData>({
           },
           '.MuiIconButton-root': {
             color: t.text,
+          },
+          '.MuiTablePagination-actions': {
+            backgroundColor: t.surface,
           },
         }}
       />

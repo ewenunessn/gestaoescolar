@@ -10,6 +10,7 @@ import { useToast } from "../../../hooks/useToast";
 import { listarTodasSolicitacoes, Solicitacao } from "../../../services/solicitacoesAlimentos";
 import { useQuery } from "@tanstack/react-query";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { ColumnDef } from "@tanstack/react-table";
 
 interface EscolaAgrupada {
@@ -114,11 +115,7 @@ export default function SolicitacoesAlimentos() {
       cell: ({ getValue }) => {
         const status = getValue() as string;
         return (
-          <Chip
-            label={status === 'pendente' ? 'Pendente' : 'Concluida'}
-            color={status === 'pendente' ? 'warning' : 'success'}
-            size="small"
-          />
+          <StatusIndicator status={status} text={status === 'pendente' ? 'Pendente' : 'Concluida'} size="small" />
         );
       },
     },

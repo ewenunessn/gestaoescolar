@@ -58,14 +58,17 @@ import saldoContratosModalidadesService, {
 } from "../../../services/saldoContratosModalidadesService";
 import {
   useSaldosModalidades,
+  useSaldosItens,
   useModalidades,
   useProdutosContratos,
   useCadastrarSaldoModalidade,
+  useCadastrarSaldoItem,
   useRegistrarConsumo,
   useExcluirConsumo,
   useHistoricoConsumo
 } from "../../../hooks/queries/useSaldoContratosQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import { useConfigContext } from "../../../contexts/ConfigContext";
 
 
 
@@ -171,6 +174,8 @@ const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
 
 const SaldoContratosModalidades: React.FC = () => {
   const { success, error: toastError } = useToast();
+  const { configModuloSaldo } = useConfigContext();
+  const saldoPorItem = configModuloSaldo.modulo_principal === 'contratos';
   const timeoutRef = React.useRef<number | null>(null);
 
   // Estados para diálogos
@@ -207,13 +212,19 @@ const SaldoContratosModalidades: React.FC = () => {
   const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<HTMLElement | null>(null);
 
   // React Query hooks
-  const { data: responseData, isLoading: loading, refetch: carregarDados } = useSaldosModalidades({
+  const filtrosQuery = {
     page: page + 1,
     limit: rowsPerPage
-  });
+  };
+  const saldosModalidadesQuery = useSaldosModalidades(filtrosQuery);
+  const saldosItensQuery = useSaldosItens(filtrosQuery);
+  const responseData = saldoPorItem ? saldosItensQuery.data : saldosModalidadesQuery.data;
+  const loading = saldoPorItem ? saldosItensQuery.isLoading : saldosModalidadesQuery.isLoading;
+  const carregarDados = saldoPorItem ? saldosItensQuery.refetch : saldosModalidadesQuery.refetch;
   const { data: modalidades = [] } = useModalidades();
   const { data: produtosContratos = [] } = useProdutosContratos();
   const cadastrarSaldoMutation = useCadastrarSaldoModalidade();
+  const cadastrarSaldoItemMutation = useCadastrarSaldoItem();
   const registrarConsumoMutation = useRegistrarConsumo();
   const excluirConsumoMutation = useExcluirConsumo();
   
@@ -371,6 +382,8 @@ const SaldoContratosModalidades: React.FC = () => {
           if (produtoSelecionadoItem) {
             if (produtoSelecionadoItem.contratos.length > 1) {
               abrirDialogSelecionarContrato(produtoSelecionadoItem);
+            } else if (saldoPorItem) {
+              abrirDialogQuantidadeInicialItem(produtoSelecionadoItem.contratos[0]);
             } else {
               abrirDialogGerenciarModalidades(produtoSelecionadoItem.contratos[0]);
             }
@@ -382,7 +395,11 @@ const SaldoContratosModalidades: React.FC = () => {
       // Tab no modal de edição de quantidade - ir para próxima modalidade
       if (e.key === 'Tab' && dialogQuantidadeInicial && !e.shiftKey) {
         e.preventDefault();
-        salvarEProximaModalidade();
+        if (saldoPorItem) {
+          salvarQuantidadeInicial();
+        } else {
+          salvarEProximaModalidade();
+        }
         return;
       }
 
@@ -408,7 +425,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filters, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex]);
+  }, [filters, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex, saldoPorItem]);
 
   // Funções para gerenciar modalidades
   const abrirDialogSelecionarContrato = (produto: any) => {
@@ -419,7 +436,11 @@ const SaldoContratosModalidades: React.FC = () => {
 
   const selecionarContrato = (contrato: any) => {
     setDialogSelecionarContrato(false);
-    abrirDialogGerenciarModalidades(contrato);
+    if (saldoPorItem) {
+      abrirDialogQuantidadeInicialItem(contrato);
+    } else {
+      abrirDialogGerenciarModalidades(contrato);
+    }
   };
 
   const abrirDialogGerenciarModalidades = async (produto: any) => {
@@ -543,6 +564,14 @@ const SaldoContratosModalidades: React.FC = () => {
     }, 100);
   };
 
+  const abrirDialogQuantidadeInicialItem = (produto: any) => {
+    setProdutoSelecionado(produto);
+    setModalidadeSelecionada(null);
+    setQuantidadeInicial(String(produto.total_inicial ?? produto.quantidade_inicial ?? 0));
+    setError(null);
+    setDialogQuantidadeInicial(true);
+  };
+
   const fecharDialogQuantidadeInicial = () => {
     setDialogQuantidadeInicial(false);
     setModalidadeSelecionada(null);
@@ -550,7 +579,7 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   const salvarQuantidadeInicial = async () => {
-    if (!produtoSelecionado || !modalidadeSelecionada) return;
+    if (!produtoSelecionado || (!saldoPorItem && !modalidadeSelecionada)) return;
 
     const novaQuantidade = parseFloat(quantidadeInicial);
 
@@ -560,6 +589,28 @@ const SaldoContratosModalidades: React.FC = () => {
     }
 
     // Validar se a quantidade inicial não é menor que o consumo já registrado
+    if (saldoPorItem) {
+      const quantidadeConsumidaItem = parseFloat(produtoSelecionado.total_consumido ?? produtoSelecionado.quantidade_consumida ?? 0) || 0;
+      if (novaQuantidade < quantidadeConsumidaItem) {
+        setError(`A quantidade inicial (${formatarNumero(novaQuantidade)}) nao pode ser menor que o consumo registrado (${formatarNumero(quantidadeConsumidaItem)}).`);
+        return;
+      }
+
+      try {
+        await cadastrarSaldoItemMutation.mutateAsync({
+          contrato_produto_id: produtoSelecionado.contrato_produto_id,
+          quantidade_inicial: novaQuantidade
+        });
+        success('Saldo por item salvo com sucesso');
+        fecharDialogQuantidadeInicial();
+        setProdutoSelecionado(null);
+        carregarDados();
+      } catch (error: any) {
+        setError(error.response?.data?.message || 'Erro ao salvar saldo por item');
+      }
+      return;
+    }
+
     const quantidadeConsumida = parseFloat(modalidadeSelecionada.quantidade_consumida as any) || 0;
     if (novaQuantidade < quantidadeConsumida) {
       setError(
@@ -857,6 +908,8 @@ const SaldoContratosModalidades: React.FC = () => {
 
         grupos[chave].contratos.push({
           contrato_produto_id: item.contrato_produto_id,
+          produto_nome: item.produto_nome,
+          unidade: item.unidade,
           contrato_numero: item.contrato_numero,
           fornecedor_nome: item.fornecedor_nome,
           preco_unitario: item.preco_unitario,
@@ -970,18 +1023,20 @@ const SaldoContratosModalidades: React.FC = () => {
               e.stopPropagation();
               if (produto.contratos.length > 1) {
                 abrirDialogSelecionarContrato(produto);
+              } else if (saldoPorItem) {
+                abrirDialogQuantidadeInicialItem(produto.contratos[0]);
               } else {
                 abrirDialogGerenciarModalidades(produto.contratos[0]);
               }
             }}
             sx={{ fontSize: '0.75rem' }}
           >
-            Gerenciar Modalidades
+            {saldoPorItem ? 'Gerenciar Item' : 'Gerenciar Modalidades'}
           </Button>
         );
       },
     },
-  ], []);
+  ], [saldoPorItem]);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -1056,7 +1111,7 @@ const SaldoContratosModalidades: React.FC = () => {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
         <PageHeader
-          title="Saldo de Contratos por Modalidade"
+          title={saldoPorItem ? "Saldo de Contratos por Item" : "Saldo de Contratos por Modalidade"}
           breadcrumbs={[
             { label: 'Dashboard', path: '/dashboard' },
             { label: 'Compras' },
@@ -1087,13 +1142,15 @@ const SaldoContratosModalidades: React.FC = () => {
         {/* OperationalDataTable */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <OperationalDataTable
-            title="Saldo de Contratos por Modalidade"
+            title={saldoPorItem ? "Saldo de Contratos por Item" : "Saldo de Contratos por Modalidade"}
             data={produtosAgrupados}
             columns={columns}
             loading={loading}
             onRowClick={(produto: any) => {
               if (produto.contratos.length > 1) {
                 abrirDialogSelecionarContrato(produto);
+              } else if (saldoPorItem) {
+                abrirDialogQuantidadeInicialItem(produto.contratos[0]);
               } else {
                 abrirDialogGerenciarModalidades(produto.contratos[0]);
               }
@@ -1387,9 +1444,14 @@ const SaldoContratosModalidades: React.FC = () => {
               <EditIcon />
               Editar Quantidade Inicial
             </Box>
-            {modalidadeSelecionada && (
+            {!saldoPorItem && modalidadeSelecionada && (
               <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'block' }}>
                 Modalidade: {modalidadeSelecionada.nome}
+              </Box>
+            )}
+            {saldoPorItem && produtoSelecionado && (
+              <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'block' }}>
+                Item: {produtoSelecionado.produto_nome || produtoSelecionado.nome || 'Produto sem nome'}
               </Box>
             )}
           </DialogTitle>
@@ -1418,10 +1480,12 @@ const SaldoContratosModalidades: React.FC = () => {
               },
             })}
           >
-            {modalidadeSelecionada && produtoSelecionado && (
+            {produtoSelecionado && (saldoPorItem || modalidadeSelecionada) && (
               <Box sx={{ pt: 2 }}>
                 <Alert severity="info" sx={{ mb: 3 }}>
-                  Define a quantidade inicial disponível para esta modalidade. Esta é a quantidade que será distribuída do contrato.
+                  {saldoPorItem
+                    ? 'Define a quantidade inicial disponivel para este item do contrato. Esta quantidade sera consumida pelos pedidos e faturamentos.'
+                    : 'Define a quantidade inicial disponivel para esta modalidade. Esta e a quantidade que sera distribuida do contrato.'}
                 </Alert>
 
                 <Box
@@ -1447,10 +1511,10 @@ const SaldoContratosModalidades: React.FC = () => {
                     <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}
                   </Typography>
                   <Typography variant="body2" gutterBottom>
-                    <strong>Já Distribuído (outras modalidades):</strong> {formatarNumero(calcularTotaisAtuais().totalDistribuido - (modalidadeSelecionada.quantidade_inicial || 0))} {produtoSelecionado.unidade}
+                    <strong>{saldoPorItem ? 'Quantidade Consumida:' : 'Ja Distribuido (outras modalidades):'}</strong> {formatarNumero(saldoPorItem ? (produtoSelecionado.total_consumido || 0) : calcularTotaisAtuais().totalDistribuido - (modalidadeSelecionada?.quantidade_inicial || 0))} {produtoSelecionado.unidade}
                   </Typography>
                   <Typography variant="body2" gutterBottom>
-                    <strong>Quantidade Atual desta Modalidade:</strong> {formatarNumero(modalidadeSelecionada.quantidade_inicial || 0)} {produtoSelecionado.unidade}
+                    <strong>{saldoPorItem ? 'Quantidade Atual deste Item:' : 'Quantidade Atual desta Modalidade:'}</strong> {formatarNumero(saldoPorItem ? (produtoSelecionado.total_inicial || 0) : (modalidadeSelecionada?.quantidade_inicial || 0))} {produtoSelecionado.unidade}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -1459,9 +1523,11 @@ const SaldoContratosModalidades: React.FC = () => {
                       fontWeight: 'bold'
                     }}
                   >
-                    <strong>Disponível para Redistribuir:</strong> {(() => {
+                    <strong>{saldoPorItem ? 'Disponivel para Ajustar:' : 'Disponivel para Redistribuir:'}</strong> {(() => {
                       const totais = calcularTotaisAtuais();
-                      const quantidadeAtual = parseFloat(modalidadeSelecionada.quantidade_inicial as any) || 0;
+                      const quantidadeAtual = saldoPorItem
+                        ? parseFloat(produtoSelecionado.total_inicial as any) || 0
+                        : parseFloat(modalidadeSelecionada?.quantidade_inicial as any) || 0;
                       const disponivel = totais.disponivelDistribuir + quantidadeAtual;
                       return formatarNumero(disponivel);
                     })()} {produtoSelecionado.unidade}
@@ -1478,7 +1544,7 @@ const SaldoContratosModalidades: React.FC = () => {
                     min: 0,
                     step: 0.01
                   }}
-                  helperText={`Defina a quantidade inicial para ${modalidadeSelecionada.nome}`}
+                  helperText={saldoPorItem ? 'Defina a quantidade inicial disponivel para este item do contrato' : `Defina a quantidade inicial para ${modalidadeSelecionada?.nome}`}
                   autoFocus
                 />
 

@@ -16,8 +16,15 @@ export interface ConfiguracaoModuloSaldo {
   mostrar_ambos: boolean;
 }
 
+export interface AvisosModuloSaldo {
+  saldos_modalidades: number;
+  saldos_itens: number;
+  movimentacoes_modalidades: number;
+  movimentacoes_itens: number;
+}
+
 class ConfigService {
-  private readonly MODULO_SALDO_CHAVE = 'modulo_saldo';
+  private readonly MODULO_SALDO_CHAVE = 'modulo_saldo_contratos';
 
   // Buscar configuração específica
   async buscarConfiguracao(chave: string): Promise<ConfiguracaoSistema | null> {
@@ -91,20 +98,44 @@ class ConfigService {
   }
 
   async buscarConfiguracaoModuloSaldo(): Promise<ConfiguracaoModuloSaldo> {
-    const configuracao = await this.buscarConfiguracaoComCache(this.MODULO_SALDO_CHAVE);
+    try {
+      const response = await api.get('/saldo-contratos-modalidades/config');
+      const configuracao = response.data?.data;
 
-    if (
-      configuracao &&
-      typeof configuracao === 'object' &&
-      (configuracao.modulo_principal === 'modalidades' || configuracao.modulo_principal === 'contratos') &&
-      typeof configuracao.mostrar_ambos === 'boolean'
-    ) {
-      return configuracao as ConfiguracaoModuloSaldo;
+      if (
+        configuracao &&
+        typeof configuracao === 'object' &&
+        (configuracao.modulo_principal === 'modalidades' || configuracao.modulo_principal === 'contratos') &&
+        typeof configuracao.mostrar_ambos === 'boolean'
+      ) {
+        return configuracao as ConfiguracaoModuloSaldo;
+      }
+    } catch (error) {
+      console.error('Erro ao buscar configuracao do saldo de contratos:', error);
     }
 
     return {
       modulo_principal: 'modalidades',
       mostrar_ambos: false
+    };
+  }
+
+  async buscarAvisosModuloSaldo(): Promise<AvisosModuloSaldo> {
+    const response = await api.get('/saldo-contratos-modalidades/config');
+    return response.data?.avisos || {
+      saldos_modalidades: 0,
+      saldos_itens: 0,
+      movimentacoes_modalidades: 0,
+      movimentacoes_itens: 0
+    };
+  }
+
+  async salvarConfiguracaoModuloSaldo(config: ConfiguracaoModuloSaldo): Promise<{ config: ConfiguracaoModuloSaldo; avisos: AvisosModuloSaldo }> {
+    const response = await api.put('/saldo-contratos-modalidades/config', config);
+    this.limparCache();
+    return {
+      config: response.data.data,
+      avisos: response.data.avisos
     };
   }
 }

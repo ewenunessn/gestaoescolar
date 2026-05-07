@@ -31,6 +31,7 @@ import { listarContratos, removerContrato } from "../../../services/contratos";
 import { fornecedorService } from "../../../services/fornecedores";
 import { useToast } from "../../../hooks/useToast";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 
@@ -174,13 +175,9 @@ const ContratosPage: React.FC = () => {
         enableSorting: false,
         cell: ({ row }) => {
           const statusInfo = getStatusContrato(row.original);
+          const label = statusInfo.status.charAt(0).toUpperCase() + statusInfo.status.slice(1);
           return (
-            <Chip
-              label={statusInfo.status.charAt(0).toUpperCase() + statusInfo.status.slice(1)}
-              size="small"
-              color={statusInfo.color}
-              sx={{ minWidth: 90 }}
-            />
+            <StatusIndicator status={statusInfo.status} text={label} size="small" />
           );
         },
       },

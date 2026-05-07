@@ -60,34 +60,34 @@ type ThemeTokens = {
 };
 
 const lightTokens: ThemeTokens = {
-  bg: '#eeeeee',
+  bg: '#e6e8eb',
   canvas: '#ffffff',
-  canvasAlt: '#f7f8f6',
-  sidebar: '#ffffff',
-  text: '#2f3135',
-  muted: '#747981',
-  subtle: '#a4a8ad',
-  border: '#e3e5e8',
-  borderStrong: '#d4d8dc',
-  primary: '#28d99a',
-  primaryHover: '#1fbf84',
+  canvasAlt: '#f1f3f5',
+  sidebar: '#fbfcfd',
+  text: '#20242a',
+  muted: '#58606b',
+  subtle: '#737b86',
+  border: '#d4d9df',
+  borderStrong: '#b9c1ca',
+  primary: '#16c785',
+  primaryHover: '#0fa870',
   primaryContrast: '#ffffff',
-  success: '#34d399',
-  warning: '#c7ea2f',
-  danger: '#ef5b5b',
-  info: '#2f3135',
+  success: '#10b981',
+  warning: '#b18400',
+  danger: '#dc3f3f',
+  info: '#2563eb',
 };
 
 const darkTokens: ThemeTokens = {
   bg: '#000000',
-  canvas: '#202126',
-  canvasAlt: '#26272d',
-  sidebar: '#050506',
+  canvas: '#141414',
+  canvasAlt: '#232323',
+  sidebar: '#000000',
   text: '#f7f7f8',
   muted: '#a4a6ad',
   subtle: '#6f727b',
-  border: 'rgba(255, 255, 255, 0.075)',
-  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  border: '#343434',
+  borderStrong: '#3a3a3a',
   primary: '#2fe4cf',
   primaryHover: '#20c7b6',
   primaryContrast: '#03110f',
@@ -163,11 +163,12 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       '.data-table-paper': {
         border: `1px solid ${t.border}`,
         borderRadius: '10px',
-        backgroundColor: t.canvas,
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
+        boxShadow: mode === 'light' ? '0 16px 34px rgba(32, 36, 42, 0.07)' : 'none',
       },
       '.data-table-toolbar': {
         borderBottom: `1px solid ${t.border}`,
-        backgroundColor: t.canvas,
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
       },
       '.data-table-title-bar': {
         width: 4,
@@ -182,14 +183,15 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         color: t.subtle,
       },
       '.data-table-header-cell': {
-        backgroundColor: t.canvasAlt,
-        color: t.muted,
+        backgroundColor: mode === 'light' ? t.canvasAlt : '#1d1d1d',
+        color: mode === 'light' ? '#47515d' : t.muted,
         borderBottom: `1px solid ${t.border}`,
         borderRight: `1px solid ${t.border}`,
       },
       '.data-table-body-cell': {
         borderBottom: `1px solid ${t.border}`,
         color: t.text,
+        backgroundColor: mode === 'light' ? 'transparent' : '#232323',
       },
       '.data-table-selection-chip': {
         backgroundColor: alpha(t.primary, 0.12),
@@ -197,15 +199,15 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         borderColor: alpha(t.primary, 0.2),
       },
       '.data-table-search .MuiOutlinedInput-root': {
-        backgroundColor: t.canvasAlt,
+        backgroundColor: mode === 'light' ? t.canvasAlt : '#1d1d1d',
       },
       '.data-table-action': {
         borderRadius: '8px',
         border: `1px solid ${t.borderStrong}`,
-        backgroundColor: mode === 'light' ? t.canvas : alpha(t.text, 0.03),
+        backgroundColor: mode === 'light' ? '#f7f9fb' : alpha(t.text, 0.03),
       },
       '.data-table-action:hover': {
-        backgroundColor: alpha(t.text, mode === 'light' ? 0.05 : 0.08),
+        backgroundColor: alpha(t.text, mode === 'light' ? 0.08 : 0.08),
         borderColor: t.borderStrong,
       },
       '.data-table-action-view': {
@@ -247,6 +249,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       },
       outlined: {
         borderColor: t.borderStrong,
+        color: t.text,
       },
     },
     variants: [
@@ -395,9 +398,9 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
     styleOverrides: {
       root: {
         borderRadius: 8,
-        border: `1px solid ${t.border}`,
+        border: `1px solid ${mode === 'light' ? t.borderStrong : t.border}`,
         backgroundColor: t.canvas,
-        boxShadow: mode === 'light' ? '0 12px 30px rgba(47, 49, 53, 0.04)' : 'none',
+        boxShadow: mode === 'light' ? '0 12px 30px rgba(32, 36, 42, 0.06)' : 'none',
       },
     },
   },
@@ -405,7 +408,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
     styleOverrides: {
       paper: {
         backgroundColor: t.sidebar,
-        borderRight: `1px solid ${t.border}`,
+        borderRight: 0,
       },
     },
   },
@@ -425,9 +428,42 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
     styleOverrides: {
       root: {
         borderRadius: 8,
-        backgroundColor: t.canvasAlt,
+        backgroundColor: mode === 'light' ? '#f8fafc' : '#232323',
+        color: t.text,
         '& fieldset': {
-          borderColor: t.borderStrong,
+          borderColor: mode === 'light' ? t.borderStrong : '#343434',
+        },
+        '&:hover fieldset': {
+          borderColor: mode === 'light' ? '#96a1ad' : '#4a4a4a',
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: mode === 'light' ? t.primary : '#5a5a5a',
+          borderWidth: 1,
+        },
+        '&.Mui-disabled': {
+          backgroundColor: mode === 'light' ? alpha(t.canvasAlt, 0.72) : '#1b1b1b',
+          color: t.subtle,
+        },
+        '&.Mui-disabled fieldset': {
+          borderColor: mode === 'light' ? t.border : '#2b2b2b',
+        },
+      },
+      input: {
+        color: t.text,
+        '&::placeholder': {
+          color: mode === 'light' ? t.subtle : '#9a9a9a',
+          opacity: 1,
+        },
+      },
+      multiline: {
+        padding: '10px 12px',
+        alignItems: 'flex-start',
+        '& textarea': {
+          color: t.text,
+          '&::placeholder': {
+            color: mode === 'light' ? t.subtle : '#9a9a9a',
+            opacity: 1,
+          },
         },
       },
     },
@@ -489,14 +525,41 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
     styleOverrides: {
       paper: {
         borderRadius: 12,
-        border: `1px solid ${t.border}`,
+        border: `1px solid ${mode === 'light' ? t.borderStrong : t.border}`,
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
+        backgroundImage: 'none',
+      },
+    },
+  },
+  MuiDialogTitle: {
+    styleOverrides: {
+      root: {
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
+        color: t.text,
+      },
+    },
+  },
+  MuiDialogContent: {
+    styleOverrides: {
+      root: {
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
+        color: t.text,
+        borderColor: t.border,
+      },
+    },
+  },
+  MuiDialogActions: {
+    styleOverrides: {
+      root: {
+        backgroundColor: mode === 'light' ? t.canvas : '#232323',
+        borderColor: t.border,
       },
     },
   },
   MuiTableCell: {
     styleOverrides: {
       root: {
-        borderBottom: `1px solid ${t.border}`,
+        borderBottom: `1px solid ${mode === 'light' ? '#d9dee5' : t.border}`,
       },
     },
   },
@@ -540,11 +603,11 @@ export const createAppTheme = (mode: AppThemeMode) => {
       },
       divider: t.border,
       action: {
-        hover: alpha(t.text, mode === 'light' ? 0.05 : 0.08),
+        hover: alpha(t.text, mode === 'light' ? 0.08 : 0.08),
         selected: alpha(t.primary, 0.14),
       },
-      sidebarSelection: mode === 'light' ? '#e9f9df' : alpha(t.primary, 0.22),
-      tableHover: mode === 'light' ? '#f8faf8' : alpha(t.text, 0.05),
+      sidebarSelection: mode === 'light' ? '#d8f5e7' : alpha(t.primary, 0.22),
+      tableHover: mode === 'light' ? '#eef3f6' : alpha(t.text, 0.05),
       add: {
         main: t.success,
         contrastText: mode === 'light' ? '#ffffff' : '#08140e',

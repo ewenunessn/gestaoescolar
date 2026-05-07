@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import saldoContratosModalidadesService, {
   SaldoContratosModalidadesFilters,
-  CadastrarSaldoModalidadeRequest
+  CadastrarSaldoModalidadeRequest,
+  CadastrarSaldoItemRequest
 } from '../../services/saldoContratosModalidadesService';
 
 // Query keys
@@ -19,6 +20,16 @@ export const useSaldosModalidades = (filtros: SaldoContratosModalidadesFilters =
     staleTime: 0, // Sempre considerar dados como stale
     gcTime: 0, // Não manter cache
     refetchOnMount: true, // Sempre refetch ao montar
+  });
+};
+
+export const useSaldosItens = (filtros: SaldoContratosModalidadesFilters = {}) => {
+  return useQuery({
+    queryKey: ['saldoContratosItens', filtros],
+    queryFn: () => saldoContratosModalidadesService.listarSaldosItens(filtros),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
   });
 };
 
@@ -65,6 +76,19 @@ export const useCadastrarSaldoModalidade = () => {
     onSuccess: () => {
       // Invalidar todas as queries de saldo contratos
       queryClient.invalidateQueries({ queryKey: ['saldoContratos'] });
+    },
+  });
+};
+
+export const useCadastrarSaldoItem = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dados: CadastrarSaldoItemRequest) =>
+      saldoContratosModalidadesService.cadastrarSaldoItem(dados),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saldoContratos'] });
+      queryClient.invalidateQueries({ queryKey: ['saldoContratosItens'] });
     },
   });
 };

@@ -10,7 +10,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import GroupWorkIcon from "@mui/icons-material/GroupWork";
 import { grupoService, Grupo } from "../../../services/gruposIngredientes";
 import { produtoService } from "../../../services/produtos";
-import GerenciarGrupoDialog from "../../../components/GerenciarGrupoDialog";
+import GerenciarGrupoDialog from "../components/GerenciarGrupoDialog";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";

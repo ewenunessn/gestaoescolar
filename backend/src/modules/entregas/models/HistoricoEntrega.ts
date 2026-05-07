@@ -66,6 +66,10 @@ class HistoricoEntregaModel {
     dados: CriarHistoricoEntregaData,
     client?: PoolClient,
   ): Promise<HistoricoEntregaRecord> {
+    if (!client) {
+      return db.transaction((transactionClient) => this.criar(dados, transactionClient));
+    }
+
     const query = client ? client.query.bind(client) : db.query;
     const result = await query(`
       INSERT INTO historico_entregas (
@@ -227,21 +231,27 @@ class HistoricoEntregaModel {
   /**
    * Deletar um registro de entrega (apenas para correções)
    */
-  async deletar(id: number): Promise<void> {
-    const periodo = await db.query(`
+  async deletar(id: number, client?: PoolClient): Promise<void> {
+    if (!client) {
+      return db.transaction((transactionClient) => this.deletar(id, transactionClient));
+    }
+
+    const query = client.query.bind(client);
+    const periodo = await query(`
       SELECT per.fechado
       FROM historico_entregas he
       JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
       JOIN guias g ON g.id = gpe.guia_id
       LEFT JOIN periodos per ON per.id = g.periodo_id
       WHERE he.id = $1
+      FOR UPDATE OF he, gpe
     `, [id]);
 
     if (periodo.rows[0]?.fechado) {
       throw new Error('Nao e possivel deletar entrega de periodo fechado');
     }
 
-    const result = await db.query(`
+    const result = await query(`
       DELETE FROM historico_entregas
       WHERE id = $1
       RETURNING guia_produto_escola_id
@@ -251,7 +261,7 @@ class HistoricoEntregaModel {
       const itemId = result.rows[0].guia_produto_escola_id;
       
       // Recalcular quantidade total entregue
-      await db.query(`
+      await query(`
         UPDATE guia_produto_escola
         SET 
           quantidade_total_entregue = (

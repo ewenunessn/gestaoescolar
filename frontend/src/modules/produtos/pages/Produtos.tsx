@@ -9,7 +9,7 @@ import {
   useCategoriasProdutos 
 } from "../../../hooks/queries";
 import { useToast } from "../../../hooks/useToast";
-import ImportacaoProdutos, { ProdutoImportacao } from "../../../components/ImportacaoProdutos";
+import ImportacaoProdutos, { ProdutoImportacao } from "../components/ImportacaoProdutos";
 import {
   Box,
   Typography,
@@ -53,6 +53,7 @@ import { gerarModeloExcelProdutos } from "../../../utils/produtoImportUtils";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { ColumnDef } from "@tanstack/react-table";
 import * as XLSX from "xlsx";
 
@@ -227,15 +228,7 @@ const ProdutosPage = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
         </Tooltip>
       ),
     },

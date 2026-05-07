@@ -7,8 +7,10 @@ import {
   CircularProgress,
   Collapse,
   Divider,
+  Dialog,
   Drawer,
   IconButton,
+  InputBase,
   List,
   ListItemButton,
   ListItemIcon,
@@ -22,45 +24,20 @@ import {
 } from "@mui/material";
 import {
   AppWindow,
-  BarChart3,
   BellRing,
-  BookOpen,
-  Boxes,
-  BriefcaseBusiness,
-  Building2,
-  CalendarCheck,
-  CalendarDays,
-  ChefHat,
   ChevronDown,
   CircleUserRound,
-  ClipboardCheck,
-  ClipboardList,
-  FileText,
-  Home,
-  LayoutDashboard,
-  ListChecks,
+  CornerDownLeft,
   LogOut,
-  Map,
   Menu as MenuIcon,
   Moon,
-  Package2,
   PanelLeftClose,
   PanelLeftOpen,
   Palette,
-  School,
+  Search,
   Settings,
-  ShieldCheck,
-  ShoppingBasket,
-  SlidersHorizontal,
-  Sprout,
-  Store,
   Sun,
-  Truck,
-  UsersRound,
-  Utensils,
-  Warehouse,
 } from "lucide-react";
-import type { Theme } from "@mui/material/styles";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useThemePreference } from "../../contexts/ThemeContext";
@@ -71,192 +48,312 @@ import { logout } from "../../services/auth";
 import { useConfigChangeIndicator } from "../../hooks/useConfigChangeIndicator";
 import { useUserPermissions } from "../../hooks/useUserPermissions";
 import { useUserRole } from "../../hooks/useUserRole";
+import { usePeriodoAtivo, usePeriodos } from "../../hooks/queries/usePeriodosQueries";
 import { ActivePeriodSelector } from "../navigation/ActivePeriodSelector";
+import { useGlobalSearch } from "../navigation/GlobalSearch";
 import NotificacoesEscolaMenu from "../NotificacoesEscolaMenu";
 import NotificacoesMenu from "../NotificacoesMenu";
 import { DesktopTitlebarMenu } from "./DesktopTitlebarMenu";
 import { NutriLogLogo } from "./NutriLogLogo";
-import { ROUTE_PERMISSION_SLUGS } from "../../routes/permissionSlugs";
-
-const drawerWidth = 248;
-const collapsedDrawerWidth = 78;
-const desktopTitleBarHeight = 32;
-const navInset = 0.75;
-const navIconWidth = 30;
-const navItemPaddingX = 1.25;
-const sidebarFontFamily = '"Segoe UI Variable", "Segoe UI", "Inter", "Roboto", sans-serif';
-const iconProps = { size: 15, strokeWidth: 1.75 };
-const compactIconProps = { size: 14, strokeWidth: 1.75 };
-
-type LayoutTokens = {
-  bgPrimary: string;
-  bgSecondary: string;
-  bgElevated: string;
-  bgAccent: string;
-  navActiveBg: string;
-  navActiveBorder: string;
-  navActiveText: string;
-  borderSubtle: string;
-  borderMedium: string;
-  textPrimary: string;
-  textSecondary: string;
-  textMuted: string;
-  primary: string;
-  success: string;
-  danger: string;
-  primaryTint: string;
-  successTint: string;
-  dangerTint: string;
-  shadow: string;
-};
-
-const getLayoutTokens = (theme: Theme): LayoutTokens => ({
-  bgPrimary: theme.palette.background.sidebar,
-  bgSecondary: theme.palette.background.paper,
-  bgElevated: theme.palette.mode === "light" ? "#eeeeee" : "#1d1d1d",
-  bgAccent: theme.palette.mode === "light" ? "#f3f3f3" : "#171717",
-  navActiveBg: theme.palette.mode === "light" ? "#e7e7e7" : "#202020",
-  navActiveBorder: "transparent",
-  navActiveText: theme.palette.mode === "light" ? "#202020" : "#f5f5f5",
-  borderSubtle: theme.palette.divider,
-  borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
-  textPrimary: theme.palette.text.primary,
-  textSecondary: theme.palette.text.secondary,
-  textMuted: alpha(theme.palette.text.secondary, 0.8),
-  primary: theme.palette.primary.main,
-  success: theme.palette.success.main,
-  danger: theme.palette.error.main,
-  primaryTint: alpha(theme.palette.primary.main, 0.16),
-  successTint: alpha(theme.palette.success.main, 0.18),
-  dangerTint: alpha(theme.palette.error.main, 0.18),
-  shadow: theme.palette.mode === "light" ? "0 12px 30px rgba(47,49,53,0.06)" : "0 10px 24px rgba(0,0,0,0.16)",
-});
-
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Principal: <LayoutDashboard {...iconProps} />,
-  Abastecimento: <AppWindow {...iconProps} />,
-  Cadastros: <UsersRound {...iconProps} />,
-  "Cardápios": <Utensils {...iconProps} />,
-  Compras: <ShoppingBasket {...iconProps} />,
-  Entregas: <Truck {...iconProps} />,
-  Estoque: <Package2 {...iconProps} />,
-  "Configurações": <Settings {...iconProps} />,
-  "Portal Escola": <Building2 {...iconProps} />,
-};
-
-const MENU_ESCOLA = [
-  {
-    category: "Portal Escola",
-    items: [
-      { text: "Minha Escola", icon: <Home {...iconProps} />, path: "/portal-escola" },
-      { text: "Cardápio", icon: <Utensils {...iconProps} />, path: "/portal-escola/cardapio" },
-      { text: "Solicitações", icon: <FileText {...iconProps} />, path: "/portal-escola/solicitacoes" },
-      { text: "Comprovantes", icon: <ShieldCheck {...iconProps} />, path: "/portal-escola/comprovantes" },
-      { text: "Alunos", icon: <UsersRound {...iconProps} />, path: "/portal-escola/alunos" },
-    ],
-  },
-];
-
-const getMenuConfig = (_cfg: unknown) => [
-  {
-    standalone: true,
-    item: { text: "Dashboard", icon: <LayoutDashboard {...iconProps} />, path: "/dashboard" },
-  },
-  {
-    category: "Cadastros",
-    items: [
-      { text: "Escolas", icon: <School {...iconProps} />, path: "/escolas" },
-      { text: "Modalidades", icon: <SlidersHorizontal {...iconProps} />, path: "/modalidades" },
-      { text: "Produtos", icon: <Package2 {...iconProps} />, path: "/produtos" },
-      { text: "Nutricionistas", icon: <Utensils {...iconProps} />, path: "/nutricionistas" },
-      { text: "Fornecedores", icon: <Store {...iconProps} />, path: "/fornecedores" },
-      { text: "Contratos", icon: <ClipboardList {...iconProps} />, path: "/contratos" },
-    ],
-  },
-  {
-    category: "Cardápios",
-    items: [
-      { text: "Preparações", icon: <ChefHat {...iconProps} />, path: "/preparacoes" },
-      { text: "Cardápios", icon: <BookOpen {...iconProps} />, path: "/cardapios" },
-      { text: "Tipos de Refeição", icon: <CalendarDays {...iconProps} />, path: "/tipos-refeicao" },
-    ],
-  },
-  {
-    category: "Compras",
-    items: [
-      { text: "Saldos de Contratos", icon: <BriefcaseBusiness {...iconProps} />, path: "/saldos-contratos-modalidades" },
-      { text: "Dashboard PNAE", icon: <Sprout {...iconProps} />, path: "/pnae/dashboard" },
-    ],
-  },
-  {
-    category: "Abastecimento",
-    items: [
-      { text: "Visao Geral", icon: <BarChart3 {...iconProps} />, path: "/abastecimento" },
-      { text: "Guias de Demanda", icon: <ListChecks {...iconProps} />, path: "/guias-demanda" },
-      { text: "Compras / Pedidos", icon: <ShoppingBasket {...iconProps} />, path: "/compras" },
-      { text: "Entregas", icon: <Truck {...iconProps} />, path: "/entregas" },
-      { text: "Comprovantes", icon: <ClipboardCheck {...iconProps} />, path: "/comprovantes-entrega" },
-      { text: "Rotas", icon: <Map {...iconProps} />, path: "/gestao-rotas" },
-    ],
-  },
-  {
-    category: "Estoque",
-    items: [
-      { text: "Estoque Central", icon: <Warehouse {...iconProps} />, path: "/estoque-central" },
-      { text: "Estoque Escolar", icon: <Boxes {...iconProps} />, path: "/estoque-escolar" },
-      { text: "Solicitações Recebidas", icon: <CalendarCheck {...iconProps} />, path: "/solicitacoes-alimentos" },
-    ],
-  },
-];
-
-type MenuItemConfig = {
-  text: string;
-  icon: React.ReactNode;
-  path: string;
-  adminOnly?: boolean;
-};
-
-const SETTINGS_MENU_ITEMS: MenuItemConfig[] = [
-  { text: "Instituição", icon: <Building2 {...iconProps} />, path: "/configuracao-instituicao" },
-  { text: "Calendário Letivo", icon: <CalendarDays {...iconProps} />, path: "/calendario-letivo" },
-  { text: "Períodos", icon: <CalendarCheck {...iconProps} />, path: "/periodos", adminOnly: true },
-  { text: "Usuários", icon: <ShieldCheck {...iconProps} />, path: "/gerenciamento-usuarios", adminOnly: true },
-  { text: "Disparos", icon: <BellRing {...iconProps} />, path: "/disparos-notificacao", adminOnly: true },
-];
-
-const MODULO_SLUGS: Record<string, string> = {
-  Dashboard: "dashboard",
-  "Visao Geral": "planejamento_compras",
-  "Compras / Pedidos": ROUTE_PERMISSION_SLUGS.compras,
-  Rotas: "rotas",
-  Escolas: "escolas",
-  Modalidades: "modalidades",
-  Produtos: "produtos",
-  Nutricionistas: "nutricionistas",
-  Fornecedores: "fornecedores",
-  Contratos: "contratos",
-  Preparações: ROUTE_PERMISSION_SLUGS.preparacoes,
-  "Cardápios": "cardapios",
-  "Tipos de Refeição": "tipos_refeicao",
-  "Guias de Demanda": ROUTE_PERMISSION_SLUGS.guiasDemanda,
-  Pedidos: ROUTE_PERMISSION_SLUGS.compras,
-  "Saldos de Contratos": "saldo_contratos",
-  "Dashboard PNAE": "pnae",
-  "Gestão de Rotas": "rotas",
-  Romaneio: "romaneio",
-  Entregas: "entregas",
-  Comprovantes: "comprovantes",
-  "Estoque Central": "estoque",
-  "Estoque Escolar": "estoque",
-  "Solicitações Recebidas": "solicitacoes",
-  Instituição: "configuracoes",
-  "Calendário Letivo": "calendario",
-  Períodos: "periodos",
-  Usuários: "usuarios",
-  Disparos: "notificacoes",
-};
+import {
+  CATEGORY_ICONS,
+  MENU_ESCOLA,
+  MODULO_SLUGS,
+  SETTINGS_MENU_ITEMS,
+  collapsedDrawerWidth,
+  compactIconProps,
+  desktopTitleBarHeight,
+  drawerWidth,
+  getLayoutTokens,
+  getMenuConfig,
+  iconProps,
+  navIconWidth,
+  navIconWidth as fallbackNavIconWidth,
+  navInset,
+  navItemPaddingX,
+  sidebarFontFamily,
+  type LayoutTokens,
+  type MenuItemConfig,
+} from "./AppShellConfig";
 
 const isActivePath = (pathname: string, path: string) => pathname === path || (path !== "/" && pathname.startsWith(path));
+
+type GlobalSearchState = ReturnType<typeof useGlobalSearch>;
+
+const SidebarSearchItem = ({
+  collapsed,
+  tokens,
+  onOpen,
+}: {
+  collapsed: boolean;
+  tokens: LayoutTokens;
+  onOpen: () => void;
+}) => {
+  const content = (
+    <ListItemButton
+      onClick={onOpen}
+      sx={{
+        mx: navInset,
+        my: 0.18,
+        px: collapsed ? 1 : navItemPaddingX,
+        py: 0.72,
+        minHeight: 32,
+        borderRadius: 1.25,
+        justifyContent: collapsed ? "center" : "flex-start",
+        color: tokens.textSecondary,
+        backgroundColor: "transparent",
+        "&:hover": {
+          backgroundColor: tokens.bgElevated,
+          color: tokens.textPrimary,
+        },
+        "&:hover .sidebar-search-shortcut": {
+          opacity: 1,
+        },
+      }}
+    >
+      <ListItemIcon
+        sx={{
+          minWidth: collapsed ? 0 : navIconWidth,
+          color: "inherit",
+          justifyContent: "center",
+          "& svg": { width: 15, height: 15 },
+        }}
+      >
+        <Search {...iconProps} />
+      </ListItemIcon>
+      {!collapsed && (
+        <>
+          <ListItemText
+            primary="Pesquisar"
+            primaryTypographyProps={{
+              fontSize: "0.82rem",
+              fontWeight: 500,
+            }}
+          />
+          <Typography
+            className="sidebar-search-shortcut"
+            component="span"
+            sx={{
+              px: 0.65,
+              py: 0.12,
+              borderRadius: 0.9,
+              backgroundColor: tokens.bgElevated,
+              color: tokens.textMuted,
+              fontSize: "0.66rem",
+              fontWeight: 700,
+              lineHeight: 1.35,
+              flexShrink: 0,
+              opacity: 0,
+              transition: "opacity 0.14s ease",
+            }}
+          >
+            Ctrl+G
+          </Typography>
+        </>
+      )}
+    </ListItemButton>
+  );
+
+  return collapsed ? (
+    <Tooltip title="Pesquisar (Ctrl+G)" placement="right">
+      {content}
+    </Tooltip>
+  ) : content;
+};
+
+const SearchShortcutHint = ({
+  label,
+  tokens,
+}: {
+  label: string;
+  tokens: LayoutTokens;
+}) => (
+  <Typography
+    component="span"
+    sx={{
+      px: 0.6,
+      py: 0.15,
+      borderRadius: 0.7,
+      backgroundColor: tokens.bgElevated,
+      color: tokens.textMuted,
+      fontSize: "0.66rem",
+      fontWeight: 700,
+      lineHeight: 1.35,
+    }}
+  >
+    {label}
+  </Typography>
+);
+
+const GlobalSearchDialog = ({
+  search,
+  tokens,
+}: {
+  search: GlobalSearchState;
+  tokens: LayoutTokens;
+}) => {
+  const [selected, setSelected] = useState(0);
+
+  useEffect(() => {
+    setSelected(0);
+  }, [search.results]);
+
+  useEffect(() => {
+    if (!search.open) return;
+    const id = window.setTimeout(() => search.inputRef.current?.focus(), 40);
+    return () => window.clearTimeout(id);
+  }, [search.open, search.inputRef]);
+
+  const visibleResults = search.results.slice(0, 9);
+  const hasResults = visibleResults.length > 0;
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSelected((value) => Math.min(value + 1, Math.max(visibleResults.length - 1, 0)));
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelected((value) => Math.max(value - 1, 0));
+    }
+    if (event.key === "Enter" && visibleResults[selected]) {
+      event.preventDefault();
+      search.handleNavigate(visibleResults[selected].path);
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      search.handleClose();
+    }
+  };
+
+  return (
+    <Dialog
+      open={search.open}
+      onClose={search.handleClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          mt: "-18vh",
+          borderRadius: 2,
+          border: `1px solid ${tokens.borderSubtle}`,
+          backgroundColor: tokens.bgSecondary,
+          boxShadow: tokens.shadow,
+          overflow: "hidden",
+          fontFamily: sidebarFontFamily,
+          "& .MuiTypography-root, & .MuiInputBase-root": {
+            fontFamily: sidebarFontFamily,
+          },
+        },
+      }}
+      BackdropProps={{
+        sx: {
+          backgroundColor: "rgba(0,0,0,0.42)",
+          backdropFilter: "blur(2px)",
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.4, py: 1.15, borderBottom: `1px solid ${tokens.borderSubtle}` }}>
+        <Search {...iconProps} />
+        <InputBase
+          inputRef={search.inputRef}
+          value={search.query}
+          onChange={(event) => {
+            search.setQuery(event.target.value);
+            search.setOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Pesquisar no sistema"
+          fullWidth
+          sx={{
+            color: tokens.textPrimary,
+            fontSize: "0.9rem",
+            "& input::placeholder": {
+              color: tokens.textMuted,
+              opacity: 1,
+            },
+          }}
+        />
+        <Typography sx={{ px: 0.75, py: 0.25, borderRadius: 0.75, backgroundColor: tokens.bgElevated, color: tokens.textMuted, fontSize: "0.68rem", fontWeight: 700 }}>
+          Esc
+        </Typography>
+      </Box>
+
+      <Box sx={{ maxHeight: 420, overflowY: "auto", py: 0.7 }}>
+        {search.loading ? (
+          <Box sx={{ py: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 1.25 }}>
+            <CircularProgress size={18} />
+            <Typography sx={{ color: tokens.textMuted, fontSize: "0.82rem" }}>Buscando...</Typography>
+          </Box>
+        ) : !hasResults ? (
+          <Box sx={{ px: 1.4, py: 2.5 }}>
+            <Typography sx={{ color: tokens.textMuted, fontSize: "0.82rem" }}>
+              {search.query.trim() ? "Nenhum resultado encontrado" : "Digite para buscar páginas, escolas, produtos e documentos"}
+            </Typography>
+          </Box>
+        ) : (
+          <List dense disablePadding>
+            <Typography sx={{ px: 1.5, pt: 0.7, pb: 0.45, color: tokens.textMuted, fontSize: "0.7rem", fontWeight: 700 }}>
+              Resultados
+            </Typography>
+            {visibleResults.map((result, index) => {
+              const active = index === selected;
+              return (
+                <ListItemButton
+                  key={result.id}
+                  onMouseEnter={() => setSelected(index)}
+                  onClick={() => search.handleNavigate(result.path)}
+                  sx={{
+                    mx: 0.8,
+                    mb: 0.2,
+                    px: 1,
+                    py: 0.65,
+                    minHeight: 34,
+                    borderRadius: 1,
+                    color: active ? tokens.textPrimary : tokens.textSecondary,
+                    backgroundColor: active ? tokens.bgElevated : "transparent",
+                    "&:hover": {
+                      backgroundColor: tokens.bgElevated,
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 28, color: "inherit", justifyContent: "center" }}>
+                    <AppWindow {...compactIconProps} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={result.label}
+                    secondary={result.sublabel || result.category}
+                    primaryTypographyProps={{ fontSize: "0.82rem", fontWeight: active ? 650 : 500, noWrap: true }}
+                    secondaryTypographyProps={{ fontSize: "0.72rem", color: tokens.textMuted, noWrap: true }}
+                  />
+                  {active && <CornerDownLeft size={14} strokeWidth={1.75} />}
+                </ListItemButton>
+              );
+            })}
+          </List>
+        )}
+      </Box>
+      <Box
+        sx={{
+          px: 1.4,
+          py: 0.85,
+          borderTop: `1px solid ${tokens.borderSubtle}`,
+          display: "flex",
+          alignItems: "center",
+          gap: 1.1,
+          color: tokens.textMuted,
+        }}
+      >
+        <SearchShortcutHint label="↑↓" tokens={tokens} />
+        <Typography sx={{ fontSize: "0.7rem", color: tokens.textMuted }}>navegar</Typography>
+        <SearchShortcutHint label="Enter" tokens={tokens} />
+        <Typography sx={{ fontSize: "0.7rem", color: tokens.textMuted }}>abrir</Typography>
+        <SearchShortcutHint label="Esc" tokens={tokens} />
+        <Typography sx={{ fontSize: "0.7rem", color: tokens.textMuted }}>fechar</Typography>
+      </Box>
+    </Dialog>
+  );
+};
 
 const NavItem = ({
   item,
@@ -306,7 +403,7 @@ const NavItem = ({
           {item.icon}
         </ListItemIcon>
       )}
-      {!showIcon && !collapsed && <Box aria-hidden="true" sx={{ width: navIconWidth, flexShrink: 0 }} />}
+      {!showIcon && !collapsed && <Box aria-hidden="true" sx={{ width: fallbackNavIconWidth, flexShrink: 0 }} />}
       {!collapsed && (
         <ListItemText
           primary={item.text}
@@ -348,7 +445,7 @@ const CategoryGroup = ({
     if (hasActive) setOpen(true);
   }, [hasActive]);
 
-  const icon = CATEGORY_ICONS[category] ?? <AppWindow {...iconProps} />;
+  const icon = CATEGORY_ICONS[category] ?? CATEGORY_ICONS.Principal;
 
   if (collapsed) {
     return (
@@ -581,7 +678,10 @@ const AccountSettingsMenu = ({
 }) => {
   const { mode, setTheme } = useThemePreference();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const open = Boolean(anchorEl);
+  usePeriodos();
+  usePeriodoAtivo();
   const displayName = user?.nome || user?.email || "Usuário";
   const displayEmail = user?.email || user?.perfil || user?.tipo || "Conta do sistema";
   const isCollapsed = collapsed && !isMobile;
@@ -681,34 +781,61 @@ const AccountSettingsMenu = ({
         <Divider />
         {settingsItems.length > 0 && (
           <Box sx={{ py: 0.5 }}>
-            <Typography
+            <ListItemButton
+              onClick={() => setSettingsOpen((value) => !value)}
               sx={{
-                px: 1.5,
-                py: 0.75,
-                fontSize: "0.72rem",
-                fontWeight: 700,
+                mx: 0.75,
+                px: 0.75,
+                py: 0.65,
+                minHeight: 34,
+                borderRadius: 1,
                 color: tokens.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
+                "&:hover": {
+                  backgroundColor: tokens.bgElevated,
+                  color: tokens.textPrimary,
+                },
               }}
             >
-              Configurações
-            </Typography>
-            {settingsItems.map((item) => (
-              <MenuItem
-                key={item.path}
-                onClick={() => {
-                  setAnchorEl(null);
-                  onNavigate(item.path);
+              <ListItemIcon sx={{ minWidth: 30, color: "inherit", justifyContent: "center" }}>
+                <Settings {...compactIconProps} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Configurações"
+                primaryTypographyProps={{
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
                 }}
-                sx={{ minHeight: 36, px: 1.25, py: 0.72, fontSize: "0.82rem", gap: 0 }}
-              >
-                <Box sx={{ width: 30, display: "grid", placeItems: "center", color: tokens.textSecondary, flexShrink: 0 }}>
-                  {item.icon}
-                </Box>
-                {item.text}
-              </MenuItem>
-            ))}
+              />
+              <ChevronDown
+                size={15}
+                strokeWidth={1.75}
+                style={{
+                  transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.18s ease",
+                }}
+              />
+            </ListItemButton>
+            <Collapse in={settingsOpen} timeout={180} unmountOnExit>
+              <Box sx={{ pt: 0.25, pb: 0.35 }}>
+                {settingsItems.map((item) => (
+                  <MenuItem
+                    key={item.path}
+                    onClick={() => {
+                      setAnchorEl(null);
+                      onNavigate(item.path);
+                    }}
+                    sx={{ minHeight: 36, px: 1.25, py: 0.72, fontSize: "0.82rem", gap: 0 }}
+                  >
+                    <Box sx={{ width: 30, display: "grid", placeItems: "center", color: tokens.textSecondary, flexShrink: 0 }}>
+                      {item.icon}
+                    </Box>
+                    {item.text}
+                  </MenuItem>
+                ))}
+              </Box>
+            </Collapse>
           </Box>
         )}
         <Divider />
@@ -783,6 +910,7 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem("sidebar-collapsed");
     return saved ? JSON.parse(saved) : false;
   });
+  const search = useGlobalSearch();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -941,37 +1069,45 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
             <CircularProgress size={24} />
           </Box>
         ) : (
-          <List disablePadding>
-            {menuConfig.map((config: any) => (
-              "standalone" in config ? (
-                <NavItem
-                  key={config.item.path}
-                  item={config.item}
-                  pathname={location.pathname}
-                  onNavigate={handleNavigation}
-                  collapsed={collapsed && !isMobile}
-                  tokens={tokens}
-                />
-              ) : (
-                <CategoryGroup
-                  key={config.category}
-                  category={config.category}
-                  items={config.items}
-                  pathname={location.pathname}
-                  onNavigate={handleNavigation}
-                  collapsed={collapsed && !isMobile}
-                  tokens={tokens}
-                />
-              )
-            ))}
-          </List>
+          <>
+            <List disablePadding sx={{ pb: 0.35 }}>
+              <SidebarSearchItem
+                collapsed={collapsed && !isMobile}
+                tokens={tokens}
+                onOpen={() => search.setOpen(true)}
+              />
+            </List>
+            <List disablePadding>
+              {menuConfig.map((config: any) => (
+                "standalone" in config ? (
+                  <NavItem
+                    key={config.item.path}
+                    item={config.item}
+                    pathname={location.pathname}
+                    onNavigate={handleNavigation}
+                    collapsed={collapsed && !isMobile}
+                    tokens={tokens}
+                  />
+                ) : (
+                  <CategoryGroup
+                    key={config.category}
+                    category={config.category}
+                    items={config.items}
+                    pathname={location.pathname}
+                    onNavigate={handleNavigation}
+                    collapsed={collapsed && !isMobile}
+                    tokens={tokens}
+                  />
+                )
+              ))}
+            </List>
+          </>
         )}
       </Box>
 
       <Box
         sx={{
           py: 1.5,
-          borderTop: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.06 : 0.08)}`,
           display: "grid",
           gap: 0.35,
         }}
@@ -1074,6 +1210,7 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
               mt: mobileTopOffset,
               height: `calc(100% - ${titleBarOffset}px)`,
               boxSizing: "border-box",
+              borderRight: 0,
             },
           }}
         >
@@ -1090,12 +1227,15 @@ const AppShellLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children
               height: `calc(100% - ${titleBarOffset}px)`,
               overflowX: "hidden",
               transition: "width 0.22s ease",
+              borderRight: 0,
             },
           }}
         >
           {drawerContent}
         </Drawer>
       </Box>
+
+      <GlobalSearchDialog search={search} tokens={tokens} />
 
       <Box
         component="main"

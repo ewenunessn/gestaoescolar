@@ -18,6 +18,7 @@ import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog";
 import ViewTabs from "../../../components/ViewTabs";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
@@ -427,8 +428,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
     const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     return m[mes - 1];
   };
-
-  const statusColor = (s: string): any => ({ pendente: 'warning', programada: 'info', parcial: 'warning', entregue: 'success', cancelado: 'error' }[s] || 'default');
 
   const getStatusLabel = (status: string) => {
     const statusLabels: Record<string, string> = {
@@ -1003,7 +1002,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                       {formatarQuantidade(dem)} {item.unidade}
                     </TableCell>
                     <TableCell align="center">
-                      <Chip label={getStatusLabel(item.status)} size="small" color={statusColor(item.status)} />
+                      <StatusIndicator status={item.status} text={getStatusLabel(item.status)} size="small" />
                     </TableCell>
                     {!modoSelecao && (
                       <TableCell align="center">
@@ -1088,7 +1087,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>{formatarQuantidade(item.quantidade)} {item.unidade}</TableCell>
                   <TableCell align="center">
-                    <Chip label={getStatusLabel(item.status)} size="small" color={statusColor(item.status)} />
+                    <StatusIndicator status={item.status} text={getStatusLabel(item.status)} size="small" />
                   </TableCell>
                 </TableRow>
               ))}

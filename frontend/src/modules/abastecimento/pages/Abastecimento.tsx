@@ -5,7 +5,6 @@ import {
   alpha,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Divider,
   Paper,
@@ -25,6 +24,7 @@ import {
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { ErrorState } from "../../../components/StateFeedback";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { guiaService } from "../../../services/guiaService";
 import pedidosService from "../../../services/pedidos";
@@ -342,7 +342,7 @@ export default function Abastecimento() {
                     <ListRow
                       title={guia.guia_nome || `Guia ${String(guia.mes).padStart(2, "0")}/${guia.ano}`}
                       subtitle={`${Number(guia.total_escolas || 0)} escolas | ${Number(guia.total_itens || 0)} itens`}
-                      chip={<Chip label={status.label} color={status.color as any} size="small" variant="outlined" />}
+                      chip={<StatusIndicator status={status.color} text={status.label} size="small" />}
                       onClick={() => navigate(`/guias-demanda/${guia.guia_id}`)}
                     />
                   </Box>
@@ -378,7 +378,7 @@ export default function Abastecimento() {
                     <ListRow
                       title={pedido.numero}
                       subtitle={`${formatDate(pedido.data_pedido)} | ${formatCurrency(pedido.valor_total)}`}
-                      chip={<Chip label={status.label} color={status.color as any} size="small" variant="outlined" />}
+                      chip={<StatusIndicator status={status.color} text={status.label} size="small" />}
                       onClick={() => navigate(`/compras/${pedido.id}`)}
                     />
                   </Box>

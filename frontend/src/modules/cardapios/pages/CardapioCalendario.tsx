@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
+  FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
   CircularProgress, Divider, Alert, Autocomplete
 } from "@mui/material";
 import { Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from "@mui/icons-material";
@@ -27,9 +27,9 @@ import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from "../../..
 import { modalidadeService, Modalidade } from "../../../services/modalidades";
 import { refeicaoService } from "../../../services/refeicoes";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
-import { DetalheDiaCardapioDialog } from "../../../components/DetalheDiaCardapioDialog";
-import { ReplicarRefeicoesDialog } from "../../../components/ReplicarRefeicoesDialog";
-import CustoCardapioDetalheModal from "../../../components/CustoCardapioDetalheModal";
+import { DetalheDiaCardapioDialog } from "../components/DetalheDiaCardapioDialog";
+import { ReplicarRefeicoesDialog } from "../components/ReplicarRefeicoesDialog";
+import CustoCardapioDetalheModal from "../components/CustoCardapioDetalheModal";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { dateUtils } from "../../../utils/dateUtils";
@@ -85,6 +85,10 @@ const CardapioCalendarioPage: React.FC = () => {
     tipo_refeicao: '',
     observacao: ''
   });
+  const refeicoesDisponiveisValidas = refeicoesDisponiveis.filter((refeicao) => (
+    refeicao.ativo !== false && Number(refeicao.total_produtos || 0) > 0
+  ));
+  const totalRefeicoesBloqueadas = refeicoesDisponiveis.length - refeicoesDisponiveisValidas.length;
 
   useEffect(() => {
     if (cardapioId) loadData();
@@ -1070,11 +1074,17 @@ const CardapioCalendarioPage: React.FC = () => {
           { label: cardapio?.nome || 'Calendário' },
           ]}
           title={cardapio?.nome || 'Calendario do Cardapio'}
-          subtitle="Gerencie as preparacoes do cardapio no calendario mensal"
         />
-        <Grid container spacing={3}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 302px' },
+            gap: { xs: 2, md: 3 },
+            alignItems: 'start',
+          }}
+        >
           {/* Coluna principal - Calendário */}
-          <Grid item xs={12} lg={9}>
+          <Box sx={{ minWidth: 0 }}>
             {/* Usar o seletor de calendário */}
             <CalendarioProfissional
               ano={ano}
@@ -1088,12 +1098,19 @@ const CardapioCalendarioPage: React.FC = () => {
               onRelatorioDetalhado={handleOpenPeriodoDialog}
               onGerarPDFTabela={() => setOpenPDFTabelaDialog(true)}
             />
-          </Grid>
+          </Box>
 
           {/* Coluna lateral - Informações */}
-          <Grid item xs={12} lg={3}>
+          <Box
+            sx={{
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
             {/* Card de resumo do cardápio */}
-            <Card sx={{ p: 1.5, mb: 2 }}>
+            <Card sx={{ p: 1.5, borderRadius: 1, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
               <Typography variant="subtitle1" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
                 <CalendarIcon fontSize="small" />
                 Resumo do Cardápio
@@ -1149,7 +1166,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
             {/* Card de custo do cardápio */}
             {custoCardapio && (
-              <Card sx={{ p: 1.5, mb: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+              <Card sx={{ p: 1.5, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1, boxShadow: 'none' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                   <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
                     <RestaurantIcon fontSize="small" />
@@ -1346,7 +1363,7 @@ const CardapioCalendarioPage: React.FC = () => {
             )}
 
             {loadingCusto && (
-              <Card sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <Card sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: 1, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
                 <CircularProgress size={24} sx={{ mr: 2 }} />
                 <Typography variant="body2" color="text.secondary">
                   Calculando custo...
@@ -1356,7 +1373,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
             {/* Card de eventos do calendário letivo */}
             {eventosCalendario.length > 0 && (
-              <Card sx={{ p: 2 }}>
+              <Card sx={{ p: 2, borderRadius: 1, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EventIcon />
                   Eventos do Mês
@@ -1382,8 +1399,8 @@ const CardapioCalendarioPage: React.FC = () => {
                 </Box>
               </Card>
             )}
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </PageContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
@@ -1393,17 +1410,23 @@ const CardapioCalendarioPage: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Autocomplete
-              options={refeicoesDisponiveis}
+              options={refeicoesDisponiveisValidas}
               getOptionLabel={(option) => option.nome + (option.descricao ? ` - ${option.descricao}` : '')}
-              value={refeicoesDisponiveis.find(r => String(r.id) === String(formData.refeicao_id)) || null}
+              value={refeicoesDisponiveisValidas.find(r => String(r.id) === String(formData.refeicao_id)) || null}
               onChange={(_e, newValue) => setFormData({ ...formData, refeicao_id: newValue ? String(newValue.id) : '' })}
               renderInput={(params) => (
                 <TextField {...params} label="Preparação" required />
               )}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              noOptionsText="Nenhuma preparação encontrada"
+              noOptionsText="Nenhuma preparacao ativa com produtos cadastrados"
               fullWidth
             />
+
+            {totalRefeicoesBloqueadas > 0 && (
+              <Alert severity="warning">
+                {totalRefeicoesBloqueadas} outra(s) preparacao(oes) inativa(s) ou sem produtos foram ocultadas da lista.
+              </Alert>
+            )}
 
             <FormControl fullWidth required>
               <InputLabel>Tipo de Preparação</InputLabel>

@@ -8,6 +8,7 @@ import {
   type ButtonProps,
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
+import StatusIndicator from "../../../components/StatusIndicator";
 
 type Tone = "default" | "success" | "info" | "warning" | "error";
 
@@ -145,31 +146,15 @@ export function DotStatus({
   label: string;
   tone?: Tone;
 }) {
-  return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        color: "text.primary",
-      }}
-    >
-      <Box
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          bgcolor: toneColors[tone],
-          mr: "6px",
-          flexShrink: 0,
-        }}
-      />
-      <Typography
-        sx={{ fontSize: 13, color: "text.primary", lineHeight: 1 }}
-      >
-        {label}
-      </Typography>
-    </Box>
-  );
+  const statusByTone: Record<Tone, string> = {
+    default: "default",
+    success: "success",
+    info: "info",
+    warning: "warning",
+    error: "error",
+  };
+
+  return <StatusIndicator status={statusByTone[tone]} text={label} size="small" />;
 }
 
 export function CompactActionButton({ sx, ...props }: ButtonProps) {

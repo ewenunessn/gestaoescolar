@@ -15,10 +15,15 @@ export function useProdutos(filters?: { search?: string; categoria?: string; ati
   return useQuery({
     queryKey: queryKeys.produtos.list(filters),
     queryFn: () => produtoService.listar(),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      const status = error?.response?.status ?? error?.status;
+      if (status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
     select: (data: Produto[]) => {
       let filteredData = [...data];
 
@@ -53,13 +58,26 @@ export function useProduto(id: number, enabled = true) {
 }
 
 export function useCategoriasProdutos() {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: queryKeys.produtos.categorias(),
     queryFn: async () => {
-      const produtos = await produtoService.listar();
+      const produtos = await queryClient.fetchQuery({
+        queryKey: queryKeys.produtos.list(undefined),
+        queryFn: () => produtoService.listar(),
+        staleTime: 5 * 60 * 1000,
+      });
       return [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
     },
-    ...cacheConfig.static,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      const status = error?.response?.status ?? error?.status;
+      if (status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
   });
 }
 

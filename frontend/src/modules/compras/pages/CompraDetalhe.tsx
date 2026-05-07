@@ -7,13 +7,14 @@ import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, IconButton, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, Typography, Alert, Popover, Tooltip,
-  Select, MenuItem, FormControl, InputLabel,
+  Select, MenuItem, FormControl, InputLabel, Menu, CircularProgress,
 } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
 import {
   Cancel as CancelIcon, Edit as EditIcon, Receipt as ReceiptIcon,
   CalendarMonth as CalendarIcon, MergeType as MergeIcon, Tune as TuneIcon,
   PictureAsPdf as PdfIcon, ArrowBack as ArrowBackIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import { listarProgramacoes } from "../../../services/programacaoEntrega";
 import pedidosService from "../../../services/pedidos";
@@ -44,6 +45,7 @@ export default function PedidoDetalhe() {
   const [processando, setProcessando] = useState(false);
 
   const [dialogExcluir, setDialogExcluir] = useState(false);
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<null | HTMLElement>(null);
   const [dialogAlterarStatus, setDialogAlterarStatus] = useState(false);
   const [novoStatus, setNovoStatus] = useState('');
   const [motivoStatus, setMotivoStatus] = useState('');
@@ -361,7 +363,7 @@ export default function PedidoDetalhe() {
     } finally { setProcessando(false); }
   };
 
-  if (loading) return <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}><Typography>Carregando...</Typography></Box>;
+  if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh', bgcolor: 'background.default' }}><CircularProgress size={60} /></Box>;
   if (!pedido) return <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}><Alert severity="error">Pedido não encontrado</Alert></Box>;
 
   const statusInfo = STATUS_PEDIDO[pedido.status as keyof typeof STATUS_PEDIDO];
@@ -369,8 +371,8 @@ export default function PedidoDetalhe() {
   const ehConcluido = pedido.status === 'concluido';
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-      <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - var(--app-top-offset, 0px))', bgcolor: 'background.default', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
         {/* Seta + Breadcrumbs na mesma linha */}
         <Box sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/compras')} sx={{ mr: 0.5, p: 0.5 }}>
@@ -393,6 +395,45 @@ export default function PedidoDetalhe() {
             { label: `Compra ${pedido.numero}` },
           ]}
           title={`Compra ${pedido.numero}`}
+          topAction={
+            <>
+              <IconButton
+                size="small"
+                onClick={(event) => setActionsAnchorEl(event.currentTarget)}
+                sx={{
+                  width: 36,
+                  height: 36,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  color: 'text.secondary',
+                  bgcolor: 'background.paper',
+                  '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                }}
+              >
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+              <Menu
+                anchorEl={actionsAnchorEl}
+                open={Boolean(actionsAnchorEl)}
+                onClose={() => setActionsAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    setActionsAnchorEl(null);
+                    setDialogExcluir(true);
+                  }}
+                  disabled={processando}
+                  sx={{ gap: 1, color: 'delete.main', fontSize: '0.82rem' }}
+                >
+                  <CancelIcon fontSize="small" />
+                  Excluir
+                </MenuItem>
+              </Menu>
+            </>
+          }
           action={
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <FormControl sx={{ minWidth: 120 }}>
@@ -422,10 +463,6 @@ export default function PedidoDetalhe() {
               <Button variant="contained" color={'edit' as any} startIcon={<EditIcon />}
                 onClick={() => navigate(`/compras/${pedido.id}/editar`)} disabled={processando}>
                 Editar
-              </Button>
-              <Button variant="contained" color={'delete' as any} startIcon={<CancelIcon />}
-                onClick={() => setDialogExcluir(true)} disabled={processando}>
-                Excluir
               </Button>
             </Box>
           }

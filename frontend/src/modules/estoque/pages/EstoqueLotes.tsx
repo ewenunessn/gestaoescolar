@@ -40,7 +40,6 @@ import {
   formatarQuantidade,
   formatarData,
   formatarDataHora,
-  getStatusLoteColor,
   getStatusLoteLabel,
   calcularDiasParaVencimento,
   type EstoqueLote
@@ -48,6 +47,7 @@ import {
 import { produtoService } from "../../../services/produtos";
 import { useToast } from "../../../hooks/useToast";
 import { useRealtimeRefresh } from "../../../hooks/useRealtimeRefresh";
+import StatusIndicator from "../../../components/StatusIndicator";
 
 const EstoqueLotes: React.FC = () => {
   const { produto_id } = useParams<{ produto_id: string }>();
@@ -308,20 +308,12 @@ const EstoqueLotes: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     {statusVencimento && (
-                      <Chip
-                        label={statusVencimento.text}
-                        size="small"
-                        color={statusVencimento.color as any}
-                      />
+                      <StatusIndicator status={statusVencimento.color} text={statusVencimento.text} size="small" />
                     )}
                   </TableCell>
 
                   <TableCell align="center">
-                    <Chip
-                      label={getStatusLoteLabel(lote.status)}
-                      size="small"
-                      color={getStatusLoteColor(lote.status) as any}
-                    />
+                    <StatusIndicator status={lote.status} text={getStatusLoteLabel(lote.status)} size="small" />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">

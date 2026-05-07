@@ -42,12 +42,13 @@ import {
   useAtualizarFornecedor, 
   useExcluirFornecedor 
 } from "../../../hooks/queries";
-import ImportacaoFornecedores from "../../../components/ImportacaoFornecedores";
-import ConfirmacaoExclusaoFornecedor from "../../../components/ConfirmacaoExclusaoFornecedor";
+import ImportacaoFornecedores from "../components/ImportacaoFornecedores";
+import ConfirmacaoExclusaoFornecedor from "../components/ConfirmacaoExclusaoFornecedor";
 import * as XLSX from "xlsx";
 import { formatarDocumento } from "../../../utils/validacaoDocumento";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { ColumnDef } from "@tanstack/react-table";
 
 // Interfaces
@@ -164,20 +165,39 @@ const FornecedoresPage: React.FC = () => {
       enableSorting: true,
       cell: ({ getValue }) => {
         const value = getValue() as string | undefined;
-        const isAF = value === 'AGRICULTURA_FAMILIAR' || value === 'COOPERATIVA_AF' || value === 'ASSOCIACAO_AF';
-        const label = 
+        const label =
           value === 'AGRICULTURA_FAMILIAR' ? 'Agricultura Familiar' :
           value === 'COOPERATIVA_AF' ? 'Cooperativa AF' :
           value === 'ASSOCIACAO_AF' ? 'Associação AF' :
           value === 'CONVENCIONAL' ? 'Convencional' :
           value || 'Não informado';
-        
+
         return (
-          <Chip 
-            label={label} 
+          <Chip
+            label={label}
             size="small"
-            color={isAF ? 'success' : 'default'}
-            sx={{ ...(isAF ? { color: 'white' } : {}) }}
+            sx={{
+              width: 132,
+              height: 24,
+              justifyContent: 'center',
+              borderRadius: '999px',
+              border: (theme) => theme.palette.mode === 'light'
+                ? '1px solid rgba(13, 148, 136, 0.34)'
+                : '1px solid rgba(45, 212, 191, 0.28)',
+              bgcolor: (theme) => theme.palette.mode === 'light'
+                ? 'rgba(20, 184, 166, 0.14)'
+                : 'rgba(45, 212, 191, 0.18)',
+              color: (theme) => theme.palette.mode === 'light' ? '#0f766e' : '#e6fffb',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              '& .MuiChip-label': {
+                width: '100%',
+                px: 1,
+                textAlign: 'center',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              },
+            }}
           />
         );
       },
@@ -203,15 +223,7 @@ const FornecedoresPage: React.FC = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
         </Tooltip>
       ),
     },

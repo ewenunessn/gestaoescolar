@@ -42,6 +42,7 @@ import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { formatarQuantidade } from "../../../utils/formatters";
 import api from "../../../services/api";
 import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
+import StatusIndicator from "../../../components/StatusIndicator";
 
 // Função para converter siglas de unidades em nomes completos
 const getUnidadeCompleta = (sigla: string): string => {
@@ -280,17 +281,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
-      'pendente': 'warning',
-      'programada': 'info',
-      'parcial': 'warning',
-      'entregue': 'success',
-      'cancelado': 'error'
-    };
-    return statusMap[status] || 'default';
-  };
-
   const getStatusLabel = (status: string) => {
     const statusLabels: Record<string, string> = {
       'pendente': 'Disponível p/ Entrega',
@@ -372,11 +362,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       size: 160,
       enableSorting: true,
       cell: ({ getValue }) => (
-        <Chip 
-          label={getStatusLabel(getValue() as string)} 
-          size="small" 
-          color={getStatusColor(getValue() as string)}
-        />
+        <StatusIndicator status={getValue() as string} text={getStatusLabel(getValue() as string)} size="small" />
       ),
     },
     {

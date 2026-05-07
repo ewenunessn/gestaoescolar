@@ -5,6 +5,59 @@ import { obterPeriodoUsuario } from '../../../utils/periodoUsuarioHelper';
 
 const query = db.query.bind(db);
 
+type CardapioValidacaoRefeicaoDia = {
+  ano: number;
+  mes: number;
+};
+
+type RefeicaoValidacaoRefeicaoDia = {
+  ativo: boolean;
+};
+
+type ProdutoStatsValidacaoRefeicaoDia = {
+  total_produtos: number | string;
+  total_produtos_com_per_capita: number | string;
+};
+
+export function validarAdicaoRefeicaoDia({
+  cardapio,
+  refeicao,
+  produtoStats,
+  dia,
+}: {
+  cardapio: CardapioValidacaoRefeicaoDia;
+  refeicao: RefeicaoValidacaoRefeicaoDia;
+  produtoStats: ProdutoStatsValidacaoRefeicaoDia;
+  dia: number;
+}): string | null {
+  const diasNoMes = new Date(Number(cardapio.ano), Number(cardapio.mes), 0).getDate();
+
+  if (!Number.isInteger(dia) || dia < 1 || dia > diasNoMes) {
+    return 'Dia invalido para o mes do cardapio.';
+  }
+
+  const dataCardapio = new Date(Number(cardapio.ano), Number(cardapio.mes) - 1, dia);
+  if (dataCardapio.getDay() === 0) {
+    return 'Nao e permitido adicionar refeicoes aos domingos.';
+  }
+
+  if (!refeicao.ativo) {
+    return 'A preparacao selecionada esta inativa.';
+  }
+
+  const totalProdutos = Number(produtoStats.total_produtos) || 0;
+  if (totalProdutos === 0) {
+    return 'A preparacao selecionada nao possui produtos cadastrados.';
+  }
+
+  const totalProdutosComPerCapita = Number(produtoStats.total_produtos_com_per_capita) || 0;
+  if (totalProdutosComPerCapita === 0) {
+    return 'A preparacao selecionada nao possui produtos com per capita maior que zero.';
+  }
+
+  return null;
+}
+
 // Listar cardápios
 export async function listarCardapiosModalidade(req: Request, res: Response) {
   try {
@@ -281,16 +334,62 @@ export async function adicionarRefeicaoDia(req: Request, res: Response) {
   try {
     const { cardapioId } = req.params;
     const { refeicao_id, dia, tipo_refeicao, observacao } = req.body;
+    const diaNumero = Number(dia);
 
     if (!refeicao_id || !dia || !tipo_refeicao) {
       return res.status(400).json({ message: 'Campos obrigatórios: refeicao_id, dia, tipo_refeicao' });
+    }
+
+    const cardapioResult = await query(
+      'SELECT id, mes, ano FROM cardapios_modalidade WHERE id = $1',
+      [cardapioId]
+    );
+
+    if (cardapioResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Cardapio nao encontrado' });
+    }
+
+    const refeicaoResult = await query(
+      'SELECT id, ativo FROM refeicoes WHERE id = $1',
+      [refeicao_id]
+    );
+
+    if (refeicaoResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Preparacao nao encontrada' });
+    }
+
+    const produtoStatsResult = await query(`
+      SELECT
+        COUNT(*) as total_produtos,
+        COUNT(*) FILTER (
+          WHERE COALESCE(rp.per_capita, 0) > 0
+            OR EXISTS (
+              SELECT 1
+              FROM refeicao_produto_modalidade rpm
+              WHERE rpm.refeicao_produto_id = rp.id
+                AND COALESCE(rpm.per_capita_ajustado, 0) > 0
+            )
+        ) as total_produtos_com_per_capita
+      FROM refeicao_produtos rp
+      WHERE rp.refeicao_id = $1
+    `, [refeicao_id]);
+
+    const erroValidacao = validarAdicaoRefeicaoDia({
+      cardapio: cardapioResult.rows[0],
+      refeicao: refeicaoResult.rows[0],
+      produtoStats: produtoStatsResult.rows[0],
+      dia: diaNumero,
+    });
+
+    if (erroValidacao) {
+      return res.status(400).json({ message: erroValidacao });
     }
 
     const result = await query(`
       INSERT INTO cardapio_refeicoes_dia (cardapio_modalidade_id, refeicao_id, dia, tipo_refeicao, observacao)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [cardapioId, refeicao_id, dia, tipo_refeicao, observacao]);
+    `, [cardapioId, refeicao_id, diaNumero, tipo_refeicao, observacao]);
 
     res.status(201).json(result.rows[0]);
     cacheService.invalidateEntity('cardapios', Number(cardapioId));

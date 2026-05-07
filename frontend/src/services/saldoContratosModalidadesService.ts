@@ -108,6 +108,13 @@ export interface CadastrarSaldoModalidadeRequest {
   quantidade_inicial: number;
 }
 
+export interface CadastrarSaldoItemRequest {
+  contrato_produto_id: number;
+  quantidade_inicial: number;
+}
+
+export type SaldoContratoItem = Omit<SaldoContratoModalidadeItem, 'modalidade_id' | 'modalidade_nome' | 'modalidade_codigo_financeiro' | 'modalidade_valor_repasse'>;
+
 class SaldoContratosModalidadesService {
   /**
    * Lista todos os saldos por modalidade com filtros
@@ -126,6 +133,24 @@ class SaldoContratosModalidadesService {
       return response.data;
     } catch (error) {
       console.error('Erro ao listar saldos por modalidade:', error);
+      throw error;
+    }
+  }
+
+  async listarSaldosItens(filtros: SaldoContratosModalidadesFilters = {}): Promise<SaldoContratosModalidadesResponse> {
+    try {
+      const params = new URLSearchParams();
+
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+
+      const response = await api.get(`/saldo-contratos-modalidades/itens?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao listar saldos por item:', error);
       throw error;
     }
   }
@@ -178,6 +203,16 @@ class SaldoContratosModalidadesService {
       return response.data;
     } catch (error) {
       console.error('Erro ao cadastrar saldo por modalidade:', error);
+      throw error;
+    }
+  }
+
+  async cadastrarSaldoItem(dados: CadastrarSaldoItemRequest): Promise<any> {
+    try {
+      const response = await api.post('/saldo-contratos-modalidades/itens', dados);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao cadastrar saldo por item:', error);
       throw error;
     }
   }

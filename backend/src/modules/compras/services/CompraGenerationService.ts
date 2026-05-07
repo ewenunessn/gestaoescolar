@@ -1,7 +1,7 @@
 import * as PlanejamentoComprasService from './PlanejamentoComprasService';
 
 export function validarCompraDaGuia(reqBody: any, usuarioId: number) {
-  return PlanejamentoComprasService.gerarPedidoDaGuia(reqBody, usuarioId);
+  return PlanejamentoComprasService.validarPedidoDaGuia(reqBody, usuarioId);
 }
 
 export function iniciarGeracaoCompraDaGuia(reqBody: any, usuarioId: number) {

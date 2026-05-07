@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { ColumnDef } from "@tanstack/react-table";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { 
   ShoppingCart as ShoppingCartIcon, Add as AddIcon, Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon
@@ -229,28 +230,7 @@ export default function SolicitacoesPage() {
       header: 'Status',
       cell: ({ getValue }) => {
         const status = getValue() as string;
-        const colors: Record<string, string> = {
-          pendente: 'warning',
-          aprovada: 'success',
-          rejeitada: 'error',
-          cancelada: 'default'
-        };
-        return (
-          <Box
-            sx={{
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 1,
-              bgcolor: `${colors[status] || 'default'}.lighter`,
-              color: `${colors[status] || 'default'}.main`,
-              display: 'inline-block',
-              fontSize: '0.875rem',
-              fontWeight: 600
-            }}
-          >
-            {status.toUpperCase()}
-          </Box>
-        );
+        return <StatusIndicator status={status} text={status.toUpperCase()} size="small" />;
       }
     },
     {

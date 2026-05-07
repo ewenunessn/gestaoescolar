@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { ColumnDef } from "@tanstack/react-table";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { 
   Description as DescriptionIcon, Visibility as VisibilityIcon, 
   Print as PrintIcon, ArrowBack as ArrowBackIcon
@@ -210,26 +211,7 @@ export default function ComprovantesPage() {
       header: 'Status',
       cell: ({ getValue }) => {
         const status = getValue() as string;
-        const colors: Record<string, string> = {
-          finalizado: 'success',
-          cancelado: 'error'
-        };
-        return (
-          <Box
-            sx={{
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 1,
-              bgcolor: `${colors[status] || 'default'}.lighter`,
-              color: `${colors[status] || 'default'}.main`,
-              display: 'inline-block',
-              fontSize: '0.875rem',
-              fontWeight: 600
-            }}
-          >
-            {status.toUpperCase()}
-          </Box>
-        );
+        return <StatusIndicator status={status} text={status.toUpperCase()} size="small" />;
       }
     },
     {

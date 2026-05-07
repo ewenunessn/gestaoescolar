@@ -2,6 +2,10 @@ import { NextFunction, Request, Response, Router } from 'express';
 import { authenticateToken } from "../../../middleware/authMiddleware";
 import { requireEscrita, requireLeitura } from "../../../middleware/permissionMiddleware";
 import {
+  obterConfiguracao,
+  atualizarConfiguracao,
+  listarSaldosItens,
+  cadastrarSaldoItem,
   listarSaldosModalidades,
   cadastrarSaldoModalidade,
   listarModalidades,
@@ -26,6 +30,14 @@ export function requireSaldoContratosWrite(req: Request, res: Response, next: Ne
 
 // Listar saldos por modalidade
 router.get('/', authenticateToken, requireSaldoContratosRead, listarSaldosModalidades);
+
+// Configuracao do modo oficial de saldo
+router.get('/config', authenticateToken, requireSaldoContratosRead, obterConfiguracao);
+router.put('/config', authenticateToken, requireSaldoContratosWrite, atualizarConfiguracao);
+
+// Saldo consolidado por item
+router.get('/itens', authenticateToken, requireSaldoContratosRead, listarSaldosItens);
+router.post('/itens', authenticateToken, requireSaldoContratosWrite, cadastrarSaldoItem);
 
 // Cadastrar/atualizar saldo por modalidade
 router.post('/', authenticateToken, requireSaldoContratosWrite, cadastrarSaldoModalidade);

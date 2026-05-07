@@ -23,13 +23,14 @@ interface CalendarioMensalProps {
   readonly?: boolean;
   onMesAnterior?: () => void;
   onProximoMes?: () => void;
+  embedded?: boolean;
 }
 
 const ABV = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 export default function CalendarioMensal({
   ano, mes, eventos, onDiaClick, onEventoClick, readonly,
-  onMesAnterior, onProximoMes,
+  onMesAnterior, onProximoMes, embedded = false,
 }: CalendarioMensalProps) {
   const { semanas, hojeStr, evtPorData } = useMemo(() => {
     /* Gerar o grid: semanas de DOM a SAB */
@@ -79,10 +80,10 @@ export default function CalendarioMensal({
 
   return (
     <Box sx={{
-      borderRadius: 2.5,
+      borderRadius: embedded ? 0 : 2.5,
       overflow: 'hidden',
-      border: '1px solid',
-      borderColor: 'divider',
+      border: embedded ? 'none' : '1px solid',
+      borderColor: embedded ? 'transparent' : 'divider',
       bgcolor: 'background.paper',
     }}>
       {/* ═══ HEADER ═══ */}
@@ -91,7 +92,7 @@ export default function CalendarioMensal({
         alignItems: 'center',
         justifyContent: 'space-between',
         px: 2.5, py: 1.5,
-        bgcolor: 'rgba(255,255,255,0.02)',
+        bgcolor: 'rgba(0,0,0,0.015)',
         borderBottom: '1px solid',
         borderColor: 'divider',
       }}>

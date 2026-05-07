@@ -8,7 +8,7 @@ vi.mock('../../../components/CalendarioProfissional', () => ({
   default: () => <div>Calendario profissional</div>,
 }));
 
-vi.mock('../../../components/ReplicarRefeicoesDialog', () => ({
+vi.mock('../components/ReplicarRefeicoesDialog', () => ({
   ReplicarRefeicoesDialog: () => null,
 }));
 

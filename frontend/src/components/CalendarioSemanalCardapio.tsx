@@ -29,6 +29,7 @@ interface Props {
   onDiaClick: (data: string) => void;
   onEventoClick?: (evento: EventoCalendario) => void;
   readonly?: boolean;
+  embedded?: boolean;
 }
 
 const ICO: Record<string, React.ReactElement> = {
@@ -49,7 +50,7 @@ const MES = [
 ];
 
 export default function CalendarioSemanalCardapio({
-  ano, mes, eventos, onDiaClick, onEventoClick,
+  ano, mes, eventos, onDiaClick, onEventoClick, embedded = false,
 }: Props) {
   const [sem, setSem] = useState(0);
   const [tipos, setTipos] = useState<{ k: string; l: string; icon: React.ReactElement }[]>([]);
@@ -141,10 +142,10 @@ export default function CalendarioSemanalCardapio({
 
   return (
     <Box sx={{
-      borderRadius: 2.5,
+      borderRadius: embedded ? 0 : 2.5,
       overflow: 'hidden',
-      border: '1px solid',
-      borderColor: 'divider',
+      border: embedded ? 'none' : '1px solid',
+      borderColor: embedded ? 'transparent' : 'divider',
       bgcolor: 'background.paper',
     }}>
       {/* ═══ NAV BAR ═══ */}

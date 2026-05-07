@@ -3,10 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { createColumnHelper } from "@tanstack/react-table";
 import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import PageHeader from "../../../components/PageHeader";
-import AdicionarIngredienteDialog from "../../../components/AdicionarIngredienteDialog";
-import AdicionarGrupoIngredientesDialog from "../../../components/AdicionarGrupoIngredientesDialog";
-import EditarIngredienteDialog from "../../../components/EditarIngredienteDialog";
-import DetalhamentoCustoModal from "../../../components/DetalhamentoCustoModal";
+import PageContainer from "../../../components/PageContainer";
+import AdicionarIngredienteDialog from "../components/AdicionarIngredienteDialog";
+import AdicionarGrupoIngredientesDialog from "../components/AdicionarGrupoIngredientesDialog";
+import EditarIngredienteDialog from "../components/EditarIngredienteDialog";
+import DetalhamentoCustoModal from "../components/DetalhamentoCustoModal";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useToast } from "../../../hooks/useToast";
 import {
@@ -54,8 +55,6 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Description as DescriptionIcon,
-  Timer as TimerIcon,
-  LocalDining as LocalDiningIcon,
   PictureAsPdf as PdfIcon,
   MoreVert as MoreVertIcon,
   ArrowBack as ArrowBackIcon,
@@ -90,6 +89,127 @@ interface preparacaoProduto {
 
 // Definição das colunas do EntityListTable
 const columnHelper = createColumnHelper<preparacaoProduto>();
+const NUTRITION_PANEL_WIDTH = 280;
+
+type NutricaoPorcaoCardProps = {
+  associacoesCount: number;
+  valoresNutricionais: any;
+  loadingNutricional: boolean;
+  errorNutricional: unknown;
+  fillHeight?: boolean;
+};
+
+const NutricaoPorcaoCard = ({
+  associacoesCount,
+  valoresNutricionais,
+  loadingNutricional,
+  errorNutricional,
+  fillHeight = false,
+}: NutricaoPorcaoCardProps) => {
+  const rows = valoresNutricionais ? [
+    { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
+    { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
+    { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
+    { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
+    { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
+    { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
+    { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
+    { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
+  ] : [];
+  const alertasNutricionais = valoresNutricionais ? [
+    ...(valoresNutricionais.aviso ? [{ mensagem: valoresNutricionais.aviso }] : []),
+    ...(valoresNutricionais.alertas || []),
+  ] : [];
+
+  return (
+    <Card
+      sx={{
+        borderRadius: '14px',
+        p: 1.5,
+        height: fillHeight ? '100%' : 'auto',
+        bgcolor: (theme) => theme.palette.mode === 'dark' ? '#141414' : 'background.paper',
+        border: '1px solid',
+        borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+        boxShadow: 'none',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
+          Nutrição / porção
+        </Typography>
+        {loadingNutricional && <CircularProgress size={12} />}
+      </Box>
+
+      {associacoesCount === 0 ? (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          Adicione ingredientes para ver os valores nutricionais.
+        </Typography>
+      ) : !loadingNutricional && valoresNutricionais ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+          <Box
+            sx={{
+              bgcolor: (theme) => theme.palette.mode === 'dark' ? '#232323' : 'action.hover',
+              px: 1.5,
+              py: 1,
+              borderRadius: '10px',
+              mb: 1,
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Energia</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main', lineHeight: 1.25 }}>
+              {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
+            </Typography>
+          </Box>
+
+          {rows.map(({ label, value, unit }) => (
+            <Box
+              key={label}
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: 1,
+                py: 0.45,
+                borderBottom: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">{label}</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 400, color: 'text.primary' }}>{value}{unit}</Typography>
+            </Box>
+          ))}
+
+          {alertasNutricionais.length > 0 && (
+            <Box
+              sx={{
+                mt: 1.5,
+                bgcolor: 'rgba(255, 152, 0, 0.12)',
+                px: 1.25,
+                py: 1,
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 152, 0, 0.55)',
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.light', display: 'block', mb: 0.5 }}>
+                Alertas Nutricionais
+              </Typography>
+              {alertasNutricionais.map((alerta: any, idx: number) => (
+                <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', lineHeight: 1.5 }}>
+                  {alerta.mensagem}
+                </Typography>
+              ))}
+            </Box>
+          )}
+        </Box>
+      ) : !loadingNutricional && errorNutricional ? (
+        <Typography variant="caption" color="error">Erro ao calcular valores.</Typography>
+      ) : null}
+    </Card>
+  );
+};
 
 export default function PreparacaoDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -114,10 +234,10 @@ export default function PreparacaoDetalhe() {
   
   const [modalidadeSelecionada, setModalidadeSelecionada] = useState<number | null>(null);
   const [editando, setEditando] = useState(false);
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nomeDraft, setNomeDraft] = useState('');
   const [form, setForm] = useState<any>({});
   const [openExcluir, setOpenExcluir] = useState(false);
-  const [openDialogDetalhes, setOpenDialogDetalhes] = useState(false);
-  const [formDetalhes, setFormDetalhes] = useState<any>({});
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
   const [dialogGrupoOpen, setDialogGrupoOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
@@ -129,14 +249,14 @@ export default function PreparacaoDetalhe() {
   // Hooks para cálculos dinâmicos
   const { data: valoresNutricionais, isLoading: loadingNutricional, error: errorNutricional } = useValoresNutricionais(
     Number(id),
-    preparacao?.rendimento_porcoes || form.rendimento_porcoes,
+    1,
     !!preparacao, // Buscar sempre que a refeição estiver carregada
     modalidadeSelecionada
   );
   
   const { data: custoData, isLoading: loadingCusto, error: errorCusto } = useCustoRefeicao(
     Number(id),
-    preparacao?.rendimento_porcoes || form.rendimento_porcoes,
+    1,
     tabAtiva === 1 && !!preparacao, // Só buscar custo na aba Ficha Técnica
     modalidadeSelecionada
   );
@@ -326,7 +446,7 @@ export default function PreparacaoDetalhe() {
   useEffect(() => {
     if (preparacao) {
       setForm(preparacao);
-      setFormDetalhes(preparacao);
+      if (!editandoNome) setNomeDraft(preparacao.nome || '');
       setPageTitle(preparacao.nome);
 
       // Selecionar primeira modalidade ativa por padrão
@@ -335,7 +455,7 @@ export default function PreparacaoDetalhe() {
         setModalidadeSelecionada(ativas[0].id);
       }
     }
-  }, [preparacao, modalidades, setPageTitle]);
+  }, [preparacao, modalidades, setPageTitle, editandoNome, modalidadeSelecionada]);
   
   // Verificar se refeição não foi encontrada
   useEffect(() => {
@@ -351,13 +471,48 @@ export default function PreparacaoDetalhe() {
 
   async function salvarEdicao() {
     try {
-      await editarRefeicaoMutation.mutateAsync({ id: Number(id), data: form });
+      await editarRefeicaoMutation.mutateAsync({ id: Number(id), data: { ...form, tempo_preparo_minutos: null, rendimento_porcoes: 1 } });
       setEditando(false);
       toast.success('Refeição atualizada com sucesso!');
     } catch {
       toast.error('Não foi possível salvar as alterações.');
     }
   }
+
+  const iniciarEdicaoNome = () => {
+    setNomeDraft(preparacao?.nome || '');
+    setEditandoNome(true);
+  };
+
+  const cancelarEdicaoNome = () => {
+    setNomeDraft(preparacao?.nome || '');
+    setEditandoNome(false);
+  };
+
+  const salvarNome = async () => {
+    const nome = nomeDraft.trim();
+
+    if (!nome) {
+      toast.error('Informe o nome da refeição.');
+      return;
+    }
+
+    if (!preparacao || nome === preparacao.nome) {
+      setEditandoNome(false);
+      return;
+    }
+
+    try {
+      await editarRefeicaoMutation.mutateAsync({
+        id: Number(id),
+        data: { ...preparacao, nome, tempo_preparo_minutos: null, rendimento_porcoes: 1 },
+      });
+      setEditandoNome(false);
+      toast.success('Nome da refeição atualizado com sucesso!');
+    } catch {
+      toast.error('Não foi possível atualizar o nome da refeição.');
+    }
+  };
 
   async function excluirpreparacao() {
     try {
@@ -468,8 +623,8 @@ export default function PreparacaoDetalhe() {
           nome: refeicaoParaPdf.nome,
           descricao: refeicaoParaPdf.descricao,
           categoria: refeicaoParaPdf.categoria,
-          tempo_preparo_minutos: refeicaoParaPdf.tempo_preparo_minutos,
-          rendimento_porcoes: refeicaoParaPdf.rendimento_porcoes,
+          tempo_preparo_minutos: undefined,
+          rendimento_porcoes: 1,
           modo_preparo: refeicaoParaPdf.modo_preparo,
           utensilios: refeicaoParaPdf.utensilios,
           observacoes_tecnicas: refeicaoParaPdf.observacoes_tecnicas,
@@ -502,12 +657,13 @@ export default function PreparacaoDetalhe() {
   return (
     <>
     <Box sx={{ 
-      height: '100vh',
+      height: 'calc(100vh - var(--app-top-offset, 0px))',
       bgcolor: 'background.default', 
       display: 'flex', 
       flexDirection: 'column', 
       overflow: 'hidden' 
     }}>
+      <PageContainer fullHeight sx={{ overflow: 'hidden' }}>
       <Box sx={{ px: isMobile ? 1 : 2, pt: 1.5 }}>
         {/* Seta + Breadcrumbs na mesma linha */}
         <Box sx={{ display: 'none' }}>
@@ -530,13 +686,102 @@ export default function PreparacaoDetalhe() {
             { label: 'Preparações', path: '/preparacoes' },
             { label: preparacao?.nome || '' },
           ]}
-          title={preparacao?.nome || 'Detalhes da Preparação'}
-          action={
-            <Tooltip title="Editar informações da preparação">
-              <IconButton size="small" onClick={() => setOpenDialogDetalhes(true)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, maxWidth: '100%' }}>
+              {editandoNome ? (
+                <>
+                  <TextField
+                    value={nomeDraft}
+                    onChange={(event) => setNomeDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void salvarNome();
+                      if (event.key === 'Escape') cancelarEdicaoNome();
+                    }}
+                    autoFocus
+                    size="small"
+                    variant="outlined"
+                    inputProps={{ 'aria-label': 'Nome da refeicao' }}
+                    sx={{
+                      width: { xs: 'min(100%, 320px)', md: 520 },
+                      '& .MuiInputBase-input': {
+                        py: 0.65,
+                        fontSize: { xs: '1.05rem', md: '1.22rem' },
+                        fontWeight: 700,
+                      },
+                    }}
+                  />
+                  <Tooltip title="Cancelar">
+                    <span>
+                      <IconButton size="small" onClick={cancelarEdicaoNome} disabled={editarRefeicaoMutation.isPending}>
+                        <CancelIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Salvar nome">
+                    <span>
+                      <IconButton size="small" color="primary" onClick={() => void salvarNome()} disabled={editarRefeicaoMutation.isPending}>
+                        <SaveIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </>
+              ) : (
+                <>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontSize: { xs: '1.2rem', md: '1.42rem' },
+                      fontWeight: 700,
+                      letterSpacing: 0,
+                      lineHeight: 1.15,
+                      color: 'text.primary',
+                      minWidth: 0,
+                    }}
+                  >
+                    {preparacao?.nome || 'Detalhes da Preparacao'}
+                  </Typography>
+                  <Tooltip title="Editar nome da refeicao">
+                    <EditIcon
+                      fontSize="small"
+                      onClick={iniciarEdicaoNome}
+                      sx={{
+                        cursor: 'pointer',
+                        color: 'text.secondary',
+                        '&:hover': { color: 'primary.main' },
+                      }}
+                    />
+                  </Tooltip>
+                </>
+              )}
+            </Box>
+          }
+          topAction={
+            !editando && (
+              <>
+                <IconButton
+                  size="small"
+                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    color: 'text.secondary',
+                    bgcolor: 'background.paper',
+                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                  }}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => setMenuAnchorEl(null)}>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); setOpenExcluir(true); }} sx={{ gap: 1, color: 'delete.main', fontSize: '0.82rem' }}>
+                    <DeleteIcon fontSize="small" />
+                    Excluir
+                  </MenuItem>
+                </Menu>
+              </>
+            )
           }
         />
 
@@ -545,8 +790,6 @@ export default function PreparacaoDetalhe() {
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           alignItems: isMobile ? 'stretch' : 'center',
-          borderBottom: 1,
-          borderColor: 'divider',
           pb: 0.5,
           gap: isMobile ? 1 : 0,
         }}>
@@ -581,18 +824,7 @@ export default function PreparacaoDetalhe() {
                   {editarRefeicaoMutation.isPending ? 'Salvando...' : 'Salvar'}
                 </Button>
               </>
-            ) : (
-              <>
-                <IconButton size="small" onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
-                  <MoreVertIcon />
-                </IconButton>
-                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => setMenuAnchorEl(null)}>
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); setOpenExcluir(true); }} sx={{ color: 'error.main' }}>
-                    <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Excluir
-                  </MenuItem>
-                </Menu>
-              </>
-            )}
+            ) : null}
           </Box>
         </Box>
       </Box>
@@ -639,75 +871,14 @@ export default function PreparacaoDetalhe() {
             </Box>
 
             {/* Coluna direita: Painel Nutricional */}
-            <Box sx={{ width: isMobile ? '100%' : 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Card sx={{ borderRadius: '8px', p: 1.5, height: isMobile ? 'auto' : '100%', bgcolor: 'background.paper' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
-                    Nutrição / porção
-                  </Typography>
-                  {loadingNutricional && <CircularProgress size={12} />}
-                </Box>
-
-                {!preparacao?.rendimento_porcoes ? (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    Informe o rendimento (porções) na Ficha Técnica para ver os cálculos.
-                  </Typography>
-                ) : associacoes.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    Adicione ingredientes para ver os valores nutricionais.
-                  </Typography>
-                ) : !loadingNutricional && valoresNutricionais ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {/* Energia em destaque */}
-                    <Box sx={{ bgcolor: 'action.hover', px: 1.5, py: 0.75, borderRadius: 1, mb: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Energia</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                        {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
-                      </Typography>
-                    </Box>
-                    {[
-                      { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
-                      { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
-                      { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
-                      { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
-                      { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
-                      { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
-                      { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
-                      { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
-                    ].map(({ label, value, unit }) => (
-                      <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', py: 0.25, borderBottom: '1px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary">{label}</Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
-                      </Box>
-                    ))}
-                    {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
-                      <Box sx={{ 
-                        mt: 1.5, 
-                        bgcolor: 'rgba(255, 152, 0, 0.15)', 
-                        px: 1.5, 
-                        py: 1, 
-                        borderRadius: 1, 
-                        border: '1px solid', 
-                        borderColor: 'rgba(255, 152, 0, 0.5)'
-                      }}>
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                          ⚠️ Alertas Nutricionais
-                        </Typography>
-                        {valoresNutricionais.alertas.map((alerta, idx) => (
-                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', ml: 2, lineHeight: 1.5 }}>
-                            • {alerta.mensagem}
-                          </Typography>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-                ) : !loadingNutricional && errorNutricional ? (
-                  <Typography variant="caption" color="error">Erro ao calcular valores.</Typography>
-                ) : null}
-              </Card>
+            <Box sx={{ width: isMobile ? '100%' : NUTRITION_PANEL_WIDTH, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <NutricaoPorcaoCard
+                associacoesCount={associacoes.length}
+                valoresNutricionais={valoresNutricionais}
+                loadingNutricional={loadingNutricional}
+                errorNutricional={errorNutricional}
+                fillHeight={!isMobile}
+              />
             </Box>
           </Box>
         )}
@@ -798,31 +969,7 @@ export default function PreparacaoDetalhe() {
                       <MenuItem value="Salada">Salada</MenuItem>
                     </Select>
                   </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    label="Tempo de Preparo (min)"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={form.tempo_preparo_minutos || ''}
-                    onChange={(e) => setForm({ ...form, tempo_preparo_minutos: e.target.value })}
-                    InputProps={{ inputProps: { min: 0 } }}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    label="Rendimento (porções)"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={form.rendimento_porcoes || ''}
-                    onChange={(e) => setForm({ ...form, rendimento_porcoes: e.target.value })}
-                    InputProps={{ inputProps: { min: 1 } }}
-                  />
-                </Grid>
+                </Grid>
 
                 <Grid item xs={12}>
                   <TextField
@@ -896,27 +1043,7 @@ export default function PreparacaoDetalhe() {
                     <Typography variant="body2" color="text.secondary">Categoria</Typography>
                     <Chip label={preparacao.categoria} size="small" color="primary" sx={{ mt: 0.5 }} />
                   </Grid>
-                )}
-
-                {preparacao.tempo_preparo_minutos && (
-                  <Grid item xs={12} md={3}>
-                    <Typography variant="body2" color="text.secondary">Tempo de Preparo</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                      <TimerIcon fontSize="small" color="action" />
-                      <Typography variant="body1">{preparacao.tempo_preparo_minutos} minutos</Typography>
-                    </Box>
-                  </Grid>
-                )}
-
-                {preparacao.rendimento_porcoes && (
-                  <Grid item xs={12} md={3}>
-                    <Typography variant="body2" color="text.secondary">Rendimento</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                      <LocalDiningIcon fontSize="small" color="action" />
-                      <Typography variant="body1">{preparacao.rendimento_porcoes} porções</Typography>
-                    </Box>
-                  </Grid>
-                )}
+                )}
 
                 {preparacao.modo_preparo && (
                   <Grid item xs={12}>
@@ -935,7 +1062,7 @@ export default function PreparacaoDetalhe() {
                 )}
 
                 {/* Custo Estimado */}
-                {preparacao.rendimento_porcoes && associacoes.length > 0 && (
+                {associacoes.length > 0 && (
                   <>
                     <Grid item xs={12}>
                       <Divider sx={{ my: 0.5 }} />
@@ -1087,17 +1214,7 @@ export default function PreparacaoDetalhe() {
                   </Grid>
                 )}
 
-                {!preparacao.rendimento_porcoes && associacoes.length > 0 && (
-                  <Grid item xs={12}>
-                    <Box textAlign="center" py={4} sx={{ bgcolor: 'warning.light', borderRadius: 1 }}>
-                      <Typography variant="body1" color="warning.dark">
-                        ⚠️ Informe o rendimento (número de porções) para calcular valores nutricionais e custo
-                      </Typography>
-                    </Box>
-                  </Grid>
-                )}
-
-                {preparacao.rendimento_porcoes && associacoes.length === 0 && (
+                {associacoes.length === 0 && (
                   <Grid item xs={12}>
                     <Box textAlign="center" py={4} sx={{ bgcolor: 'warning.light', borderRadius: 1 }}>
                       <Typography variant="body1" color="warning.dark">
@@ -1114,101 +1231,20 @@ export default function PreparacaoDetalhe() {
 
             {/* Coluna direita: Painel Nutricional e Custo */}
             {!editando && (
-              <Box sx={{ width: isMobile ? '100%' : 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ width: isMobile ? '100%' : NUTRITION_PANEL_WIDTH, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* Card Nutricional */}
-                <Card sx={{ borderRadius: '8px', p: 1.5, bgcolor: 'background.paper' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
-                      Nutrição / porção
-                    </Typography>
-                    {loadingNutricional && <CircularProgress size={12} />}
-                  </Box>
-
-                  {!preparacao?.rendimento_porcoes ? (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Informe o rendimento (porções) para ver os cálculos.
-                    </Typography>
-                  ) : associacoes.length === 0 ? (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Adicione ingredientes para ver os valores nutricionais.
-                    </Typography>
-                  ) : !loadingNutricional && valoresNutricionais ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {/* Aviso sobre dados faltantes */}
-                      {valoresNutricionais.aviso && (
-                        <Box sx={{ 
-                          bgcolor: 'rgba(255, 152, 0, 0.15)', 
-                          px: 1.5, 
-                          py: 1, 
-                          borderRadius: 1, 
-                          border: '1px solid', 
-                          borderColor: 'rgba(255, 152, 0, 0.5)',
-                          mb: 1
-                        }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'block', mb: 0.5 }}>
-                            ⚠️ Atenção
-                          </Typography>
-                          <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', lineHeight: 1.5 }}>
-                            {valoresNutricionais.aviso}
-                          </Typography>
-                        </Box>
-                      )}
-                      
-                      {/* Energia em destaque */}
-                      <Box sx={{ bgcolor: 'action.hover', px: 1.5, py: 0.75, borderRadius: 1, mb: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Energia</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                          {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
-                        </Typography>
-                      </Box>
-                      {[
-                        { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
-                        { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
-                        { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
-                        { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
-                        { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
-                        { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
-                        { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
-                        { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
-                      ].map(({ label, value, unit }) => (
-                        <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', py: 0.25, borderBottom: '1px solid', borderColor: 'divider' }}>
-                          <Typography variant="caption" color="text.secondary">{label}</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
-                        </Box>
-                      ))}
-                      {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
-                        <Box sx={{ 
-                          mt: 1.5, 
-                          bgcolor: 'rgba(255, 152, 0, 0.15)', 
-                          px: 1.5, 
-                          py: 1, 
-                          borderRadius: 1, 
-                          border: '1px solid', 
-                          borderColor: 'rgba(255, 152, 0, 0.5)'
-                        }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                            ⚠️ Alertas
-                          </Typography>
-                          {valoresNutricionais.alertas.map((alerta, idx) => (
-                            <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', ml: 2, lineHeight: 1.5 }}>
-                              • {alerta.mensagem}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  ) : !loadingNutricional && errorNutricional ? (
-                    <Typography variant="caption" color="error">Erro ao calcular valores.</Typography>
-                  ) : null}
-                </Card>
+                <NutricaoPorcaoCard
+                  associacoesCount={associacoes.length}
+                  valoresNutricionais={valoresNutricionais}
+                  loadingNutricional={loadingNutricional}
+                  errorNutricional={errorNutricional}
+                />
               </Box>
             )}
           </Box>
         )}
       </Box>
+      </PageContainer>
     </Box>
 
     {/* Diálogo de Adicionar Grupo */}
@@ -1255,7 +1291,7 @@ export default function PreparacaoDetalhe() {
         }))}
         custoTotal={custoData.custo_total}
         custoPorPorcao={custoData.custo_por_porcao}
-        rendimentoPorcoes={custoData.rendimento_porcoes || preparacao?.rendimento_porcoes || 1}
+        rendimentoPorcoes={1}
       />
     )}
 
@@ -1274,136 +1310,7 @@ export default function PreparacaoDetalhe() {
         </Button>
       </DialogActions>
     </Dialog>
-
-    {/* Diálogo de Editar Informações da Preparação */}
-    <Dialog 
-      open={openDialogDetalhes} 
-      onClose={() => setOpenDialogDetalhes(false)}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <EditIcon sx={{ color: 'primary.main' }} />
-        Editar Informações da Preparação
-      </DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-          {/* Nome */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'text.secondary' }} />
-              Nome da Preparação
-            </Typography>
-            <TextField
-              fullWidth
-              value={formDetalhes.nome || ''}
-              onChange={(e) => setFormDetalhes({ ...formDetalhes, nome: e.target.value })}
-              placeholder="Ex: Arroz Integral, Feijão Carioca..."
-              sx={{
-                '& .MuiInputBase-input': {
-                  fontWeight: 600,
-                  fontSize: '1rem'
-                }
-              }}
-            />
-          </Box>
-
-          <Divider />
-
-          {/* Categoria */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'success.main' }} />
-              Categoria
-            </Typography>
-            <FormControl fullWidth>
-              <InputLabel>Categoria da preparação</InputLabel>
-              <Select
-                value={formDetalhes.categoria || ''}
-                onChange={(e) => setFormDetalhes({ ...formDetalhes, categoria: e.target.value })}
-                label="Categoria da preparação"
-              >
-                <MenuItem value="Prato Principal">🍽️ Prato Principal</MenuItem>
-                <MenuItem value="Acompanhamento">🥗 Acompanhamento</MenuItem>
-                <MenuItem value="Sobremesa">🍰 Sobremesa</MenuItem>
-                <MenuItem value="Lanche">🥪 Lanche</MenuItem>
-                <MenuItem value="Bebida">🥤 Bebida</MenuItem>
-                <MenuItem value="Salada">🥬 Salada</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Divider />
-
-          {/* Tempo e Rendimento */}
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'info.main' }} />
-                  Tempo de Preparo
-                </Typography>
-                <TextField
-                  label="Minutos"
-                  type="number"
-                  fullWidth
-                  value={formDetalhes.tempo_preparo_minutos || ''}
-                  onChange={(e) => setFormDetalhes({ ...formDetalhes, tempo_preparo_minutos: e.target.value })}
-                  InputProps={{ 
-                    inputProps: { min: 0 },
-                    endAdornment: <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>min</Typography>
-                  }}
-                />
-              </Box>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'warning.main' }} />
-                  Rendimento
-                </Typography>
-                <TextField
-                  label="Porções"
-                  type="number"
-                  fullWidth
-                  value={formDetalhes.rendimento_porcoes || ''}
-                  onChange={(e) => setFormDetalhes({ ...formDetalhes, rendimento_porcoes: e.target.value })}
-                  InputProps={{ 
-                    inputProps: { min: 1 },
-                    endAdornment: <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>porções</Typography>
-                  }}
-                  helperText="Número de porções que a receita rende"
-                />
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ p: 2, pt: 1.5 }}>
-        <Button onClick={() => setOpenDialogDetalhes(false)} startIcon={<CancelIcon />}>
-          Cancelar
-        </Button>
-        <Button 
-          onClick={async () => {
-            try {
-              await editarRefeicaoMutation.mutateAsync({ 
-                id: Number(id), 
-                data: formDetalhes 
-              });
-              setOpenDialogDetalhes(false);
-              toast.success('Informações atualizadas com sucesso!');
-            } catch {
-              toast.error('Não foi possível salvar as alterações.');
-            }
-          }} 
-          variant="contained" 
-          startIcon={<SaveIcon />}
-          disabled={editarRefeicaoMutation.isPending}
-        >
-          {editarRefeicaoMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+
   </>
   );
 }

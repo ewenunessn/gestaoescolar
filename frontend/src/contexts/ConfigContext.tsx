@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import configService, { ConfiguracaoModuloSaldo } from '../services/configService';
 
 interface ConfigContextType {
@@ -17,21 +17,37 @@ interface ConfigProviderProps {
 }
 
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
-  // Configuração fixa: sempre usar modalidades
-  const [configModuloSaldo] = useState<ConfiguracaoModuloSaldo>({
+  const [configModuloSaldo, setConfigModuloSaldo] = useState<ConfiguracaoModuloSaldo>({
     modulo_principal: 'modalidades',
-    mostrar_ambos: false
+    mostrar_ambos: false,
   });
-  const [loading] = useState(false);
-  const [error] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const callbacksRef = React.useRef<Array<() => void>>([]);
 
   const recarregarConfig = useCallback(async () => {
-    // Não faz nada, configuração é fixa
+    try {
+      setLoading(true);
+      setError(null);
+      const config = await configService.buscarConfiguracaoModuloSaldo();
+      setConfigModuloSaldo(config);
+    } catch (err) {
+      console.error('Erro ao carregar configuracao do saldo de contratos:', err);
+      setError('Erro ao carregar configuracao');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const atualizarConfig = useCallback(async (novaConfig: ConfiguracaoModuloSaldo) => {
-    // Não faz nada, configuração é fixa
+    const result = await configService.salvarConfiguracaoModuloSaldo(novaConfig);
+    setConfigModuloSaldo(result.config);
+    callbacksRef.current.forEach((callback) => callback());
   }, []);
+
+  useEffect(() => {
+    recarregarConfig();
+  }, [recarregarConfig]);
 
   const value: ConfigContextType = useMemo(() => ({
     configModuloSaldo,
@@ -39,7 +55,9 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
     error,
     recarregarConfig,
     atualizarConfig,
-    onConfigChanged: (callback: () => void) => {}
+    onConfigChanged: (callback: () => void) => {
+      callbacksRef.current.push(callback);
+    },
   }), [configModuloSaldo, loading, error, recarregarConfig, atualizarConfig]);
 
   return (

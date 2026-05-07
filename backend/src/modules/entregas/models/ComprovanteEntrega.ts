@@ -1,4 +1,5 @@
 import db from '../../../database';
+import HistoricoEntregaModel from './HistoricoEntrega';
 
 export interface ComprovanteEntregaRecord {
   id: number;
@@ -265,24 +266,27 @@ class ComprovanteEntregaModel {
    * Cancelar um comprovante
    */
   async cancelar(id: number): Promise<void> {
-    const periodo = await db.query(`
-      SELECT BOOL_OR(COALESCE(per.fechado, false)) as fechado
-      FROM comprovante_itens ci
-      JOIN historico_entregas he ON he.id = ci.historico_entrega_id
-      JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
-      JOIN guias g ON g.id = gpe.guia_id
-      LEFT JOIN periodos per ON per.id = g.periodo_id
-      WHERE ci.comprovante_id = $1
-    `, [id]);
-    if (periodo.rows[0]?.fechado) {
-      throw new Error('Nao e possivel cancelar comprovante de periodo fechado');
-    }
+    return db.transaction(async (client) => {
+      const periodo = await client.query(`
+        SELECT COALESCE(per.fechado, false) as fechado
+        FROM comprovante_itens ci
+        JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+        JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+        JOIN guias g ON g.id = gpe.guia_id
+        LEFT JOIN periodos per ON per.id = g.periodo_id
+        WHERE ci.comprovante_id = $1
+        FOR UPDATE OF ci, he, gpe
+      `, [id]);
+      if (periodo.rows.some((row: any) => row.fechado)) {
+        throw new Error('Nao e possivel cancelar comprovante de periodo fechado');
+      }
 
-    await db.query(`
-      UPDATE comprovantes_entrega
-      SET status = 'cancelado', updated_at = NOW()
-      WHERE id = $1
-    `, [id]);
+      await client.query(`
+        UPDATE comprovantes_entrega
+        SET status = 'cancelado', updated_at = NOW()
+        WHERE id = $1
+      `, [id]);
+    });
   }
 
   /**
@@ -364,35 +368,55 @@ class ComprovanteEntregaModel {
    */
   async cancelarItemEntrega(historicoEntregaId: number, motivo?: string, usuarioId?: number): Promise<boolean> {
     try {
-      // Buscar o comprovante e item relacionado
-      const item = await db.query(`
-        SELECT ci.id as item_id, ci.comprovante_id
-        FROM comprovante_itens ci
-        WHERE ci.historico_entrega_id = $1
-      `, [historicoEntregaId]);
+      await db.transaction(async (client) => {
+        const item = await client.query(`
+          SELECT
+            ci.id as item_id,
+            ci.comprovante_id,
+            he.guia_produto_escola_id,
+            json_build_object(
+              'historico_id', he.id,
+              'quantidade', he.quantidade_entregue,
+              'produto', ci.produto_nome,
+              'data', he.data_entrega
+            ) as dados_originais,
+            COALESCE(per.fechado, false) as periodo_fechado
+          FROM comprovante_itens ci
+          JOIN historico_entregas he ON he.id = ci.historico_entrega_id
+          JOIN guia_produto_escola gpe ON gpe.id = he.guia_produto_escola_id
+          JOIN guias g ON g.id = gpe.guia_id
+          LEFT JOIN periodos per ON per.id = g.periodo_id
+          WHERE ci.historico_entrega_id = $1
+          FOR UPDATE OF ci, he, gpe
+        `, [historicoEntregaId]);
 
-      if (item.rows.length === 0) {
-        throw new Error('Item de entrega não encontrado');
-      }
+        if (item.rows.length === 0) {
+          throw new Error('Item de entrega nao encontrado');
+        }
+        if (item.rows[0].periodo_fechado) {
+          throw new Error('Nao e possivel cancelar item de periodo fechado');
+        }
 
-      const { comprovante_id, item_id } = item.rows[0];
+        const { comprovante_id, dados_originais } = item.rows[0];
 
-      // Atualizar status na guia_produto_escola para 'cancelado'
-      await db.run(`
-        UPDATE guia_produto_escola
-        SET status = 'cancelado',
-            updated_at = NOW()
-        WHERE id = $1
-      `, [historicoEntregaId]);
+        await client.query(`
+          INSERT INTO comprovante_cancelamentos
+            (comprovante_id, historico_entrega_id, usuario_id, motivo, dados_originais)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [comprovante_id, historicoEntregaId, usuarioId || null, motivo || null, dados_originais]);
 
-      // Registrar no histórico de cancelamentos
-      if (usuarioId) {
-        await db.run(`
-          INSERT INTO comprovante_cancelamentos (comprovante_id, usuario_id, motivo)
-          VALUES ($1, $2, $3)
-        `, [comprovante_id, usuarioId, motivo || null]);
-      }
+        await client.query(`
+          UPDATE comprovantes_entrega
+          SET itens_cancelados = COALESCE(itens_cancelados, 0) + 1,
+              observacao_cancelamento = COALESCE(observacao_cancelamento || E'\n', '') ||
+                'Item cancelado em ' || CURRENT_DATE ||
+                COALESCE(': ' || $2, ''),
+              updated_at = NOW()
+          WHERE id = $1
+        `, [comprovante_id, motivo || null]);
 
+        await HistoricoEntregaModel.deletar(historicoEntregaId, client);
+      });
       return true;
     } catch (error) {
       console.error('Erro ao cancelar item de entrega:', error);

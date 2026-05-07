@@ -7,8 +7,12 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   TextField,
   Tooltip,
   Typography,
@@ -31,6 +35,8 @@ import {
   buscarInstituicao,
   uploadLogoBase64,
 } from "../../../services/instituicao";
+import configService, { AvisosModuloSaldo, ConfiguracaoModuloSaldo } from "../../../services/configService";
+import { useConfigContext } from "../../../contexts/ConfigContext";
 
 const sectionTitleSx = {
   fontSize: "0.72rem",
@@ -62,12 +68,16 @@ const emptyForm: InstituicaoForm = {
 const ConfiguracaoInstituicaoPage: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
+  const { configModuloSaldo, atualizarConfig, recarregarConfig } = useConfigContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingSaldo, setSavingSaldo] = useState(false);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<InstituicaoForm>(emptyForm);
+  const [saldoConfig, setSaldoConfig] = useState<ConfiguracaoModuloSaldo>(configModuloSaldo);
+  const [saldoAvisos, setSaldoAvisos] = useState<AvisosModuloSaldo | null>(null);
 
   useEffect(() => {
     loadData();
@@ -90,6 +100,8 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
         departamento: data.departamento || "",
       });
       setLogoPreview(data.logo_url || null);
+      await recarregarConfig();
+      setSaldoAvisos(await configService.buscarAvisosModuloSaldo());
     } catch (err) {
       toast.toast.error("Erro ao carregar configuracoes da instituicao");
       console.error(err);
@@ -161,6 +173,24 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       console.error(err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    setSaldoConfig(configModuloSaldo);
+  }, [configModuloSaldo]);
+
+  const handleSalvarSaldoConfig = async () => {
+    try {
+      setSavingSaldo(true);
+      await atualizarConfig(saldoConfig);
+      setSaldoAvisos(await configService.buscarAvisosModuloSaldo());
+      toast.toast.success("Configuracao de saldo salva");
+    } catch (err: any) {
+      toast.toast.error(err.response?.data?.message || "Erro ao salvar configuracao de saldo");
+      console.error(err);
+    } finally {
+      setSavingSaldo(false);
     }
   };
 
@@ -278,6 +308,56 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
                       placeholder="Ex: Departamento de Alimentacao Escolar"
                       helperText="Aparece abaixo do nome da instituicao nos documentos PDF"
                     />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <SectionTitle label="Controle de Saldo de Contratos" />
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Escolha qual saldo sera usado pelos modulos de compras, guias, pedidos e faturamento.
+                  O outro controle permanece salvo para consulta, mas nao sera a fonte oficial enquanto estiver inativo.
+                </Typography>
+
+                {saldoAvisos && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    Existem {saldoAvisos.saldos_modalidades} saldo(s) por modalidade e {saldoAvisos.saldos_itens} saldo(s) por item.
+                    Ao trocar o modo, os proximos consumos passam a usar apenas o controle selecionado.
+                  </Alert>
+                )}
+
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={8}>
+                    <FormControl fullWidth>
+                      <InputLabel>Modo oficial de saldo</InputLabel>
+                      <Select
+                        label="Modo oficial de saldo"
+                        value={saldoConfig.modulo_principal}
+                        onChange={(event) => setSaldoConfig((prev) => ({
+                          ...prev,
+                          modulo_principal: event.target.value as ConfiguracaoModuloSaldo["modulo_principal"],
+                        }))}
+                      >
+                        <MenuItem value="modalidades">Saldo por modalidade</MenuItem>
+                        <MenuItem value="contratos">Saldo unico por item</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="add"
+                      onClick={handleSalvarSaldoConfig}
+                      disabled={savingSaldo}
+                      startIcon={savingSaldo ? <CircularProgress size={18} /> : <SaveIcon />}
+                    >
+                      {savingSaldo ? "Salvando..." : "Salvar modo de saldo"}
+                    </Button>
                   </Grid>
                 </Grid>
               </CardContent>

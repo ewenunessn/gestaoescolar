@@ -223,12 +223,7 @@ const GestaoRotas: React.FC = () => {
             size: 120,
             align: 'center',
             cell: ({ row }) => (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
-                    <StatusIndicator status={row.original.ativo ? 'ativo' : 'inativo'} size="small" />
-                    <Typography variant="body2" color={row.original.ativo ? 'success.main' : 'text.disabled'}>
-                        {row.original.ativo ? 'Ativa' : 'Inativa'}
-                    </Typography>
-                </Box>
+                <StatusIndicator status={row.original.ativo ? 'ativo' : 'inativo'} text={row.original.ativo ? 'Ativa' : 'Inativa'} size="small" />
             )
         },
         {

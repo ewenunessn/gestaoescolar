@@ -1,9 +1,11 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { createColumnHelper } from "@tanstack/react-table";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import CompactPagination from "../../../components/CompactPagination";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import {
   buscarContrato,
   editarContrato,
@@ -44,12 +46,13 @@ import {
   Close as CloseIcon
 } from "@mui/icons-material";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
-import AdicionarProdutosLoteDialog from "../../../components/AdicionarProdutosLoteDialog";
+import AdicionarProdutosLoteDialog from "../components/AdicionarProdutosLoteDialog";
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
 const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", marca: "" };
 const contratoVazio = { fornecedor_id: "", numero: "", data_inicio: "", data_fim: "", ativo: true };
+const produtoColumnHelper = createColumnHelper<any>();
 
 const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
 const formatarMoeda = (valor: number = 0) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
@@ -446,6 +449,80 @@ export default function ContratoDetalhe() {
       setErroRemoverProduto(error.response?.data?.message || error.message || "Erro ao remover produto.");
     }
   };
+
+  const produtoColumns = useMemo(() => [
+    produtoColumnHelper.accessor((row) => {
+      const produtoInfo = produtosDisponiveis.find(p => p.id === row.produto_id);
+      return produtoInfo?.nome || `Produto #${row.produto_id}`;
+    }, {
+      id: 'produto',
+      header: 'Produto',
+      cell: (info) => {
+        const produto = info.row.original;
+        const isInativo = produto.ativo === false;
+        return (
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {info.getValue()}
+            </Typography>
+            {isInativo && <Chip label="Inativo" size="small" color="default" sx={{ mt: 0.5, height: 20 }} />}
+          </Box>
+        );
+      },
+    }),
+    produtoColumnHelper.accessor('marca', {
+      header: 'Marca',
+      cell: (info) => (
+        <Typography variant="body2" color="text.secondary">
+          {info.getValue() || '-'}
+        </Typography>
+      ),
+    }),
+    produtoColumnHelper.accessor('quantidade', {
+      header: 'Quantidade',
+      cell: (info) => <Typography variant="body2">{info.getValue()}</Typography>,
+    }),
+    produtoColumnHelper.accessor('preco_unitario', {
+      header: 'Preço Unitário',
+      cell: (info) => <Typography variant="body2">{formatarMoeda(Number(info.getValue()) || 0)}</Typography>,
+    }),
+    produtoColumnHelper.accessor('valor_total', {
+      header: 'Valor Total',
+      cell: (info) => (
+        <Typography variant="body2" fontWeight={600} color="primary">
+          {formatarMoeda(Number(info.getValue()) || 0)}
+        </Typography>
+      ),
+    }),
+    produtoColumnHelper.accessor('saldo', {
+      header: 'Saldo',
+      cell: (info) => {
+        const saldo = Number(info.getValue()) || 0;
+        return <Chip label={saldo} color={saldo > 0 ? 'success' : 'error'} size="small" />;
+      },
+    }),
+    produtoColumnHelper.display({
+      id: 'acoes',
+      header: 'Ações',
+      cell: (info) => {
+        const produto = info.row.original;
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+            <Tooltip title="Editar">
+              <IconButton size="small" onClick={() => abrirModalProduto(produto)} color="primary">
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Remover">
+              <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="error">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
+    }),
+  ], [produtosDisponiveis]);
   
   const abrirModalEditarContrato = () => {
     const formInicial = { ...contrato, data_inicio: formatDateForInput(contrato.data_inicio), data_fim: formatDateForInput(contrato.data_fim) };
@@ -579,7 +656,7 @@ export default function ContratoDetalhe() {
   );
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - var(--app-top-offset, 0px))', bgcolor: 'background.default', overflow: 'hidden' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert>
@@ -596,9 +673,22 @@ export default function ContratoDetalhe() {
             { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
           ]}
           title={contrato ? `Contrato ${contrato.numero}` : 'Contrato'}
-          action={
-            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
-              <MoreVert />
+          topAction={
+            <IconButton
+              size="small"
+              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+              sx={{
+                width: 36,
+                height: 36,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                color: 'text.secondary',
+                bgcolor: 'background.paper',
+                '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+              }}
+            >
+              <MoreVert fontSize="small" />
             </IconButton>
           }
         />
@@ -607,218 +697,39 @@ export default function ContratoDetalhe() {
 
         <ContratoInfoCard contrato={contrato} fornecedor={fornecedor} valorTotal={valorTotalContrato} />
 
-        {/* Legenda de Status */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredProdutos.length} {filteredProdutos.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              startIcon={<ShoppingCartIcon />} 
-              onClick={() => setDialogState(prev => ({ ...prev, adicionarLote: true }))} 
-              variant="outlined" 
-              color="primary" 
-              size="small"
-            >
-              Adicionar em Lote
-            </Button>
-            <Button 
-              startIcon={<AddIcon />} 
-              onClick={() => abrirModalProduto()} 
-              variant="contained" 
-              color="add" 
-              size="small"
-            >
-              Adicionar Item
-            </Button>
-          </Box>
-        </Box>
-
         {/* Tabela de Itens */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {produtosContrato.length === 0 ? (
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                <MenuBook sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" sx={{ color: 'text.secondary' }}>
-                  Nenhum item encontrado
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Adicione o primeiro item a este contrato.
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  startIcon={<AddIcon />} 
+          <OperationalDataTable
+            data={produtosContrato}
+            columns={produtoColumns}
+            loading={loading}
+            searchPlaceholder="Buscar produto..."
+            emptyMessage="Nenhum item encontrado"
+            rightToolbarActions={
+              <>
+                <Button
+                  startIcon={<ShoppingCartIcon />}
+                  onClick={() => setDialogState(prev => ({ ...prev, adicionarLote: true }))}
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}
+                >
+                  Adicionar em Lote
+                </Button>
+                <Button
+                  startIcon={<AddIcon />}
                   onClick={() => abrirModalProduto()}
+                  variant="contained"
                   color="add"
+                  size="small"
+                  sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}
                 >
                   Adicionar Item
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ height: 56, py: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
-                          {!searchOpen ? (
-                            <>
-                              <Typography variant="body2" fontWeight={600}>Produto</Typography>
-                              <IconButton 
-                                size="small" 
-                                onClick={() => setSearchOpen(true)}
-                                sx={{ ml: 'auto', p: 0.5 }}
-                              >
-                                <SearchIcon fontSize="small" />
-                              </IconButton>
-                            </>
-                          ) : (
-                            <TextField
-                              placeholder="Buscar produto..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              size="small"
-                              autoFocus
-                              fullWidth
-                              sx={{ 
-                                '& .MuiOutlinedInput-root': { 
-                                  height: 36,
-                                  fontSize: '0.875rem',
-                                  minHeight: 36
-                                },
-                                '& .MuiInputBase-input': {
-                                  py: 0.75,
-                                  fontSize: '0.875rem'
-                                }
-                              }}
-                              InputProps={{
-                                startAdornment: (
-                                  <InputAdornment position="start">
-                                    <SearchIcon sx={{ fontSize: 18 }} />
-                                  </InputAdornment>
-                                ),
-                                endAdornment: (
-                                  <InputAdornment position="end">
-                                    <IconButton 
-                                      size="small" 
-                                      onClick={() => {
-                                        setSearchTerm('');
-                                        setSearchOpen(false);
-                                      }}
-                                      sx={{ p: 0.5 }}
-                                    >
-                                      <ClearIcon fontSize="small" />
-                                    </IconButton>
-                                  </InputAdornment>
-                                ),
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Marca</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Quantidade</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Preço Unitário</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Valor Total</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Saldo</TableCell>
-                      <TableCell align="center" width="80" sx={{ height: 56, py: 1 }}>Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedProdutos.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                          <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                          <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
-                            Nenhum item encontrado
-                          </Typography>
-                          {searchTerm && (
-                            <Typography variant="body2" color="text.secondary">
-                              Tente buscar com outros termos
-                            </Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedProdutos.map((produto) => {
-                        const produtoInfo = produtosDisponiveis.find(p => p.id === produto.produto_id);
-                        const isInativo = produto.ativo === false;
-                        return (
-                          <TableRow 
-                            key={produto.id} 
-                            hover 
-                            sx={{ 
-                              opacity: isInativo ? 0.5 : 1,
-                              backgroundColor: isInativo ? 'action.hover' : 'inherit'
-                            }}
-                          >
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                    {produtoInfo?.nome || `Produto #${produto.produto_id}`}
-                                  </Typography>
-                                  {isInativo && (
-                                    <Chip label="Inativo" size="small" color="default" sx={{ mt: 0.5, height: 20 }} />
-                                  )}
-                                </Box>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" color="text.secondary">
-                                {produto.marca || "-"}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2">{produto.quantidade}</Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2">{formatarMoeda(produto.preco_unitario)}</Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" fontWeight={600} color="primary">
-                                {formatarMoeda(produto.valor_total)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip 
-                                label={produto.saldo} 
-                                color={produto.saldo > 0 ? "success" : "error"} 
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Tooltip title="Editar">
-                                <IconButton size="small" onClick={() => abrirModalProduto(produto)} color="primary">
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Remover">
-                                <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="error">
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={filteredProdutos.length}
-                page={page}
-                rowsPerPage={rowsPerPage}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-              />
-            </Box>
-          )}
+              </>
+            }
+          />
         </Box>
       </PageContainer>
 
@@ -836,11 +747,12 @@ export default function ContratoDetalhe() {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            m: 0
+            m: 0,
+            maxHeight: 'calc(100vh - 64px)'
           }
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, pt: 2.5, pb: 1.5 }}>
           <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
             {editandoProduto ? "Editar Item" : "Adicionar Item ao Contrato"}
           </Typography>
@@ -852,7 +764,7 @@ export default function ContratoDetalhe() {
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent sx={{ px: 3, pt: '20px !important', pb: 1, overflowY: 'auto' }}>
           {erroProduto && (
             <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
               <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>

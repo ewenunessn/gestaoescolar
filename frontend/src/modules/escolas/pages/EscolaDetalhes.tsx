@@ -11,7 +11,7 @@ import {
     FormControl, InputLabel, Card, CircularProgress, Alert, FormControlLabel,
     Switch, Tooltip, Chip, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
-    Paper, Grid, Stack, CardContent, Menu
+    Paper, Grid, CardContent, Menu, useTheme
 } from "@mui/material";
 
 // ── Design tokens (GitHub Dark Mode) ──────────────────────────────────────────────
@@ -25,7 +25,6 @@ import {
     Add as AddIcon,
     Inventory as InventoryIcon,
     People as PeopleIcon,
-    Category as CategoryIcon,
     ReceiptLong as ReceiptLongIcon,
     Phone as PhoneIcon,
     Email as EmailIcon,
@@ -77,21 +76,33 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // --- Subcomponentes de UI ---
 
-const InfoItem = ({ icon, label, value }: {
-    icon: React.ReactNode;
+const FieldBlock = ({ label, value, children }: {
     label: string;
-    value: string | undefined;
+    value?: React.ReactNode;
+    children?: React.ReactNode;
 }) => (
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-        {icon}
-        <Box>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: "0.7rem", lineHeight: 1.2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</Typography>
-            <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{value || 'Não informado'}</Typography>
-        </Box>
-    </Stack>
+    <Box
+        sx={{
+            borderBottom: '1px solid',
+            borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+            px: 0,
+            py: 1.25,
+            mb: 1,
+            minHeight: 58,
+        }}
+    >
+        <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.25, mb: 0.75 }}>
+            {label}
+        </Typography>
+        {children ?? (
+            <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 400, color: 'text.secondary', lineHeight: 1.35, wordBreak: 'break-word' }}>
+                {value || 'N\u00e3o informado'}
+            </Typography>
+        )}
+    </Box>
 );
 
-const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade, formatDate, onSave, onCancel, salvando }: {
+const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade, formatDate, onEdit, onSave, onCancel, salvando }: {
     isEditing: boolean;
     formData: any;
     setFormData: (data: any) => void;
@@ -100,127 +111,177 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
     openModalidadeModal: (assoc?: EscolaModalidade) => void;
     handleDeleteModalidade: (id: number) => void;
     formatDate: (dateString: string | null | undefined) => string;
+    onEdit: () => void;
     onSave: () => void;
     onCancel: () => void;
     salvando: boolean;
-}) => (
-    <Grid container spacing={2} sx={{ mb: 2 }}>
-        {/* Card de Informações da Escola */}
-        <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%', borderRadius: 1, overflow: 'visible' }}>
-                <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'success.main' }}>
-                                <SchoolIcon sx={{ fontSize: 20 }} />
-                            </Box>
-                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
-                                Informações da Escola
-                            </Typography>
+}) => {
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
+    const detailCardSx = {
+        flex: isEditing ? 'none' : 1,
+        minHeight: isEditing ? 'auto' : 0,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: isDarkMode ? '#343434' : 'divider',
+        backgroundColor: isDarkMode ? '#1f1f1f' : '#f7f7f8',
+        boxShadow: 'none',
+    };
+    const sectionHeaderSx = {
+        minHeight: 36,
+        mb: 1.25,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 1.5,
+    };
+
+    return (
+        <Grid container spacing={2} alignItems="stretch" sx={{ mb: 2, flex: isEditing ? 'none' : 1, minHeight: 0 }}>
+            <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <Box sx={sectionHeaderSx}>
+                    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'text.primary' }}>
+                        Informações
+                    </Typography>
+                    {isEditing ? (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
+                            <Button onClick={onSave} variant="contained" color="add" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
+                                {salvando ? 'Salvando...' : 'Salvar'}
+                            </Button>
                         </Box>
-                        {isEditing && (
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                                <Button onClick={onSave} variant="contained" color="add" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
-                                    {salvando ? 'Salvando...' : 'Salvar'}
-                                </Button>
+                    ) : (
+                        <Button
+                            variant="outlined"
+                            startIcon={<EditIcon fontSize="small" />}
+                            onClick={onEdit}
+                            size="small"
+                            sx={{
+                                minHeight: 28,
+                                fontSize: '0.75rem',
+                                borderRadius: 1,
+                                textTransform: 'none',
+                                bgcolor: isDarkMode ? '#232323' : 'background.paper',
+                                borderColor: isDarkMode ? '#343434' : 'divider',
+                                color: 'text.primary',
+                                '&:hover': { bgcolor: isDarkMode ? '#2a2a2a' : 'action.hover', borderColor: isDarkMode ? '#4a4a4a' : 'divider' },
+                            }}
+                        >
+                            Editar
+                        </Button>
+                    )}
+                </Box>
+                <Card sx={detailCardSx}>
+                    <CardContent sx={{ p: 3, flex: isEditing ? 'none' : 1, minHeight: 0, overflowY: isEditing ? 'visible' : 'auto' }}>
+                        {isEditing ? (
+                            <>
+                                <FieldBlock label="Nome da Escola">
+                                    <TextField value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" required placeholder="Nome da escola" />
+                                </FieldBlock>
+                                <FieldBlock label={'C\u00f3digo INEP'}>
+                                    <TextField value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" placeholder={'C\u00f3digo do INEP'} />
+                                </FieldBlock>
+                                <FieldBlock label={'Endere\u00e7o'}>
+                                    <TextField value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" placeholder={'Endere\u00e7o completo'} />
+                                </FieldBlock>
+                                <FieldBlock label={'Munic\u00edpio'}>
+                                    <TextField value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" placeholder={'Munic\u00edpio'} />
+                                </FieldBlock>
+                                <FieldBlock label="Telefone">
+                                    <TextField value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" placeholder="Telefone" />
+                                </FieldBlock>
+                                <FieldBlock label="E-mail">
+                                    <TextField value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" placeholder="E-mail" />
+                                </FieldBlock>
+                                <FieldBlock label="Gestor(a)">
+                                    <TextField value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" placeholder="Nome do(a) gestor(a)" />
+                                </FieldBlock>
+                                <FieldBlock label={'Administra\u00e7\u00e3o'}>
+                                    <FormControl fullWidth size="small">
+                                        <Select value={formData.administracao} onChange={(e) => setFormData({ ...formData, administracao: e.target.value as any })} displayEmpty>
+                                            <MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </FieldBlock>
+                                <FieldBlock label="Status">
+                                    <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} size="small" />} label={<Typography variant="body2">Escola Ativa</Typography>} sx={{ m: 0 }} />
+                                </FieldBlock>
+                            </>
+                        ) : (
+                            <>
+                                <FieldBlock label={'C\u00f3digo INEP'} value={formData.codigo} />
+                                <FieldBlock label={'Endere\u00e7o'} value={formData.endereco} />
+                                <FieldBlock label={'Munic\u00edpio'} value={formData.municipio} />
+                                <FieldBlock label="Telefone" value={formData.telefone} />
+                                <FieldBlock label="E-mail" value={formData.email} />
+                                <FieldBlock label="Gestor(a)" value={formData.nome_gestor} />
+                                <FieldBlock label={'Administra\u00e7\u00e3o'} value={formData.administracao} />
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </Grid>
+
+            <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <Box sx={sectionHeaderSx}>
+                    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'text.primary' }}>
+                        Modalidades
+                    </Typography>
+                    <Button variant="contained" color="add" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
+                        Adicionar
+                    </Button>
+                </Box>
+                <Card sx={detailCardSx}>
+                    <CardContent sx={{ p: 3, flex: isEditing ? 'none' : 1, minHeight: 0, overflowY: isEditing ? 'visible' : 'auto' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: isDarkMode ? '#252525' : 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'success.main' }}>
+                                <PeopleIcon sx={{ fontSize: 20 }} />
+                            </Box>
+                            <Box sx={{ ml: 1.5 }}>
+                                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0, lineHeight: 1.2 }}>Total de Alunos</Typography>
+                                <Typography variant="body2" fontWeight={600} sx={{ fontSize: '1.35rem', fontFamily: desktopMono, lineHeight: 1.15, color: 'text.primary' }}>{totalAlunos}</Typography>
+                            </Box>
+                        </Box>
+                        {associacoes.length === 0 ? (
+                            <Box sx={{ textAlign: 'center', py: 1.5 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>Nenhuma modalidade</Typography>
+                            </Box>
+                        ) : (
+                            <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
+                                {associacoes.map((assoc) => (
+                                    <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.75, borderBottom: '1px solid', borderColor: isDarkMode ? '#343434' : 'divider' }}>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.82rem' }}>{assoc.modalidade_nome}</Typography>
+                                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+                                                Atualizado: {formatDate(assoc.updated_at)}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0 }}>
+                                            <Chip label={assoc.quantidade_alunos + ' alunos'} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                            <Tooltip title="Editar">
+                                                <IconButton size="small" onClick={() => openModalidadeModal(assoc)} sx={{ p: 0.5 }}>
+                                                    <EditIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Remover">
+                                                <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="delete" sx={{ p: 0.5 }}>
+                                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </Box>
+                                ))}
                             </Box>
                         )}
-                    </Box>
-                    {isEditing ? (
-                        <>
-                            <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} required />
-                            <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP - também usado para acesso ao sistema" />
-                            <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} multiline rows={2} />
-                            <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                            <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                            <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" sx={{ mb: 1 }} />
-                            <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-                                <InputLabel>Administração</InputLabel>
-                                <Select value={formData.administracao} onChange={(e) => setFormData({ ...formData, administracao: e.target.value as any })} label="Administração">
-                                    <MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} size="small" />} label={<Typography variant="body2">Escola Ativa</Typography>} sx={{ mt: 0.5 }} />
-                        </>
-                    ) : (
-                        <>
-                            <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Código INEP" value={formData.codigo} />
-                            <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Endereço" value={formData.endereco} />
-                            <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Município" value={formData.municipio} />
-                            <InfoItem icon={<PhoneIcon fontSize="small" color="action" />} label="Telefone" value={formData.telefone} />
-                            <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={formData.email} />
-                            <InfoItem icon={<PersonIcon fontSize="small" color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
-                            <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Administração" value={formData.administracao} />
-                        </>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </Grid>
         </Grid>
-
-        {/* Card de Modalidades */}
-        <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%', borderRadius: 1, overflow: 'visible' }}>
-                <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'info.main' }}>
-                                <CategoryIcon sx={{ fontSize: 20 }} />
-                            </Box>
-                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
-                                Modalidades
-                            </Typography>
-                        </Box>
-                        <Button variant="contained" color="add" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
-                            Adicionar
-                        </Button>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                        <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'success.main' }}>
-                            <PeopleIcon sx={{ fontSize: 20 }} />
-                        </Box>
-                        <Box sx={{ ml: 1.5 }}>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, lineHeight: 1.2 }}>Total de Alunos</Typography>
-                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: '1.55rem', fontFamily: desktopMono, lineHeight: 1.15, color: 'text.primary' }}>{totalAlunos}</Typography>
-                        </Box>
-                    </Box>
-                    {associacoes.length === 0 ? (
-                        <Box sx={{ textAlign: 'center', py: 1.5 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>Nenhuma modalidade</Typography>
-                        </Box>
-                    ) : (
-                        <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
-                            {associacoes.map((assoc) => (
-                                <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8125rem' }}>{assoc.modalidade_nome}</Typography>
-                                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
-                                            Atualizado: {formatDate(assoc.updated_at)}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                                        <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                                        <Tooltip title="Editar">
-                                            <IconButton size="small" onClick={() => openModalidadeModal(assoc)} sx={{ p: 0.5 }}>
-                                                <EditIcon sx={{ fontSize: 16 }} />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Remover">
-                                            <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="delete" sx={{ p: 0.5 }}>
-                                                <DeleteIcon sx={{ fontSize: 16 }} />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </Box>
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
-                </CardContent>
-            </Card>
-        </Grid>
-    </Grid>
-);
+    );
+};
 
 // --- Componente Principal ---
 const EscolaDetalhesPage = () => {
@@ -381,8 +442,8 @@ const EscolaDetalhesPage = () => {
     if (error && !escola) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}><PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer></Box>;
 
     return (
-        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-            <PageContainer fullHeight>
+        <Box sx={{ height: 'calc(100vh - var(--app-top-offset, 0px))', bgcolor: 'background.default', overflow: 'hidden' }}>
+            <PageContainer fullHeight sx={{ overflowY: isEditing ? 'auto' : 'hidden' }}>
                 {/* Seta + Breadcrumbs na mesma linha */}
                 <PageHeader
                     onBack={() => navigate('/escolas')}
@@ -392,11 +453,23 @@ const EscolaDetalhesPage = () => {
                         { label: escola?.nome || 'Detalhes' },
                     ]}
                     title={escola?.nome || 'Detalhes da Escola'}
-                    subtitle="Informações e modalidades da escola"
-                    action={
+                    topAction={
                         !isEditing && (
-                            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
-                                <MoreVertIcon />
+                            <IconButton
+                                size="small"
+                                onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                                sx={{
+                                    width: 36,
+                                    height: 36,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: 1,
+                                    color: 'text.secondary',
+                                    bgcolor: 'background.paper',
+                                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                                }}
+                            >
+                                <MoreVertIcon fontSize="small" />
                             </IconButton>
                         )
                     }
@@ -410,6 +483,7 @@ const EscolaDetalhesPage = () => {
                     openModalidadeModal={openModalidadeModal}
                     handleDeleteModalidade={handleDeleteModalidade}
                     formatDate={formatDate}
+                    onEdit={() => setIsEditing(true)}
                     onSave={handleSaveEscola}
                     onCancel={handleCancelEdit}
                     salvando={isSaving}
@@ -423,10 +497,6 @@ const EscolaDetalhesPage = () => {
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-                <MenuItem onClick={() => { setMenuAnchorEl(null); setIsEditing(true); }}>
-                    <EditIcon fontSize="small" sx={{ mr: 1 }} />
-                    Editar
-                </MenuItem>
                 <MenuItem onClick={() => { setMenuAnchorEl(null); setDeleteDialogOpen(true); }}>
                     <DeleteIcon fontSize="small" sx={{ mr: 1 }} color="error" />
                     <Typography color="error">Excluir</Typography>

@@ -25,13 +25,17 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Menu,
+  MenuItem,
+  CircularProgress
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
   ExpandMore as ExpandMoreIcon,
   FileDownload as FileDownloadIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
@@ -52,6 +56,7 @@ export default function FaturamentoDetalhe() {
   const [faturamentos, setFaturamentos] = useState<any[]>([]);
   const [previa, setPrevia] = useState<any>(null);
   const [dialogExcluir, setDialogExcluir] = useState(false);
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<null | HTMLElement>(null);
   const [dialogContrato, setDialogContrato] = useState(false);
   const [dialogRemoverModalidade, setDialogRemoverModalidade] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<ContratoCalculado | null>(null);
@@ -460,8 +465,8 @@ export default function FaturamentoDetalhe() {
 
   if (loading) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Carregando faturamento...</Typography>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh', bgcolor: 'background.default' }}>
+        <CircularProgress size={60} />
       </Box>
     );
   }
@@ -526,16 +531,44 @@ export default function FaturamentoDetalhe() {
           { label: `Pedido ${previa?.pedido?.numero || 'Detalhes'}` },
         ]}
         title={`Faturamento - Pedido ${previa?.pedido?.numero}`}
-        action={
-          <Button
-            variant="contained"
-            color="delete"
-            startIcon={<DeleteIcon />}
-            onClick={() => setDialogExcluir(true)}
-            disabled={processando || periodoBloqueado}
-          >
-            Excluir Faturamento
-          </Button>
+        topAction={
+          <>
+            <IconButton
+              size="small"
+              onClick={(event) => setActionsAnchorEl(event.currentTarget)}
+              sx={{
+                width: 36,
+                height: 36,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                color: 'text.secondary',
+                bgcolor: 'background.paper',
+                '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+              }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+            <Menu
+              anchorEl={actionsAnchorEl}
+              open={Boolean(actionsAnchorEl)}
+              onClose={() => setActionsAnchorEl(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem
+                onClick={() => {
+                  setActionsAnchorEl(null);
+                  setDialogExcluir(true);
+                }}
+                disabled={processando || periodoBloqueado}
+                sx={{ gap: 1, color: 'delete.main', fontSize: '0.82rem' }}
+              >
+                <DeleteIcon fontSize="small" />
+                Excluir
+              </MenuItem>
+            </Menu>
+          </>
         }
       />
 

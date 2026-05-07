@@ -10,6 +10,10 @@ import {
 } from "../../../utils/errorHandler";
 import { publishRealtimeEvent } from "../../../services/realtimeEvents";
 import { obterPeriodoContexto } from "../../../utils/periodoUsuarioHelper";
+import {
+  ensureContratoSaldoSchema,
+  saldoDisponivelContratoProdutoSql,
+} from "../../contratos/services/contratoSaldoService";
 
 const STATUS_COMPRA = {
   pendente: { label: 'Pendente', color: 'warning' },
@@ -154,6 +158,7 @@ export async function listarCompras(req: Request, res: Response) {
 
 export async function buscarCompra(req: Request, res: Response) {
   try {
+    await ensureContratoSaldoSchema();
     const { id } = req.params;
 
     const compraResult = await db.query(`
@@ -189,12 +194,7 @@ export async function buscarCompra(req: Request, res: Response) {
         f.cnpj as fornecedor_cnpj,
         f.id as fornecedor_id,
         (pi.quantidade * pi.preco_unitario) as valor_total,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          0
-        ) as saldo_disponivel
+        ${saldoDisponivelContratoProdutoSql("cp", "0")} as saldo_disponivel
       FROM pedido_itens pi
       LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       LEFT JOIN produtos p ON cp.produto_id = p.id
@@ -831,6 +831,7 @@ export async function obterEstatisticasCompras(req: Request, res: Response) {
 
 export async function listarProdutosContrato(req: Request, res: Response) {
   try {
+    await ensureContratoSaldoSchema();
     const { contrato_id } = req.params;
 
     // Query sempre busca unidade do produto
@@ -842,12 +843,7 @@ export async function listarProdutosContrato(req: Request, res: Response) {
         p.descricao as produto_descricao,
         c.numero as contrato_numero,
         f.nome as fornecedor_nome,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          0
-        ) as saldo_disponivel
+        ${saldoDisponivelContratoProdutoSql("cp", "0")} as saldo_disponivel
       FROM contrato_produtos cp
       JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
@@ -875,6 +871,7 @@ export async function listarProdutosContrato(req: Request, res: Response) {
 
 export async function listarTodosProdutosDisponiveis(req: Request, res: Response) {
   try {
+    await ensureContratoSaldoSchema();
     
     // Query sempre busca unidade do produto
     const query = `
@@ -882,12 +879,7 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
         cp.id as contrato_produto_id,
         cp.preco_unitario,
         cp.quantidade_contratada,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          0
-        ) as saldo_disponivel,
+        ${saldoDisponivelContratoProdutoSql("cp", "0")} as saldo_disponivel,
         p.id as produto_id,
         p.nome as produto_nome,
         COALESCE(um.codigo, 'UN') as unidade,

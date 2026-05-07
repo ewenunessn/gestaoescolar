@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { createColumnHelper } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import CompactPagination from "../../../components/CompactPagination";
+import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
-  CircularProgress, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, IconButton, Stack, Tooltip, Menu, MenuItem
+  CircularProgress, IconButton, Stack, Tooltip, Menu, MenuItem
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
@@ -29,6 +29,7 @@ import { fornecedorService } from "../../../services/fornecedores";
 import { listarContratos } from "../../../services/contratos";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
+import StatusIndicator from "../../../components/StatusIndicator";
 
 // --- Interfaces ---
 interface Fornecedor {
@@ -52,6 +53,7 @@ interface Contrato {
 // --- Funções Utilitárias ---
 const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
 const formatarMoeda = (valor: number = 0) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+const contratoColumnHelper = createColumnHelper<Contrato>();
 
 const getStatusContrato = (contrato: Contrato) => {
   if (!contrato) return { status: "Desconhecido", color: "default" as const };
@@ -96,10 +98,6 @@ export default function FornecedorDetalhe() {
   // Estado do menu de ações
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchorEl);
-  
-  // Estados de paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Atualizar título da página
   useEffect(() => {
@@ -167,34 +165,61 @@ export default function FornecedorDetalhe() {
     [contratos]
   );
   
-  // Contratos paginados
-  const paginatedContratos = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return contratos.slice(startIndex, startIndex + rowsPerPage);
-  }, [contratos, page, rowsPerPage]);
-
-  // Funções de paginação
-  const handleChangePage = useCallback((event: unknown, newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
-  
   const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
   const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}?from=fornecedor&fornecedor_id=${id}`), [navigate, id]);
   const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
   const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
+
+  const contratoColumns = useMemo(() => [
+    contratoColumnHelper.accessor('numero', {
+      header: 'Número',
+      cell: (info) => (
+        <Typography variant="body2" fontWeight={600}>
+          {info.getValue()}
+        </Typography>
+      ),
+    }),
+    contratoColumnHelper.accessor((row) => `${formatarData(row.data_inicio)} a ${formatarData(row.data_fim)}`, {
+      id: 'vigencia',
+      header: 'Vigência',
+      cell: (info) => <Typography variant="body2">{info.getValue()}</Typography>,
+    }),
+    contratoColumnHelper.accessor('valor_total_contrato', {
+      header: 'Valor Total',
+      cell: (info) => <Typography variant="body2">{formatarMoeda(Number(info.getValue()) || 0)}</Typography>,
+    }),
+    contratoColumnHelper.display({
+      id: 'status',
+      header: 'Status',
+      cell: (info) => {
+        const status = getStatusContrato(info.row.original);
+        return (
+          <StatusIndicator status={status.status} text={status.status} size="small" />
+        );
+      },
+    }),
+    contratoColumnHelper.display({
+      id: 'acoes',
+      header: 'Ações',
+      cell: (info) => (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title="Ver Detalhes">
+            <IconButton size="small" onClick={() => handleVerContrato(info.row.original.id)} sx={{ p: 0.5 }}>
+              <VisibilityIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    }),
+  ], [handleVerContrato]);
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh', bgcolor: 'background.default' }}><CircularProgress size={60} /></Box>;
   if (error) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}><PageContainer><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></PageContainer></Box>;
   if (!fornecedor) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', p: 3 }}><Alert severity="error">Fornecedor não encontrado</Alert></Box>;
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-      <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - var(--app-top-offset, 0px))', bgcolor: 'background.default', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
         {/* Seta + Breadcrumbs na mesma linha */}
         <Box sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/fornecedores')} sx={{ mr: 0.5, p: 0.5 }}>
@@ -217,14 +242,27 @@ export default function FornecedorDetalhe() {
             { label: fornecedor?.nome || 'Detalhes' },
           ]}
           title={fornecedor?.nome || 'Detalhes do Fornecedor'}
-          action={
-            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
-              <MoreVertIcon />
+          topAction={
+            <IconButton
+              size="small"
+              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+              sx={{
+                width: 36,
+                height: 36,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                color: 'text.secondary',
+                bgcolor: 'background.paper',
+                '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+              }}
+            >
+              <MoreVertIcon fontSize="small" />
             </IconButton>
           }
         />
 
-        <Card sx={{ borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', mb: 2 }}>
+        <Card sx={{ borderRadius: '12px', boxShadow: 'none', border: '1px solid', borderColor: 'divider', mb: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1f1f1f' : 'background.paper' }}>
           <CardContent sx={{ p: 1.5 }}>
             <Grid container spacing={2} alignItems="stretch">
               {/* Primeira coluna - Informações básicas */}
@@ -293,108 +331,27 @@ export default function FornecedorDetalhe() {
           </CardContent>
         </Card>
 
-        {/* Legenda de Status */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {contratos.length} {contratos.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Button 
-            startIcon={<AddIcon />} 
-            onClick={handleNovoContrato} 
-            variant="contained" 
-            color="add" 
-            size="small"
-          >
-            Novo Contrato
-          </Button>
-        </Box>
-
         {/* Tabela de Contratos */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {contratos.length === 0 ? (
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                <MenuBookIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" sx={{ color: 'text.secondary' }}>
-                  Nenhum contrato encontrado
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Cadastre o primeiro contrato para este fornecedor.
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  startIcon={<AddIcon />} 
-                  onClick={handleNovoContrato}
-                  color="add"
-                >
-                  Novo Contrato
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ py: 1 }}>Número</TableCell>
-                      <TableCell sx={{ py: 1 }}>Vigência</TableCell>
-                      <TableCell sx={{ py: 1 }}>Valor Total</TableCell>
-                      <TableCell sx={{ py: 1 }}>Status</TableCell>
-                      <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedContratos.map((contrato) => {
-                      const status = getStatusContrato(contrato);
-                      return (
-                        <TableRow key={contrato.id} hover>
-                          <TableCell sx={{ py: 1 }}>
-                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8125rem' }}>
-                              {contrato.numero}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ py: 1 }}>
-                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                              {`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ py: 1 }}>
-                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                              {formatarMoeda(contrato.valor_total_contrato)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ py: 1 }}>
-                            <Chip 
-                              label={status.status} 
-                              color={status.color} 
-                              size="small" 
-                              sx={{ height: 20, fontSize: '0.7rem', color: status.color !== 'default' ? 'white' : undefined }} 
-                            />
-                          </TableCell>
-                          <TableCell align="center" sx={{ py: 1 }}>
-                            <Tooltip title="Ver Detalhes">
-                              <IconButton size="small" onClick={() => handleVerContrato(contrato.id)} sx={{ p: 0.5 }}>
-                                <VisibilityIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={contratos.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-              />
-            </Box>
-          )}
+          <OperationalDataTable
+            data={contratos}
+            columns={contratoColumns}
+            loading={loading}
+            searchPlaceholder="Buscar contratos..."
+            emptyMessage="Nenhum contrato encontrado"
+            rightToolbarActions={
+              <Button
+                startIcon={<AddIcon />}
+                onClick={handleNovoContrato}
+                variant="contained"
+                color="add"
+                size="small"
+                sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}
+              >
+                Novo Contrato
+              </Button>
+            }
+          />
         </Box>
       </PageContainer>
 

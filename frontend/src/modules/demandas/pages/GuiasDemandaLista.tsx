@@ -39,7 +39,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import DemandPeriodCalendarSelector, { Periodo } from "../../../components/dialogs/DemandPeriodCalendarSelector";
+import DemandPeriodCalendarSelector, { Periodo } from "../components/DemandPeriodCalendarSelector";
 import { JobProgressModal } from "../../../components/JobProgressModal";
 import { guiaService } from "../../../services/guiaService";
 import { useToast } from "../../../hooks/useToast";
@@ -52,6 +52,7 @@ import {
 import { listarCardapiosDisponiveis, CardapioDisponivel } from "../../../services/demanda";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import StatusIndicator from "../../../components/StatusIndicator";
 import useRealtimeRefresh from "../../../hooks/useRealtimeRefresh";
 
 interface Competencia {
@@ -149,16 +150,6 @@ const GuiasDemandaLista: React.FC = () => {
     return meses[mes - 1];
   };
 
-  const getStatusColor = (status: string): 'default' | 'warning' | 'success' | 'error' => {
-    const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
-      'rascunho': 'default',
-      'em_andamento': 'warning',
-      'finalizada': 'success',
-      'cancelada': 'error'
-    };
-    return statusMap[status] || 'default';
-  };
-
   // Filtrar competências
   const competenciasFiltradas = useMemo(() => {
     return competencias.filter((comp) => {
@@ -182,12 +173,6 @@ const GuiasDemandaLista: React.FC = () => {
 
   // Definir colunas
   const columns = useMemo<ColumnDef<Competencia>[]>(() => [
-    {
-      accessorKey: 'guia_id',
-      header: 'ID',
-      size: 80,
-      enableSorting: true,
-    },
     {
       id: 'competencia',
       header: 'Competência',
@@ -236,11 +221,7 @@ const GuiasDemandaLista: React.FC = () => {
       cell: ({ getValue }) => {
         const status = getValue() as string;
         return (
-          <Chip
-            label={status}
-            size="small"
-            color={getStatusColor(status)}
-          />
+          <StatusIndicator status={status} text={status} size="small" />
         );
       },
     },

@@ -42,14 +42,17 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { sidebarFontFamily } from '../layout/AppShellConfig';
 
 // ── Theme-derived tokens (centralized in theme.ts) ──
 const getToken = (theme: Theme) => ({
   green: theme.palette.success.main,
-  bg: theme.palette.background.default,
-  canvas: theme.palette.background.paper,
+  bg: theme.palette.mode === 'light' ? theme.palette.background.default : '#1d1d1d',
+  canvas: theme.palette.mode === 'light' ? theme.palette.background.paper : '#232323',
+  header: theme.palette.mode === 'light' ? theme.palette.background.default : '#1d1d1d',
+  surface: theme.palette.mode === 'light' ? theme.palette.background.paper : '#232323',
   border: theme.palette.divider,
-  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : 'rgba(255,255,255,0.14)',
+  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : '#343434',
   text: theme.palette.text.primary,
   muted: theme.palette.text.secondary,
   sub: theme.palette.mode === 'light' ? '#7b8492' : '#8893a5',
@@ -275,6 +278,7 @@ export function OperationalDataTable<TData>({
 
   return (
     <Paper
+      elevation={0}
       className="data-table-paper"
       sx={{
         width: '100%',
@@ -282,6 +286,14 @@ export function OperationalDataTable<TData>({
         flexDirection: 'column',
         height: '100%',
         overflow: 'hidden',
+        boxShadow: 'none',
+        fontFamily: sidebarFontFamily,
+        '& .MuiTableCell-root, & .MuiTypography-root, & .MuiInputBase-root, & .MuiButton-root, & .MuiTablePagination-root': {
+          fontFamily: sidebarFontFamily,
+        },
+        '& .MuiTableCell-root': {
+          fontSize: '0.82rem',
+        },
       }}
     >
       {/* ── Toolbar ── */}
@@ -329,6 +341,7 @@ export function OperationalDataTable<TData>({
         sx={{
           flex: 1,
           overflow: 'auto',
+          backgroundColor: t.surface,
           '&::-webkit-scrollbar': { width: '6px', height: '6px' },
           '&::-webkit-scrollbar-thumb': { background: t.borderMd, borderRadius: '3px' },
           '&::-webkit-scrollbar-track': { background: 'transparent' },
@@ -341,6 +354,7 @@ export function OperationalDataTable<TData>({
             borderCollapse: 'separate',
             borderSpacing: 0,
             minWidth: 650,
+            backgroundColor: t.surface,
           }}
         >
           <TableHead>
@@ -351,9 +365,10 @@ export function OperationalDataTable<TData>({
                     padding="checkbox"
                     sx={{
                       fontWeight: 500,
-                      backgroundColor: t.bg,
+                      backgroundColor: `${t.header} !important`,
                       color: t.muted,
-                      fontSize: '0.6875rem',
+                      fontFamily: sidebarFontFamily,
+                      fontSize: '0.82rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       borderBottom: `1px solid ${t.border}`,
@@ -382,9 +397,10 @@ export function OperationalDataTable<TData>({
                       key={header.id}
                       sx={{
                         fontWeight: 500,
-                        backgroundColor: t.bg,
+                        backgroundColor: `${t.header} !important`,
                         color: t.muted,
-                        fontSize: '0.6875rem',
+                        fontFamily: sidebarFontFamily,
+                        fontSize: '0.82rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                         borderBottom: `1px solid ${t.border}`,
@@ -437,13 +453,13 @@ export function OperationalDataTable<TData>({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8 }}>
+                <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8, bgcolor: t.surface }}>
                   <CircularProgress sx={{ color: t.muted }} size={24} />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8 }}>
+                <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8, bgcolor: t.surface }}>
                   <Typography sx={{ color: t.muted, fontSize: '0.8125rem' }}>
                     {emptyMessage}
                   </Typography>
@@ -465,7 +481,7 @@ export function OperationalDataTable<TData>({
                   }}
                 >
                   {enableRowSelection && (
-                    <TableCell padding="checkbox" sx={{ borderColor: t.border, bgcolor: 'transparent' }}>
+                    <TableCell padding="checkbox" sx={{ borderColor: t.border, bgcolor: t.surface }}>
                       <Checkbox
                         checked={row.getIsSelected()}
                         onChange={row.getToggleSelectedHandler()}
@@ -487,9 +503,10 @@ export function OperationalDataTable<TData>({
                         }}
                         sx={{
                           borderBottom: `1px solid ${t.border}`,
-                          bgcolor: 'transparent',
+                          bgcolor: t.surface,
                           color: t.text,
-                          fontSize: '0.8125rem',
+                          fontFamily: sidebarFontFamily,
+                          fontSize: '0.82rem',
                           padding: '8px 12px',
                           borderColor: t.border,
                         }}
@@ -525,7 +542,7 @@ export function OperationalDataTable<TData>({
         }
         sx={{
           borderTop: `1px solid ${t.border}`,
-          backgroundColor: t.canvas,
+          backgroundColor: t.surface,
           '.MuiTablePagination-toolbar': {
             minHeight: 44,
             paddingLeft: 2,
@@ -543,6 +560,9 @@ export function OperationalDataTable<TData>({
           '.MuiSvgIcon-root': { fontSize: '1rem', color: t.muted },
           '.MuiIconButton-root': {
             color: t.text,
+          },
+          '.MuiTablePagination-actions': {
+            backgroundColor: t.surface,
           },
         }}
       />

@@ -1,12 +1,12 @@
 import { Suspense, lazy, useEffect } from "react";
-import { Box, Typography } from "@mui/material";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { Box, Typography } from "@mui/material";
 import { isAuthenticated } from "../services/auth";
 import AppShellLayout from "../components/layout/AppShellLayout";
 import PermissionGuard from "../components/PermissionGuard";
 import { EscolasProvider } from "../contexts/EscolasContext";
-import { desktopSans } from "../theme/theme";
 import { ROUTE_PERMISSION_SLUGS } from "./permissionSlugs";
+import { desktopSans } from "../theme/theme";
 
 // Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
@@ -18,7 +18,6 @@ import InterestForm from "../pages/InterestForm";
 import Dashboard from "../modules/sistema/pages/Dashboard";
 import CardapioPublico from "../modules/cardapios/pages/CardapioPublico";
 
-// Componente de loading
 const PageLoader = () => (
   <Box
     sx={{

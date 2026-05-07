@@ -54,6 +54,18 @@ const getMessage = (data: unknown, fallback: string) => {
   return fallback;
 };
 
+const createHttpError = (message: string, source: AxiosError) => {
+  const httpError = new Error(message) as Error & {
+    response?: AxiosError['response'];
+    status?: number;
+    code?: string;
+  };
+  httpError.response = source.response;
+  httpError.status = source.response?.status;
+  httpError.code = source.code;
+  return httpError;
+};
+
 const api = axios.create({
   baseURL: apiConfig.baseURL,
   timeout: apiConfig.timeout,
@@ -143,16 +155,16 @@ api.interceptors.response.use(
           if (!window.location.pathname.includes('/login')) {
             window.location.href = "/login";
           }
-          throw new Error("Sessão expirada. Faça login novamente.");
+          throw createHttpError("Sessão expirada. Faça login novamente.", error);
         case 403:
           const forbiddenMessage = getMessage(data, "Acesso negado. Você não tem permissão para esta ação.");
-          throw new Error(forbiddenMessage);
+          throw createHttpError(forbiddenMessage, error);
         case 404:
           const notFoundMessage = getMessage(data, `Recurso não encontrado: ${originalRequest.url}`);
-          throw new Error(notFoundMessage);
+          throw createHttpError(notFoundMessage, error);
         case 409:
           const conflictMessage = getMessage(data, "Conflito de dados");
-          throw new Error(conflictMessage);
+          throw createHttpError(conflictMessage, error);
         case 422: {
           // Prioriza message; se ausente, tenta errors como string simples
           let validationMessage = getMessage(data, "Dados inválidos");
@@ -162,15 +174,15 @@ api.interceptors.response.use(
               validationMessage = errorsField;
             }
           }
-          throw new Error(validationMessage);
+          throw createHttpError(validationMessage, error);
         }
         case 500:
           const serverMessage = getMessage(data, "Erro interno do servidor. Tente novamente mais tarde.");
-          throw new Error(serverMessage);
+          throw createHttpError(serverMessage, error);
         default:
           const message =
             getMessage(data, `Erro ${status}: ${error.message}`);
-          throw new Error(message);
+          throw createHttpError(message, error);
       }
     }
 

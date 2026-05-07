@@ -16,12 +16,17 @@ import {
 import { CalendarToday, Public, Person } from '@mui/icons-material';
 import { usePeriodos, usePeriodoAtivo, useSelecionarPeriodo } from '../../hooks/queries/usePeriodosQueries';
 
-export const ActivePeriodSelector: React.FC = () => {
+type ActivePeriodSelectorProps = {
+  placement?: 'toolbar' | 'accountMenu';
+};
+
+export const ActivePeriodSelector: React.FC<ActivePeriodSelectorProps> = ({ placement = 'toolbar' }) => {
   const theme = useTheme();
   const { data: periodos, isLoading: loadingPeriodos } = usePeriodos();
   const { data: periodoAtivo, isLoading: loadingAtivo } = usePeriodoAtivo();
   const selecionarPeriodo = useSelecionarPeriodo();
   const [erro, setErro] = useState<string | null>(null);
+  const isAccountMenu = placement === 'accountMenu';
 
   const handleChange = (_: any, periodo: any) => {
     if (!periodo) return;
@@ -36,13 +41,17 @@ export const ActivePeriodSelector: React.FC = () => {
   const handleCloseErro = () => setErro(null);
 
   if (loadingPeriodos || loadingAtivo) {
-    return <CircularProgress size={20} />;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: isAccountMenu ? 'flex-start' : 'center', minHeight: isAccountMenu ? 38 : 'auto' }}>
+        <CircularProgress size={20} />
+      </Box>
+    );
   }
 
   if (!periodos?.length || !periodoAtivo) {
     return (
       <Tooltip title="Nenhum período cadastrado. Acesse Configurações > Períodos.">
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.5, cursor: 'default' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.5, cursor: 'default', width: isAccountMenu ? '100%' : 'auto' }}>
           <CalendarToday fontSize="small" />
           <Typography variant="caption" color="text.secondary">Sem período</Typography>
         </Box>
@@ -56,12 +65,17 @@ export const ActivePeriodSelector: React.FC = () => {
 
   return (
     <>
-      <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.75 }}>
+      <Box sx={{
+        display: isAccountMenu ? 'flex' : { xs: 'none', sm: 'flex' },
+        alignItems: 'center',
+        gap: 0.75,
+        width: isAccountMenu ? '100%' : 'auto',
+      }}>
         <Tooltip title={isUsuarioPeriodo ? 'Seu período selecionado' : 'Período ativo global'}>
           <Box
             sx={{
-              width: 34,
-              height: 34,
+              width: isAccountMenu ? 32 : 34,
+              height: isAccountMenu ? 32 : 34,
               display: 'grid',
               placeItems: 'center',
               borderRadius: 1,
@@ -84,7 +98,8 @@ export const ActivePeriodSelector: React.FC = () => {
           disableClearable
           size="small"
           sx={{
-            width: 198,
+            width: isAccountMenu ? '100%' : 198,
+            minWidth: isAccountMenu ? 0 : 198,
             '& .MuiAutocomplete-endAdornment': {
               right: 7,
               top: '50%',
@@ -124,7 +139,7 @@ export const ActivePeriodSelector: React.FC = () => {
                   bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'light' ? 0.82 : 0.72),
                   borderRadius: '8px',
                   color: 'text.primary',
-                  height: 36,
+                  height: isAccountMenu ? 34 : 36,
                   pr: '32px !important',
                   '& fieldset': { borderColor: theme.palette.divider },
                   '&:hover fieldset': { borderColor: alpha(theme.palette.text.primary, 0.22) },
@@ -166,7 +181,7 @@ export const ActivePeriodSelector: React.FC = () => {
               size="small"
               color="warning"
               variant="outlined"
-              sx={{ height: 22, fontSize: '0.68rem' }}
+              sx={{ height: 22, fontSize: '0.68rem', display: isAccountMenu ? 'none' : 'inline-flex' }}
             />
           </Tooltip>
         )}

@@ -1,14 +1,6 @@
-/**
- * Hooks do React Query para operações de fornecedores
- */
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
-import { fornecedorService, FornecedorCreate } from '../../services/fornecedores';
-
-// ============================================================================
-// QUERIES
-// ============================================================================
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { cacheConfig, queryKeys } from '../../lib/queryClient';
+import { FornecedorCreate, fornecedorService } from '../../services/fornecedores';
 
 export function useFornecedores(filters?: {
   search?: string;
@@ -24,30 +16,30 @@ export function useFornecedores(filters?: {
     refetchOnWindowFocus: true,
     select: (data: any[]) => {
       let filteredData = [...data];
-      
+
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter(fornecedor => 
+        filteredData = filteredData.filter((fornecedor) =>
           fornecedor.nome.toLowerCase().includes(searchLower) ||
           fornecedor.email?.toLowerCase().includes(searchLower) ||
           fornecedor.cidade?.toLowerCase().includes(searchLower)
         );
       }
-      
+
       if (filters?.ativo !== undefined) {
-        filteredData = filteredData.filter(fornecedor => fornecedor.ativo === filters.ativo);
+        filteredData = filteredData.filter((fornecedor) => fornecedor.ativo === filters.ativo);
       }
-      
+
       if (filters?.cidade) {
-        filteredData = filteredData.filter(fornecedor => fornecedor.cidade === filters.cidade);
+        filteredData = filteredData.filter((fornecedor) => fornecedor.cidade === filters.cidade);
       }
-      
+
       return {
         fornecedores: filteredData,
         total: filteredData.length,
-        ativos: filteredData.filter(f => f.ativo).length,
-        inativos: filteredData.filter(f => !f.ativo).length,
-        cidades: [...new Set(data.map(f => f.cidade).filter(Boolean))].sort(),
+        ativos: filteredData.filter((fornecedor) => fornecedor.ativo).length,
+        inativos: filteredData.filter((fornecedor) => !fornecedor.ativo).length,
+        cidades: [...new Set(data.map((fornecedor) => fornecedor.cidade).filter(Boolean))].sort(),
       };
     },
   });
@@ -67,15 +59,11 @@ export function useCidadesFornecedores() {
     queryKey: [...queryKeys.fornecedores.all, 'cidades'],
     queryFn: async () => {
       const fornecedores = await fornecedorService.listar();
-      return [...new Set(fornecedores.map(f => f.cidade).filter(Boolean))].sort();
+      return [...new Set(fornecedores.map((fornecedor) => fornecedor.cidade).filter(Boolean))].sort();
     },
     ...cacheConfig.static,
   });
 }
-
-// ============================================================================
-// MUTATIONS
-// ============================================================================
 
 export function useCriarFornecedor() {
   const queryClient = useQueryClient();
@@ -96,8 +84,7 @@ export function useAtualizarFornecedor() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      fornecedorService.atualizar(id, data),
+    mutationFn: ({ id, data }: { id: number; data: any }) => fornecedorService.atualizar(id, data),
     onSuccess: (updatedFornecedor, { id }) => {
       queryClient.setQueryData(queryKeys.fornecedores.detail(id), updatedFornecedor);
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
@@ -117,10 +104,6 @@ export function useExcluirFornecedor() {
   });
 }
 
-// ============================================================================
-// HOOKS ESPECÍFICOS
-// ============================================================================
-
 export function useFornecedoresAtivos() {
   return useFornecedores({ ativo: true });
 }
@@ -133,15 +116,14 @@ export function useFornecedoresComFiltros(filters: {
   limit?: number;
 }) {
   const { data, ...rest } = useFornecedores(filters);
-  
+
   if (!data) return { data: undefined, ...rest };
-  
-  // Aplicar paginação
+
   const page = filters.page || 1;
   const limit = filters.limit || 10;
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  
+
   return {
     data: {
       ...data,

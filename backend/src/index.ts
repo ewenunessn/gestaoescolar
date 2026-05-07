@@ -51,7 +51,6 @@ const corsOptions = {
 };
 
 const app = express();
-const httpServer = createServer(app);
 
 // CORS deve ser o PRIMEIRO middleware â€” antes de qualquer rota
 app.use(cors(corsOptions));
@@ -273,7 +272,7 @@ async function iniciarServidor() {
       let currentPort = BASE_PORT;
 
       const startListening = (retries = 5) => {
-        const server = httpServer.listen(currentPort, HOST, () => {
+        const server = createServer(app).listen(currentPort, HOST, () => {
           console.log(`ðŸš€ Servidor PostgreSQL rodando em ${HOST}:${currentPort}`);
 
           // Tratar CORS origins que pode ser array ou boolean
@@ -290,7 +289,7 @@ async function iniciarServidor() {
 
 
         });
-        server.on('error', (err: any) => {
+        server.once('error', (err: any) => {
           if (err && err.code === 'EADDRINUSE' && retries > 0) {
             console.warn(`âš ï¸ Porta ${currentPort} em uso. Tentando ${currentPort + 1}...`);
             currentPort += 1;

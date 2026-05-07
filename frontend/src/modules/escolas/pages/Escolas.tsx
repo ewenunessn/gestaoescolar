@@ -41,13 +41,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { importarEscolasLote } from "../../../services/escolas";
 import { useEscolas, useCriarEscola, useExcluirEscola } from "../../../hooks/queries";
 import { useToast } from "../../../hooks/useToast";
-import ImportacaoEscolas from "../../../components/ImportacaoEscolas";
-import LocationSelector from "../../../components/LocationSelector";
+import ImportacaoEscolas from "../components/ImportacaoEscolas";
+import LocationSelector from "../components/LocationSelector";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
-import FiltrosEscolas from "../../../components/FiltrosEscolas";
+import FiltrosEscolas from "../components/FiltrosEscolas";
 import * as XLSX from "xlsx";
 
 // ── Design tokens ──────────────────────────────────────────────
@@ -243,15 +244,7 @@ const EscolasPage = () => {
       enableSorting: true,
       cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => (
         <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativa' : 'Inativa'} size="small" />
         </Tooltip>
       ),
     },
@@ -405,7 +398,15 @@ const EscolasPage = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - var(--app-top-offset, 0px))',
+        bgcolor: 'background.default',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
         <PageHeader
           title="Escolas"

@@ -11,28 +11,40 @@ import {
 } from '@mui/icons-material';
 import { useNotificacoes } from '../contexts/NotificacoesContext';
 
-export default function NotificacoesMenu() {
+type NotificacoesMenuProps = {
+  renderTrigger?: (props: { onClick: (event: React.MouseEvent<HTMLElement>) => void; naoLidas: number }) => React.ReactNode;
+  placement?: 'default' | 'sidebar';
+};
+
+export default function NotificacoesMenu({ renderTrigger, placement = 'default' }: NotificacoesMenuProps) {
   const { notificacoes, naoLidas, loading, marcarTodasLidas, deletar, abrirNotificacao } = useNotificacoes();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   const open = Boolean(anchor);
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => setAnchor(event.currentTarget);
 
   return (
     <>
+      {renderTrigger ? renderTrigger({ onClick: handleOpen, naoLidas }) : (
       <Tooltip title="Notificações">
-        <IconButton onClick={e => setAnchor(e.currentTarget)} size="small" sx={{ color: 'text.secondary' }}>
+        <IconButton onClick={handleOpen} size="small" sx={{ color: 'text.secondary' }}>
           <Badge badgeContent={naoLidas || undefined} color="error" max={99}>
             <BellIcon fontSize="small" />
           </Badge>
         </IconButton>
       </Tooltip>
+      )}
 
       <Popover
         open={open}
         anchorEl={anchor}
         onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={placement === 'sidebar'
+          ? { vertical: 'top', horizontal: 'left' }
+          : { vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={placement === 'sidebar'
+          ? { vertical: 'bottom', horizontal: 'left' }
+          : { vertical: 'top', horizontal: 'right' }}
         PaperProps={{ sx: { width: 360, maxHeight: 480, display: 'flex', flexDirection: 'column', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' } }}
       >
         {/* Header */}

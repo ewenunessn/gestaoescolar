@@ -50,6 +50,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Menu,
   MenuItem,
   List,
   ListItem,
@@ -75,6 +76,7 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import RemoveIcon from "@mui/icons-material/Remove";
 import SearchIcon from "@mui/icons-material/Search";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { modalidadeService } from "../../../services/modalidades";
 import { useSafeData } from "../../../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -379,6 +381,7 @@ export default function CardapioDetalhe() {
   const [editando, setEditando] = useState(isNovo);
   const [salvando, setSalvando] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<null | HTMLElement>(null);
   
   // Estados do formulário
   const [form, setForm] = useState<CardapioFormState>(EMPTY_FORM);
@@ -853,6 +856,46 @@ export default function CardapioDetalhe() {
               { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
             ]}
             title={isNovo ? (form.nome || 'Novo Cardápio') : (cardapio?.nome || 'Carregando...')}
+            topAction={
+              !isNovo && !editando && (
+                <>
+                  <IconButton
+                    size="small"
+                    onClick={(event) => setActionsAnchorEl(event.currentTarget)}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      color: 'text.secondary',
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                    }}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                  <Menu
+                    anchorEl={actionsAnchorEl}
+                    open={Boolean(actionsAnchorEl)}
+                    onClose={() => setActionsAnchorEl(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        setActionsAnchorEl(null);
+                        setOpenExcluir(true);
+                      }}
+                      sx={{ gap: 1, color: 'delete.main', fontSize: '0.82rem' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                      Excluir
+                    </MenuItem>
+                  </Menu>
+                </>
+              )
+            }
             subtitle={isNovo ? 'Preencha os dados do cardápio' : 'Visualize e gerencie as refeições do cardápio'}
           />
 
@@ -1001,13 +1044,6 @@ export default function CardapioDetalhe() {
                       color="primary"
                     >
                       Editar
-                    </Button>
-                    <Button
-                      onClick={() => setOpenExcluir(true)}
-                      startIcon={<DeleteIcon />}
-                      variant="contained" color="delete"
-                    >
-                      Excluir
                     </Button>
                   </Box>
                 </Box>

@@ -7,16 +7,17 @@ import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Chip, FormControlLabel, Switch, Paper, Grid, Stack, Autocomplete,
-  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
+  Chip, FormControlLabel, Switch, Grid, Autocomplete,
+  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip, Menu,
 } from "@mui/material";
 import {
   Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
   Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon,
   Fingerprint as FingerprintIcon, Notes as NotesIcon,
   AutoAwesome as AutoAwesomeIcon, ArrowBack as ArrowBackIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
-import BuscarTacoDialog from "../../../components/BuscarTacoDialog";
+import BuscarTacoDialog from "../components/BuscarTacoDialog";
 import { mapearTacoParaComposicao, TacoAlimento } from "../../../services/taco";
 import {
   produtoService, deletarProduto,
@@ -34,15 +35,55 @@ import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
 
 // Simple field wrapper components
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <Box>
-    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', mb: 0.5, display: 'block' }}>{label}</Typography>
+  <Box
+    sx={{
+      borderBottom: '1px solid',
+      borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+      px: 0,
+      py: 0.75,
+      mb: 0.5,
+      minHeight: 44,
+    }}
+  >
+    <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.25, mb: 0.75 }}>
+      {label}
+    </Typography>
     {children}
   </Box>
 );
 
 const ValueText = ({ children }: { children: React.ReactNode }) => (
-  <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>{children}</Typography>
+  <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 400, color: 'text.secondary', lineHeight: 1.35, wordBreak: 'break-word' }}>
+    {children || '-'}
+  </Typography>
 );
+
+const actionButtonSx = {
+  minHeight: 36,
+  px: 1.5,
+  fontSize: '0.78rem',
+  borderRadius: 1,
+  textTransform: 'none',
+};
+
+const sectionActionButtonSx = {
+  minHeight: 28,
+  px: 1.25,
+  fontSize: '0.75rem',
+  borderRadius: 1,
+  textTransform: 'none',
+};
+
+const neutralSectionButtonSx = {
+  ...sectionActionButtonSx,
+  bgcolor: (theme: any) => theme.palette.mode === 'dark' ? '#232323' : 'background.paper',
+  borderColor: (theme: any) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+  color: 'text.primary',
+  '&:hover': {
+    bgcolor: (theme: any) => theme.palette.mode === 'dark' ? '#2a2a2a' : 'action.hover',
+    borderColor: (theme: any) => theme.palette.mode === 'dark' ? '#4a4a4a' : 'divider',
+  },
+};
 
 const composicaoVazia = {
   produto_id: 0,
@@ -123,7 +164,7 @@ type EditableFieldProps = {
 
 type SectionPaperProps = {
   title: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   actions?: React.ReactNode;
 };
@@ -137,19 +178,42 @@ type ComposicaoNutricionalCardProps = {
 
 // --- Subcomponentes de UI ---
 
-const SectionPaper = ({ title, icon, children, actions }: SectionPaperProps) => (
-    <Paper sx={{ p: 1.5, borderRadius: "8px", boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
-                {icon}
-                <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: '0.95rem' }}>{title}</Typography>
-            </Stack>
+const SectionPaper = ({ title, children, actions }: SectionPaperProps) => (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box
+            sx={{
+                minHeight: 36,
+                mb: 1.25,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1.5,
+            }}
+        >
+            <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'text.primary' }}>
+                {title}
+            </Typography>
             {actions}
         </Box>
-        <Box sx={{ flex: 1 }}>
-            {children}
-        </Box>
-    </Paper>
+        <Card
+            sx={{
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider',
+                backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1f1f1f' : '#f7f7f8',
+                boxShadow: 'none',
+            }}
+        >
+            <CardContent sx={{ p: 3, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                {children}
+            </CardContent>
+        </Card>
+    </Box>
 );
 
 const EditableField = ({ 
@@ -261,17 +325,24 @@ const EditableField = ({
 };
 
 const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarregarTaco }: ComposicaoNutricionalCardProps) => {
-    const [editingField, setEditingField] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(composicaoData);
     useEffect(() => { setFormData(composicaoData); }, [composicaoData]);
 
-    const handleSave = (key: string) => { 
+    const handleNumericChange = (key: string, value: string) => {
+        const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');
+        const parts = normalized.split('.');
+        const numericValue = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : normalized;
+        setFormData({ ...formData, [key]: numericValue });
+    };
+
+    const handleSave = () => { 
         onSave(formData); 
-        setEditingField(null);
+        setIsEditing(false);
     };
     const handleCancel = () => { 
         setFormData(composicaoData); 
-        setEditingField(null); 
+        setIsEditing(false); 
     };
 
     const campos = [
@@ -293,68 +364,61 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarrega
         <SectionPaper 
             title="Composição Nutricional" 
             icon={<ScienceIcon color="primary" fontSize="small" />}
+            actions={
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {isEditing ? (
+                        <>
+                            <Button onClick={handleCancel} variant="outlined" disabled={isSaving} size="small" sx={sectionActionButtonSx}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleSave} variant="contained" color="add" disabled={isSaving} size="small" sx={sectionActionButtonSx}>
+                                {isSaving ? 'Salvando...' : 'Salvar'}
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
+                                onClick={onCarregarTaco}
+                                sx={sectionActionButtonSx}
+                            >
+                                Carregar da TACO
+                            </Button>
+                            <Button variant="outlined" startIcon={<EditIcon fontSize="small" />} onClick={() => setIsEditing(true)} size="small" sx={neutralSectionButtonSx}>
+                                Editar
+                            </Button>
+                        </>
+                    )}
+                </Box>
+            }
         >
-            {/* Botão discreto para carregar da TACO */}
-            <Box sx={{ mb: 1 }}>
-                <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
-                    onClick={onCarregarTaco}
-                    sx={{
-                        fontSize: '0.7rem',
-                        py: 0.25,
-                        px: 1,
-                        borderColor: 'divider',
-                        color: 'text.secondary',
-                        '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
-                    }}
-                >
-                    Carregar da TACO
-                </Button>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {campos.map(c => (
-                    <Box key={c.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', flex: 1 }}>
+                    <Box key={c.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, minHeight: 44, borderBottom: '1px solid', borderColor: (theme) => theme.palette.mode === 'dark' ? '#343434' : 'divider' }}>
+                        <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary', flex: 1 }}>
                             {c.label}
                         </Typography>
-                        {editingField === c.key ? (
+                        {isEditing ? (
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
                                 <TextField 
                                     value={formData[c.key as keyof ComposicaoFormData] || ''} 
-                                    onChange={e => setFormData({ ...formData, [c.key]: e.target.value })} 
-                                    type="number" 
+                                    onChange={e => handleNumericChange(c.key, e.target.value)} 
+                                    type="text" 
                                     size="small"
+                                    inputProps={{ inputMode: 'decimal', pattern: '[0-9]*[.]?[0-9]*' }}
                                     sx={{ 
-                                        width: 80,
+                                        width: 96,
                                         '& .MuiInputBase-input': { 
-                                            py: 0.5, 
-                                            px: 1, 
-                                            fontSize: '0.75rem',
+                                            fontSize: '0.82rem',
                                             textAlign: 'right'
                                         }
                                     }}
-                                    autoFocus
                                 />
                                 <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: 30 }}>
                                     {c.unit}
                                 </Typography>
-                                <IconButton 
-                                    size="small" 
-                                    onClick={() => handleSave(c.key)}
-                                    disabled={isSaving}
-                                    sx={{ p: 0.25 }}
-                                >
-                                    <SaveIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                                <IconButton 
-                                    size="small" 
-                                    onClick={handleCancel}
-                                    sx={{ p: 0.25 }}
-                                >
-                                    <CancelIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
                             </Box>
                         ) : (
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -364,13 +428,6 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarrega
                                 <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: 30, color: 'text.secondary' }}>
                                     {formData[c.key as keyof ComposicaoFormData] ? c.unit : ''}
                                 </Typography>
-                                <IconButton 
-                                    size="small" 
-                                    onClick={() => setEditingField(c.key)}
-                                    sx={{ p: 0.25, opacity: 0.6, '&:hover': { opacity: 1 } }}
-                                >
-                                    <EditIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
                             </Box>
                         )}
                     </Box>
@@ -410,6 +467,7 @@ export default function ProdutoDetalhe() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingComp, setIsSavingComp] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<null | HTMLElement>(null);
   const queryClient = useQueryClient();
   const atualizarProdutoMutation = useAtualizarProduto();
 
@@ -424,48 +482,61 @@ export default function ProdutoDetalhe() {
     return () => setPageTitle('');
   }, [produto, setPageTitle]);
 
-  const loadData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const prod = await produtoService.buscarPorId(Number(id));
-      if (!prod) {
-        toast.error("Produto não encontrado");
-        navigate("/produtos");
-        return;
-      }
-      setProduto(prod); 
-      // Garantir que o formulário seja inicializado com todos os dados do produto
-      setForm({
-        nome: prod.nome || '',
-        descricao: prod.descricao || '',
-        categoria: prod.categoria || '',
-        tipo_processamento: prod.tipo_processamento || '',
-        validade_minima: prod.validade_minima || '',
-        imagem_url: prod.imagem_url || '',
-        perecivel: prod.perecivel || false,
-        ativo: prod.ativo !== undefined ? prod.ativo : true,
-        estoque_minimo: prod.estoque_minimo || 0,
-        fator_correcao: prod.fator_correcao || 1.0,
-        tipo_fator_correcao: prod.tipo_fator_correcao || 'perda',
-        indice_coccao: prod.indice_coccao || 1.0,
-        unidade_medida_id: prod.unidade_medida_id || null,
-        peso: prod.peso || '',
-      });
-      try {
-        const comp = await buscarComposicaoNutricional(Number(id));
-        if (comp) setComposicao({ ...composicaoVazia, ...comp });
-      } catch (error) {
-        console.warn('Composição nutricional não encontrada:', error);
-        setComposicao(composicaoVazia);
-      }
-    } catch { 
-      toast.error("Produto não encontrado"); 
-    } 
-    finally { setLoading(false); }
-  }, [id, navigate, toast]);
+  useEffect(() => {
+    let active = true;
 
-  useEffect(() => { loadData(); }, [loadData]);
+    const loadData = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const prod = await produtoService.buscarPorId(Number(id));
+        if (!active) return;
+        if (!prod) {
+          toast.error('Produto n?o encontrado');
+          navigate('/produtos');
+          return;
+        }
+        setProduto(prod);
+        setForm({
+          nome: prod.nome || '',
+          descricao: prod.descricao || '',
+          categoria: prod.categoria || '',
+          tipo_processamento: prod.tipo_processamento || '',
+          validade_minima: prod.validade_minima || '',
+          imagem_url: prod.imagem_url || '',
+          perecivel: prod.perecivel || false,
+          ativo: prod.ativo !== undefined ? prod.ativo : true,
+          estoque_minimo: prod.estoque_minimo || 0,
+          fator_correcao: prod.fator_correcao || 1.0,
+          tipo_fator_correcao: prod.tipo_fator_correcao || 'perda',
+          indice_coccao: prod.indice_coccao || 1.0,
+          unidade_medida_id: prod.unidade_medida_id || null,
+          peso: prod.peso || '',
+        });
+
+        try {
+          const comp = await buscarComposicaoNutricional(Number(id));
+          if (!active) return;
+          setComposicao(comp ? { ...composicaoVazia, ...comp } : composicaoVazia);
+        } catch (error) {
+          if (!active) return;
+          console.warn('Composi??o nutricional n?o encontrada:', error);
+          setComposicao(composicaoVazia);
+        }
+      } catch {
+        if (!active) return;
+        toast.error('Produto n?o encontrado');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, [id, navigate]);
 
   const handleSave = useCallback(async () => {
     if (!form.nome?.trim()) {
@@ -612,6 +683,14 @@ export default function ProdutoDetalhe() {
     }
   }, [id, navigate]);
 
+  const handleOpenActionsMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setActionsAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseActionsMenu = () => {
+    setActionsAnchorEl(null);
+  };
+
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
   if (!produto) return null;
 
@@ -661,30 +740,48 @@ export default function ProdutoDetalhe() {
             { label: 'Produtos', path: '/produtos' },
             { label: produto?.nome || 'Detalhes do Produto' }
           ]}
-          title={produto.nome}
-          action={
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {!isEditing ? (
-                <>
-                  <Button variant="outlined" color="edit" startIcon={<EditIcon />} onClick={handleStartEdit} size="small">
-                    Editar
-                  </Button>
-                  <Button variant="outlined" color="delete" startIcon={<DeleteIcon />} onClick={() => setOpenExcluir(true)} size="small">
-                    Excluir
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outlined" onClick={handleCancel} size="small">
-                    Cancelar
-                  </Button>
-                  <Button variant="contained" color="add" onClick={handleSave} disabled={isSaving || !form.nome?.trim()} startIcon={isSaving ? <CircularProgress size={16} /> : null} size="small">
-                    {isSaving ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </>
-              )}
-            </Box>
+          topAction={
+            <>
+              <IconButton
+                size="small"
+                onClick={handleOpenActionsMenu}
+                sx={{
+                  width: 36,
+                  height: 36,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  color: 'text.secondary',
+                  bgcolor: 'background.paper',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    color: 'text.primary',
+                  },
+                }}
+              >
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+              <Menu
+                anchorEl={actionsAnchorEl}
+                open={Boolean(actionsAnchorEl)}
+                onClose={handleCloseActionsMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    handleCloseActionsMenu();
+                    setOpenExcluir(true);
+                  }}
+                  sx={{ gap: 1, color: 'delete.main', fontSize: '0.82rem' }}
+                >
+                  <DeleteIcon fontSize="small" />
+                  Excluir
+                </MenuItem>
+              </Menu>
+            </>
           }
+          title={produto.nome}
         />
         
         {/* Título do produto */}
@@ -703,6 +800,22 @@ export default function ProdutoDetalhe() {
             <SectionPaper
               title="Identificação do Produto"
               icon={<FingerprintIcon color="primary" fontSize="small" />}
+              actions={
+                !isEditing ? (
+                  <Button variant="outlined" startIcon={<EditIcon fontSize="small" />} onClick={handleStartEdit} size="small" sx={neutralSectionButtonSx}>
+                    Editar
+                  </Button>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button variant="outlined" onClick={handleCancel} disabled={isSaving} size="small" sx={sectionActionButtonSx}>
+                      Cancelar
+                    </Button>
+                    <Button variant="contained" color="add" onClick={handleSave} disabled={isSaving || !form.nome?.trim()} size="small" sx={sectionActionButtonSx}>
+                      {isSaving ? 'Salvando...' : 'Salvar'}
+                    </Button>
+                  </Box>
+                )
+              }
             >
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* Nome */}

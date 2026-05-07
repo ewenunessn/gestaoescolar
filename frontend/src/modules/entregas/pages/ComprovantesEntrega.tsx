@@ -420,11 +420,7 @@ export default function ComprovantesEntrega() {
       size: 120,
       align: 'center',
       cell: ({ row }) => (
-        <Chip
-          label={row.original.status}
-          size="small"
-          color={row.original.status === 'finalizado' ? 'success' : 'default'}
-        />
+        <StatusIndicator status={row.original.status} text={row.original.status} size="small" />
       )
     },
     {

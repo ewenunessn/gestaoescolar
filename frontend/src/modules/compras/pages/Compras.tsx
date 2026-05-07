@@ -39,6 +39,7 @@ import pedidosService from "../../../services/pedidos";
 import { Pedido, STATUS_PEDIDO } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 
 const PedidosPage = () => {
   const navigate = useNavigate();
@@ -116,14 +117,7 @@ const PedidosPage = () => {
 
   const getStatusChip = (status: string) => {
     const statusInfo = STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO];
-    return (
-      <Chip
-        label={statusInfo?.label || status}
-        color={statusInfo?.color as any || 'default'}
-        size="small"
-        variant="outlined"
-      />
-    );
+    return <StatusIndicator status={status} text={statusInfo?.label || status} size="small" />;
   };
 
   // Definir colunas

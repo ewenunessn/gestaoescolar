@@ -47,6 +47,7 @@ import {
 } from "../../../hooks/queries/useModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { FormDialog, ConfirmDialog } from "../../../components/BaseDialog";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -252,15 +253,7 @@ const ModalidadesPage = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativa' : 'Inativa'} size="small" />
         </Tooltip>
       ),
     },
@@ -424,7 +417,15 @@ const ModalidadesPage = () => {
   };
   
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - var(--app-top-offset, 0px))',
+        bgcolor: 'background.default',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
         <PageHeader
           title="Modalidades"

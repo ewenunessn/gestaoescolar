@@ -4,6 +4,10 @@ import { toNum } from '../../../utils/typeHelpers';
 import { JobService } from '../../../services/jobService';
 import { publishRealtimeEvent } from '../../../services/realtimeEvents';
 import { obterPeriodoContexto, PeriodoContexto } from '../../../utils/periodoUsuarioHelper';
+import {
+  ensureContratoSaldoSchema,
+  saldoDisponivelContratoProdutoSql,
+} from '../../contratos/services/contratoSaldoService';
 
 function publicarGuiaPlanejamentoAlterada(action: string, guiaId: number, payload?: Record<string, unknown>) {
   publishRealtimeEvent({
@@ -35,6 +39,32 @@ async function obterPeriodoOperacional(usuarioId: number): Promise<{ periodo?: P
 }
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
+async function bloquearGeracaoPedidoDaGuia(client: any, guiaId: number) {
+  await client.query('SELECT pg_advisory_xact_lock($1, $2)', [703001, guiaId]);
+
+  const pedidoExistente = await client.query(`
+    SELECT id, numero, valor_total, status
+    FROM pedidos
+    WHERE guia_id = $1 AND COALESCE(status, '') <> 'cancelado'
+    ORDER BY id DESC
+    LIMIT 1
+  `, [guiaId]);
+
+  return pedidoExistente.rows[0] || null;
+}
+
+async function buscarPedidoExistenteDaGuia(guiaId: number) {
+  const pedidoExistente = await db.pool.query(`
+    SELECT id, numero, valor_total, status
+    FROM pedidos
+    WHERE guia_id = $1 AND COALESCE(status, '') <> 'cancelado'
+    ORDER BY id DESC
+    LIMIT 1
+  `, [guiaId]);
+
+  return pedidoExistente.rows[0] || null;
+}
+
 interface Periodo {
   data_inicio: string; // YYYY-MM-DD
   data_fim: string;
@@ -553,6 +583,7 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
 
     // 2. Coletar todos os produto_ids únicos e buscar contratos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
+    await ensureContratoSaldoSchema(client);
     const contratosQuery = await client.query(`
       SELECT 
         cp.id as contrato_produto_id,
@@ -569,12 +600,7 @@ export const gerarPedidosPorPeriodo = async (reqBody: any, usuarioId: number, re
         f.nome as fornecedor_nome,
         p.peso as peso_distribuicao,
         COALESCE(um.codigo, 'UN') as unidade,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          cp.quantidade_contratada
-        ) as saldo_disponivel
+        ${saldoDisponivelContratoProdutoSql("cp", "cp.quantidade_contratada")} as saldo_disponivel
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -1326,6 +1352,7 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
 
   try {
     await client.query('BEGIN');
+    await ensureContratoSaldoSchema(client);
 
     const { periodo: periodoLetivo, erro: periodoErro } = await obterPeriodoOperacional(usuarioId);
     if (periodoErro) {
@@ -1540,6 +1567,235 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
 // ─── Gerar Pedido de Compra a partir de uma Guia de Demanda ──────────────────
 // Lê as quantidades ajustadas e data_entrega diretamente de guia_produto_escola
 // sem recalcular pelo cardápio.
+export const validarPedidoDaGuia = async (reqBody: any, usuarioId: number) => {
+  const { guia_id, contratos_selecionados, ignorar_sem_contrato } = reqBody as {
+    guia_id: number;
+    contratos_selecionados?: Array<{ produto_id: number; contrato_produto_id: number; quantidade?: number }>;
+    ignorar_sem_contrato?: boolean;
+  };
+
+  if (!guia_id) {
+    return { status: 400, data: { error: 'guia_id e obrigatorio' } };
+  }
+
+  if (!usuarioId) {
+    return { status: 401, data: { error: 'Usuario nao autenticado' } };
+  }
+
+  const pedidoExistente = await buscarPedidoExistenteDaGuia(guia_id);
+  if (pedidoExistente) {
+    return { status: 409, data: {
+      error: 'Ja existe pedido gerado para esta guia',
+      pedido_id: pedidoExistente.id,
+      numero: pedidoExistente.numero,
+      mensagem: `A guia ja possui o pedido ${pedidoExistente.numero}.`,
+    } };
+  }
+
+  const client = await db.pool.connect();
+
+  try {
+    const guiaResult = await client.query(`
+      SELECT g.id, g.mes, g.ano, g.competencia_mes_ano, g.nome, g.periodo_id, per.fechado
+      FROM guias g
+      LEFT JOIN periodos per ON per.id = g.periodo_id
+      WHERE g.id = $1
+    `, [guia_id]);
+
+    if (guiaResult.rows.length === 0) {
+      return { status: 404, data: { error: 'Guia nao encontrada' } };
+    }
+
+    const guia = guiaResult.rows[0];
+    if (guia.fechado) {
+      return { status: 400, data: { error: 'Nao e possivel gerar pedido de guia em periodo fechado' } };
+    }
+
+    const itensResult = await client.query(`
+      SELECT
+        gpe.id as item_id,
+        gpe.produto_id,
+        gpe.escola_id,
+        gpe.quantidade,
+        gpe.unidade,
+        gpe.data_entrega,
+        p.nome as produto_nome,
+        p.perecivel,
+        e.nome as escola_nome
+      FROM guia_produto_escola gpe
+      JOIN produtos p ON p.id = gpe.produto_id
+      JOIN escolas e ON e.id = gpe.escola_id
+      WHERE gpe.guia_id = $1 AND gpe.quantidade > 0
+      ORDER BY gpe.produto_id, gpe.data_entrega, gpe.escola_id
+    `, [guia_id]);
+
+    if (itensResult.rows.length === 0) {
+      return { status: 400, data: { error: 'A guia nao possui itens com quantidade > 0' } };
+    }
+
+    const grupos = new Map<string, {
+      produto_id: number;
+      produto_nome: string;
+      perecivel: boolean;
+      data_entrega: string | null;
+      escolas: { escola_id: number; escola_nome: string; quantidade: number }[];
+    }>();
+
+    const toDateStr = (val: any): string | null => {
+      if (!val) return null;
+      if (val instanceof Date) return val.toISOString().split('T')[0];
+      const s = String(val);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (s.includes('T')) return s.split('T')[0];
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
+
+    for (const row of itensResult.rows) {
+      const dataKey = toDateStr(row.data_entrega);
+      const key = row.perecivel ? `${row.produto_id}__${dataKey ?? ''}` : `${row.produto_id}__np`;
+
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          produto_id: row.produto_id,
+          produto_nome: row.produto_nome,
+          perecivel: row.perecivel,
+          data_entrega: row.perecivel ? dataKey : null,
+          escolas: [],
+        });
+      }
+
+      const grupo = grupos.get(key)!;
+      const existente = grupo.escolas.find(e => e.escola_id === row.escola_id);
+      if (existente) {
+        existente.quantidade += Number(row.quantidade);
+      } else {
+        grupo.escolas.push({
+          escola_id: row.escola_id,
+          escola_nome: row.escola_nome,
+          quantidade: Number(row.quantidade),
+        });
+      }
+
+      if (!row.perecivel && dataKey && (!grupo.data_entrega || dataKey < grupo.data_entrega)) {
+        grupo.data_entrega = dataKey;
+      }
+    }
+
+    const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
+    await ensureContratoSaldoSchema(client);
+
+    const contratosResult = await client.query(`
+      SELECT
+        cp.id as contrato_produto_id,
+        cp.produto_id,
+        cp.preco_unitario,
+        cp.quantidade_contratada,
+        c.id as contrato_id,
+        c.numero as contrato_numero,
+        c.data_fim as contrato_data_fim,
+        f.id as fornecedor_id,
+        f.nome as fornecedor_nome,
+        p.peso as peso_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
+        ${saldoDisponivelContratoProdutoSql("cp", "cp.quantidade_contratada")} as saldo_disponivel
+      FROM contrato_produtos cp
+      JOIN contratos c ON c.id = cp.contrato_id
+      JOIN fornecedores f ON f.id = c.fornecedor_id
+      JOIN produtos p ON p.id = cp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      WHERE cp.produto_id = ANY($1) AND cp.ativo = true
+        AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
+      ORDER BY cp.produto_id, c.data_fim ASC
+    `, [todosProdutoIds]);
+
+    const contratosPorProduto = new Map<number, any[]>();
+    for (const row of contratosResult.rows) {
+      if (!contratosPorProduto.has(row.produto_id)) {
+        contratosPorProduto.set(row.produto_id, []);
+      }
+      contratosPorProduto.get(row.produto_id)!.push(row);
+    }
+
+    const produtosSemContrato: Array<{ produto_id: number; produto_nome: string; quantidade: number }> = [];
+    const produtosComContrato = new Set<number>();
+    const produtosComMultiplosContratos: any[] = [];
+
+    for (const grupo of grupos.values()) {
+      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+      const qtdTotal = grupo.escolas.reduce((sum, e) => sum + e.quantidade, 0);
+
+      if (contratos.length === 0) {
+        produtosSemContrato.push({
+          produto_id: grupo.produto_id,
+          produto_nome: grupo.produto_nome,
+          quantidade: qtdTotal,
+        });
+        continue;
+      }
+
+      produtosComContrato.add(grupo.produto_id);
+
+      if (contratos.length > 1 && !produtosComMultiplosContratos.some(p => p.produto_id === grupo.produto_id)) {
+        produtosComMultiplosContratos.push({
+          produto_id: grupo.produto_id,
+          produto_nome: grupo.produto_nome,
+          unidade: contratos[0]?.unidade || 'UN',
+          quantidade_necessaria: qtdTotal,
+          contratos: contratos.map(c => ({
+            contrato_produto_id: c.contrato_produto_id,
+            contrato_id: c.contrato_id,
+            contrato_numero: c.contrato_numero,
+            fornecedor_id: c.fornecedor_id,
+            fornecedor_nome: c.fornecedor_nome,
+            preco_unitario: c.preco_unitario,
+            saldo_disponivel: c.saldo_disponivel,
+            data_fim: c.contrato_data_fim,
+          })),
+        });
+      }
+    }
+
+    if (produtosComMultiplosContratos.length > 0 && !contratos_selecionados) {
+      return { status: 200, data: {
+        requer_selecao: true,
+        produtos_multiplos_contratos: produtosComMultiplosContratos,
+        produtos_sem_contrato: produtosSemContrato.length > 0 ? produtosSemContrato : undefined,
+        mensagem: `${produtosComMultiplosContratos.length} produto(s) encontrado(s) em multiplos contratos. Selecione qual contrato usar para cada produto.`,
+      } };
+    }
+
+    if (produtosSemContrato.length > 0 && produtosComContrato.size === 0) {
+      return { status: 400, data: {
+        error: 'Nenhum produto da guia possui contrato ativo',
+        produtos_sem_contrato: produtosSemContrato,
+        mensagem: `Todos os ${produtosSemContrato.length} produtos da guia nao possuem contrato ativo. Cadastre contratos antes de gerar o pedido.`,
+      } };
+    }
+
+    if (produtosSemContrato.length > 0 && !ignorar_sem_contrato) {
+      return { status: 200, data: {
+        requer_confirmacao: true,
+        produtos_sem_contrato: produtosSemContrato,
+        produtos_com_contrato: produtosComContrato.size,
+        mensagem: `${produtosSemContrato.length} produto(s) nao possuem contrato ativo e serao ignorados. Deseja continuar apenas com os ${produtosComContrato.size} produtos que tem contrato?`,
+      } };
+    }
+
+    return { status: 200, data: {
+      pode_gerar: true,
+      produtos_sem_contrato: produtosSemContrato,
+      produtos_com_contrato: produtosComContrato.size,
+      mensagem: 'Pedido pode ser gerado',
+    } };
+  } catch (error) {
+    console.error('Erro ao validar pedido da guia:', error);
+    return { status: 500, data: { error: 'Erro ao validar geracao de pedido da guia' } };
+  } finally {
+    client.release();
+  }
+};
+
 export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuery?: any, reqParam?: any) => {
   const { guia_id, observacoes } = reqBody as { guia_id: number; observacoes?: string };
 
@@ -1552,6 +1808,17 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
   if (!usuario_id) return { status: 401, data: { error: 'Usuário não autenticado' } };
   const client = await db.pool.connect();  try {
     await client.query('BEGIN');
+
+    const pedidoExistente = await bloquearGeracaoPedidoDaGuia(client, guia_id);
+    if (pedidoExistente) {
+      await client.query('ROLLBACK');
+      return { status: 409, data: {
+        error: 'Ja existe pedido gerado para esta guia',
+        pedido_id: pedidoExistente.id,
+        numero: pedidoExistente.numero,
+        mensagem: `A guia ja possui o pedido ${pedidoExistente.numero}.`,
+      } };
+    }
 
     // 1. Buscar a guia
     const guiaResult = await client.query(`
@@ -1659,6 +1926,7 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
 
     // 4. Buscar contratos ativos para todos os produtos
     const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
+    await ensureContratoSaldoSchema(client);
     const contratosResult = await client.query(`
       SELECT
         cp.id as contrato_produto_id,
@@ -1672,12 +1940,7 @@ export const gerarPedidoDaGuia = async (reqBody: any, usuarioId: number, reqQuer
         f.nome as fornecedor_nome,
         p.peso as peso_distribuicao,
         COALESCE(um.codigo, 'UN') as unidade,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          cp.quantidade_contratada
-        ) as saldo_disponivel
+        ${saldoDisponivelContratoProdutoSql("cp", "cp.quantidade_contratada")} as saldo_disponivel
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -2426,6 +2689,21 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 0 });
     await client.query('BEGIN');
 
+    const pedidoExistente = await bloquearGeracaoPedidoDaGuia(client, guia_id);
+    if (pedidoExistente) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: `A guia ja possui o pedido ${pedidoExistente.numero}.`,
+        resultado: {
+          pedido_id: pedidoExistente.id,
+          numero: pedidoExistente.numero,
+          guia_id,
+        },
+      });
+      return;
+    }
+
     // Progresso: 0-10% - Buscar guia
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 5 });
     
@@ -2529,18 +2807,14 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 30 });
 
     const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
+    await ensureContratoSaldoSchema(client);
     const contratosResult = await client.query(`
       SELECT
         cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario, cp.quantidade_contratada,
         c.id as contrato_id, c.numero as contrato_numero, c.data_fim as contrato_data_fim,
         f.id as fornecedor_id, f.nome as fornecedor_nome,
         p.peso as peso_distribuicao, COALESCE(um.codigo, 'UN') as unidade,
-        COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel)
-           FROM contrato_produtos_modalidades cpm2
-           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-          cp.quantidade_contratada
-        ) as saldo_disponivel
+        ${saldoDisponivelContratoProdutoSql("cp", "cp.quantidade_contratada")} as saldo_disponivel
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -2561,6 +2835,52 @@ async function processarGeracaoPedidoBackground(jobId: number) {
 
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 40 });
 
+    const contratosSelecionadosMap = new Map<number, Array<{ contrato_produto_id: number; quantidade?: number }>>();
+    if (contratos_selecionados) {
+      for (const sel of contratos_selecionados) {
+        if (!contratosSelecionadosMap.has(sel.produto_id)) {
+          contratosSelecionadosMap.set(sel.produto_id, []);
+        }
+        contratosSelecionadosMap.get(sel.produto_id)!.push({
+          contrato_produto_id: sel.contrato_produto_id,
+          quantidade: sel.quantidade,
+        });
+      }
+    }
+
+    const contratosParaUsar = new Map<number, Array<{ contrato: any; quantidade?: number }>>();
+    const produtosComMultiplosContratosSemSelecao: number[] = [];
+
+    for (const [produto_id, contratos] of contratosPorProduto) {
+      if (contratos.length === 1) {
+        contratosParaUsar.set(produto_id, [{ contrato: contratos[0] }]);
+      } else if (contratosSelecionadosMap.has(produto_id)) {
+        const selecionados = contratosSelecionadosMap.get(produto_id)!;
+        const contratosComDados = selecionados
+          .map(sel => {
+            const contrato = contratos.find(c => c.contrato_produto_id === sel.contrato_produto_id);
+            return contrato ? { contrato, quantidade: sel.quantidade } : null;
+          })
+          .filter(Boolean) as Array<{ contrato: any; quantidade?: number }>;
+
+        if (contratosComDados.length > 0) {
+          contratosParaUsar.set(produto_id, contratosComDados);
+        }
+      } else if (contratos.length > 1) {
+        produtosComMultiplosContratosSemSelecao.push(produto_id);
+      }
+    }
+
+    if (produtosComMultiplosContratosSemSelecao.length > 0) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'Selecione o contrato para os produtos com multiplos contratos antes de gerar o pedido',
+        resultado: { produtos_multiplos_contratos: produtosComMultiplosContratosSemSelecao },
+      });
+      return;
+    }
+
     // Filtrar produtos sem contrato
     const produtosSemContrato: any[] = [];
     const gruposComContrato = new Map();
@@ -2574,7 +2894,7 @@ async function processarGeracaoPedidoBackground(jobId: number) {
           produto_nome: grupo.produto_nome,
           quantidade: qtdTotal
         });
-      } else {
+      } else if (contratosParaUsar.has(grupo.produto_id)) {
         gruposComContrato.set(key, grupo);
       }
     }
@@ -2622,55 +2942,65 @@ async function processarGeracaoPedidoBackground(jobId: number) {
     const tempoInicio = Date.now();
 
     for (const grupo of gruposComContrato.values()) {
-      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
-      const contrato = contratos[0]; // Usar primeiro contrato (simplificado)
-      
-      const qtdTotalKg = grupo.escolas.reduce((s: number, e: any) => s + e.quantidade, 0);
-      const conversao = converterDemandaParaCompra(qtdTotalKg, {
-        peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
-        unidade_distribuicao: contrato.unidade
-      });
-      
-      const preco = toNum(contrato.preco_unitario);
-      const valorTotal = conversao.quantidade_compra * preco;
-      const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
+      const contratosDoProduto = contratosParaUsar.get(grupo.produto_id) || [];
 
-      const itemResult = await client.query(`
-        INSERT INTO pedido_itens (
-          pedido_id, contrato_produto_id, produto_id, quantidade, unidade, quantidade_kg,
-          quantidade_distribuicao, unidade_distribuicao, preco_unitario, valor_total, data_entrega_prevista, observacoes
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING id
-      `, [
-        pedido_id, contrato.contrato_produto_id, grupo.produto_id, conversao.quantidade_compra,
-        conversao.unidade_compra, conversao.quantidade_kg, conversao.quantidade_distribuicao,
-        conversao.unidade_distribuicao, preco, valorTotal, dataEntrega, `Guia #${guia_id}`
-      ]);
-
-      const pedido_item_id = itemResult.rows[0].id;
-
-      const progResult = await client.query(`
-        INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
-        VALUES ($1, $2, $3) RETURNING id
-      `, [pedido_item_id, dataEntrega, `Guia de Demanda #${guia_id}`]);
-
-      const programacao_id = progResult.rows[0].id;
-
-      const escolasRowsBg = grupo.escolas
-        .filter((esc: any) => esc.quantidade > 0)
-        .map((esc: any) => ({ escola_id: esc.escola_id, quantidade: Math.round(esc.quantidade * 1000) / 1000 }));
-
-      if (escolasRowsBg.length > 0) {
-        const vals: any[] = [];
-        const ph = escolasRowsBg.map((r: any, idx: number) => {
-          vals.push(programacao_id, r.escola_id, r.quantidade);
-          return `($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`;
+      for (const { contrato, quantidade: qtdContrato } of contratosDoProduto) {
+        const qtdTotalKg = qtdContrato !== undefined
+          ? qtdContrato
+          : grupo.escolas.reduce((s: number, e: any) => s + e.quantidade, 0);
+        const conversao = converterDemandaParaCompra(qtdTotalKg, {
+          peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
+          unidade_distribuicao: contrato.unidade
         });
-        await client.query(
-          `INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade) VALUES ${ph.join(', ')}`,
-          vals
-        );
+        
+        const preco = toNum(contrato.preco_unitario);
+        const valorTotal = conversao.quantidade_compra * preco;
+        const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
+
+        const itemResult = await client.query(`
+          INSERT INTO pedido_itens (
+            pedido_id, contrato_produto_id, produto_id, quantidade, unidade, quantidade_kg,
+            quantidade_distribuicao, unidade_distribuicao, preco_unitario, valor_total, data_entrega_prevista, observacoes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING id
+        `, [
+          pedido_id, contrato.contrato_produto_id, grupo.produto_id, conversao.quantidade_compra,
+          conversao.unidade_compra, conversao.quantidade_kg, conversao.quantidade_distribuicao,
+          conversao.unidade_distribuicao, preco, valorTotal, dataEntrega,
+          qtdContrato !== undefined ? `Guia #${guia_id} (${qtdTotalKg.toFixed(2)}kg deste contrato)` : `Guia #${guia_id}`
+        ]);
+
+        const pedido_item_id = itemResult.rows[0].id;
+
+        const progResult = await client.query(`
+          INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+          VALUES ($1, $2, $3) RETURNING id
+        `, [pedido_item_id, dataEntrega, `Guia de Demanda #${guia_id}`]);
+
+        const programacao_id = progResult.rows[0].id;
+
+        const totalGrupo = grupo.escolas.reduce((s: number, e: any) => s + e.quantidade, 0);
+        const escolasRowsBg = grupo.escolas
+          .filter((esc: any) => esc.quantidade > 0)
+          .map((esc: any) => {
+            const quantidade = qtdContrato !== undefined
+              ? Math.round((esc.quantidade / totalGrupo) * qtdContrato * 1000) / 1000
+              : Math.round(esc.quantidade * 1000) / 1000;
+            return { escola_id: esc.escola_id, quantidade };
+          });
+
+        if (escolasRowsBg.length > 0) {
+          const vals: any[] = [];
+          const ph = escolasRowsBg.map((r: any, idx: number) => {
+            vals.push(programacao_id, r.escola_id, r.quantidade);
+            return `($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`;
+          });
+          await client.query(
+            `INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade) VALUES ${ph.join(', ')}`,
+            vals
+          );
+        }
       }
 
       gruposProcessados++;

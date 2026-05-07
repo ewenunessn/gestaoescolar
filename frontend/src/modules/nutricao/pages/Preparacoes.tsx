@@ -47,6 +47,7 @@ import {
 } from "../../../hooks/queries/useRefeicaoQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { ColumnDef } from "@tanstack/react-table";
 import { Refeicao } from "../../../types/refeicao";
 import { formatarCalorias } from "../../../utils/formatters";
@@ -57,6 +58,9 @@ const PreparacoesPage: React.FC = () => {
   const toast = useToast();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const accentColor = theme.palette.mode === 'light' ? '#047857' : theme.palette.primary.main;
+  const accentSurface = theme.palette.mode === 'light' ? 'rgba(4, 120, 87, 0.08)' : 'rgba(52, 211, 153, 0.12)';
+  const accentBorder = theme.palette.mode === 'light' ? 'rgba(4, 120, 87, 0.45)' : 'rgba(52, 211, 153, 0.55)';
 
   // React Query hooks
   const { 
@@ -138,8 +142,13 @@ const PreparacoesPage: React.FC = () => {
           <Chip 
             label={value} 
             size="small"
-            color="primary"
             variant="outlined"
+            sx={{
+              color: accentColor,
+              borderColor: accentBorder,
+              bgcolor: accentSurface,
+              fontWeight: 600,
+            }}
           />
         ) : (
           <Typography variant="body2" color="text.disabled">-</Typography>
@@ -159,7 +168,7 @@ const PreparacoesPage: React.FC = () => {
             variant="body2" 
             sx={{ 
               fontWeight: 600, 
-              color: valorCalorico ? 'primary.main' : 'text.disabled' 
+              color: valorCalorico ? accentColor : 'text.disabled' 
             }}
           >
             {valorCalorico ? `${formatarCalorias(valorCalorico)} Kcal` : '-'}
@@ -174,15 +183,7 @@ const PreparacoesPage: React.FC = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativa' : 'Inativa'} size="small" />
         </Tooltip>
       ),
     },
@@ -231,7 +232,7 @@ const PreparacoesPage: React.FC = () => {
         </Box>
       ),
     },
-  ], [navigate]);
+  ], [navigate, accentBorder, accentColor, accentSurface, theme.palette.mode]);
 
   // Funções de modais
   const openModal = (preparacao: Refeicao | null = null) => {

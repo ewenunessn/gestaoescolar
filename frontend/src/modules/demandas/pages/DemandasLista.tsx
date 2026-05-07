@@ -45,7 +45,7 @@ import demandasService from "../../../services/demandas";
 import { listarEscolas } from "../../../services/escolas";
 import { Demanda, STATUS_DEMANDA } from "../../../types/demanda";
 import { formatarData } from "../../../utils/dateUtils";
-import DemandaDetalhesModal from "../../../components/DemandaDetalhesModal";
+import DemandaDetalhesModal from "../components/DemandaDetalhesModal";
 import LoadingScreen from "../../../components/LoadingScreen";
 import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";

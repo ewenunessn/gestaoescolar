@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
 import { obterPeriodoContexto } from '../../../utils/periodoUsuarioHelper';
+import {
+  ContratoSaldoError,
+  estornarConsumoSaldoFaturamentoItem,
+  registrarConsumoSaldoFaturamentoItem,
+} from '../../contratos/services/contratoSaldoService';
 
 interface ItemFaturamento {
   pedido_item_id: number;
@@ -67,6 +72,44 @@ async function validarFaturamentoEditavel(client: any, faturamentoId: number) {
     return { faturamento, error: 'Nao e possivel alterar faturamento de periodo fechado' };
   }
   return { faturamento, error: null };
+}
+
+async function estornarItensConsumidosFaturamento(client: any, faturamentoId: number) {
+  const result = await client.query(`
+    SELECT id
+    FROM faturamentos_itens
+    WHERE faturamento_pedido_id = $1
+      AND COALESCE(consumo_registrado, false) = true
+    ORDER BY id
+  `, [faturamentoId]);
+
+  for (const item of result.rows) {
+    await estornarConsumoSaldoFaturamentoItem(client, {
+      faturamentoId,
+      itemId: Number(item.id),
+    });
+  }
+}
+
+async function estornarItensConsumidosModalidade(client: any, faturamentoId: number, contratoId: number, modalidadeId: number) {
+  const result = await client.query(`
+    SELECT fi.id
+    FROM faturamentos_itens fi
+    JOIN pedido_itens pi ON pi.id = fi.pedido_item_id
+    JOIN contrato_produtos cp ON cp.id = pi.contrato_produto_id
+    WHERE fi.faturamento_pedido_id = $1
+      AND cp.contrato_id = $2
+      AND fi.modalidade_id = $3
+      AND COALESCE(fi.consumo_registrado, false) = true
+    ORDER BY fi.id
+  `, [faturamentoId, contratoId, modalidadeId]);
+
+  for (const item of result.rows) {
+    await estornarConsumoSaldoFaturamentoItem(client, {
+      faturamentoId,
+      itemId: Number(item.id),
+    });
+  }
 }
 
 const detalhesFaturamentoQuery = `
@@ -441,6 +484,7 @@ export async function atualizarFaturamento(req: Request, res: Response) {
       WHERE id = $2
     `, [observacoes, id]);
 
+    await estornarItensConsumidosFaturamento(client, Number(id));
     await client.query('DELETE FROM faturamentos_itens WHERE faturamento_pedido_id = $1', [id]);
 
     const itensInseridos = [];
@@ -473,9 +517,10 @@ export async function atualizarFaturamento(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erro ao atualizar faturamento:', error);
-    res.status(500).json({
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Erro ao atualizar faturamento',
+      message: error instanceof ContratoSaldoError ? error.message : 'Erro ao atualizar faturamento',
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   } finally {
@@ -507,6 +552,7 @@ export async function deletarFaturamento(req: Request, res: Response) {
     }
 
     // Deletar itens (cascade já faz isso, mas explicitamos para clareza)
+    await estornarItensConsumidosFaturamento(client, Number(id));
     await client.query('DELETE FROM faturamentos_itens WHERE faturamento_pedido_id = $1', [id]);
     
     // Deletar faturamento
@@ -522,9 +568,10 @@ export async function deletarFaturamento(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erro ao deletar faturamento:', error);
-    res.status(500).json({
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Erro ao deletar faturamento',
+      message: error instanceof ContratoSaldoError ? error.message : 'Erro ao deletar faturamento',
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   } finally {
@@ -678,35 +725,53 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
 }
 
 export async function atualizarStatusFaturamento(req: Request, res: Response) {
+  const client = await db.pool.connect();
   try {
+    await client.query('BEGIN');
     const { id } = req.params;
     const { status } = req.body;
 
     if (!['gerado', 'consumido', 'cancelado'].includes(status)) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: 'Status invalido' });
     }
 
-    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(db, Number(id));
+    const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
     if (!faturamento) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
     }
     if (periodoError) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: periodoError });
     }
 
-    const result = await db.query(
+    if (status === 'cancelado') {
+      await estornarItensConsumidosFaturamento(client, Number(id));
+    }
+
+    const result = await client.query(
       'UPDATE faturamentos_pedidos SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [status, id]
     );
 
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: 'Faturamento nao encontrado' });
     }
 
+    await client.query('COMMIT');
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Erro ao atualizar status do faturamento:', error);
-    res.status(500).json({ success: false, message: 'Erro ao atualizar status do faturamento' });
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error instanceof ContratoSaldoError ? error.message : 'Erro ao atualizar status do faturamento'
+    });
+  } finally {
+    client.release();
   }
 }
 
@@ -726,11 +791,21 @@ export async function registrarConsumoFaturamento(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: periodoError });
     }
 
-    await client.query(`
-      UPDATE faturamentos_itens
-      SET consumo_registrado = true, data_consumo = COALESCE(data_consumo, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+    const itensResult = await client.query(`
+      SELECT id
+      FROM faturamentos_itens
       WHERE faturamento_pedido_id = $1
+        AND COALESCE(consumo_registrado, false) = false
+      ORDER BY id
     `, [id]);
+
+    for (const item of itensResult.rows) {
+      await registrarConsumoSaldoFaturamentoItem(client, {
+        faturamentoId: Number(id),
+        itemId: Number(item.id),
+        usuarioId: req.user?.id ?? null,
+      });
+    }
 
     const status = await atualizarStatusFaturamentoPorItens(client, Number(id));
     await client.query('COMMIT');
@@ -739,7 +814,8 @@ export async function registrarConsumoFaturamento(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Erro ao registrar consumo:', error);
-    res.status(500).json({ success: false, message: 'Erro ao registrar consumo' });
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({ success: false, message: error instanceof Error ? error.message : 'Erro ao registrar consumo' });
   } finally {
     client.release();
   }
@@ -761,17 +837,11 @@ export async function registrarConsumoItem(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: periodoError });
     }
 
-    const result = await client.query(`
-      UPDATE faturamentos_itens
-      SET consumo_registrado = true, data_consumo = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND faturamento_pedido_id = $2
-      RETURNING id
-    `, [itemId, id]);
-
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ success: false, message: 'Item de faturamento nao encontrado' });
-    }
+    await registrarConsumoSaldoFaturamentoItem(client, {
+      faturamentoId: Number(id),
+      itemId: Number(itemId),
+      usuarioId: req.user?.id ?? null,
+    });
 
     const status = await atualizarStatusFaturamentoPorItens(client, Number(id));
     await client.query('COMMIT');
@@ -780,7 +850,8 @@ export async function registrarConsumoItem(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Erro ao registrar consumo do item:', error);
-    res.status(500).json({ success: false, message: 'Erro ao registrar consumo do item' });
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({ success: false, message: error instanceof Error ? error.message : 'Erro ao registrar consumo do item' });
   } finally {
     client.release();
   }
@@ -802,17 +873,10 @@ export async function reverterConsumoItem(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: periodoError });
     }
 
-    const result = await client.query(`
-      UPDATE faturamentos_itens
-      SET consumo_registrado = false, data_consumo = NULL, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND faturamento_pedido_id = $2
-      RETURNING id
-    `, [itemId, id]);
-
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ success: false, message: 'Item de faturamento nao encontrado' });
-    }
+    await estornarConsumoSaldoFaturamentoItem(client, {
+      faturamentoId: Number(id),
+      itemId: Number(itemId),
+    });
 
     const status = await atualizarStatusFaturamentoPorItens(client, Number(id));
     await client.query('COMMIT');
@@ -821,7 +885,8 @@ export async function reverterConsumoItem(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Erro ao reverter consumo do item:', error);
-    res.status(500).json({ success: false, message: 'Erro ao reverter consumo do item' });
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({ success: false, message: error instanceof Error ? error.message : 'Erro ao reverter consumo do item' });
   } finally {
     client.release();
   }
@@ -849,6 +914,8 @@ export async function removerItensModalidade(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: 'contrato_id e modalidade_id sao obrigatorios' });
     }
 
+    await estornarItensConsumidosModalidade(client, Number(id), Number(contrato_id), Number(modalidade_id));
+
     const result = await client.query(`
       DELETE FROM faturamentos_itens fi
       USING pedido_itens pi, contrato_produtos cp
@@ -867,7 +934,11 @@ export async function removerItensModalidade(req: Request, res: Response) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Erro ao remover itens da modalidade:', error);
-    res.status(500).json({ success: false, message: 'Erro ao remover itens da modalidade' });
+    const statusCode = error instanceof ContratoSaldoError ? error.statusCode : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error instanceof ContratoSaldoError ? error.message : 'Erro ao remover itens da modalidade'
+    });
   } finally {
     client.release();
   }

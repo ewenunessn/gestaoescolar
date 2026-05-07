@@ -453,27 +453,27 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
     const evolucaoQuery = `
       WITH meses_ordenados AS (
         SELECT 
-          CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER) as mes,
-          CASE CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER)
-            WHEN 1 THEN 'Jan/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 2 THEN 'Fev/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 3 THEN 'Mar/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 4 THEN 'Abr/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 5 THEN 'Mai/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 6 THEN 'Jun/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 7 THEN 'Jul/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 8 THEN 'Ago/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 9 THEN 'Set/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 10 THEN 'Out/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 11 THEN 'Nov/' || SPLIT_PART(competencia_mes_ano, '-', 1)
-            WHEN 12 THEN 'Dez/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+          CAST(SPLIT_PART(v.competencia_mes_ano, '-', 2) AS INTEGER) as mes,
+          CASE CAST(SPLIT_PART(v.competencia_mes_ano, '-', 2) AS INTEGER)
+            WHEN 1 THEN 'Jan/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 2 THEN 'Fev/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 3 THEN 'Mar/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 4 THEN 'Abr/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 5 THEN 'Mai/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 6 THEN 'Jun/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 7 THEN 'Jul/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 8 THEN 'Ago/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 9 THEN 'Set/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 10 THEN 'Out/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 11 THEN 'Nov/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
+            WHEN 12 THEN 'Dez/' || SPLIT_PART(v.competencia_mes_ano, '-', 1)
           END as mes_nome,
           SUM(valor_itens) as valor_total,
           SUM(valor_agricultura_familiar) as valor_af
         FROM vw_pnae_agricultura_familiar v
         JOIN pedidos p ON p.id = v.pedido_id
         WHERE p.periodo_id = $1
-        GROUP BY competencia_mes_ano, CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER)
+        GROUP BY v.competencia_mes_ano, CAST(SPLIT_PART(v.competencia_mes_ano, '-', 2) AS INTEGER)
       )
       SELECT 
         mes,

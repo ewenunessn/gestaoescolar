@@ -35,6 +35,7 @@ import {
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import StatusIndicator from "../../../components/StatusIndicator";
 import { guiaService } from "../../../services/guiaService";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
@@ -50,14 +51,6 @@ import {
 } from "../utils/guiaProdutoAjuste";
 
 type BulkDialog = "date" | "unit" | "quantity" | null;
-
-const statusColor = (status?: string): any => ({
-  pendente: "warning",
-  programada: "info",
-  parcial: "warning",
-  entregue: "success",
-  cancelado: "error",
-}[status || ""] || "default");
 
 const statusLabel = (status?: string) => ({
   pendente: "Disponivel p/ Entrega",
@@ -409,7 +402,7 @@ export default function GuiaDemandaProdutoItens() {
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title={row.status || ""}>
-                      <Chip label={statusLabel(row.status)} size="small" color={statusColor(row.status)} />
+                      <StatusIndicator status={row.status || ''} text={statusLabel(row.status)} size="small" />
                     </Tooltip>
                   </TableCell>
                 </TableRow>

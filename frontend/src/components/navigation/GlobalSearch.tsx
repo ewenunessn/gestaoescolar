@@ -260,7 +260,7 @@ export function useGlobalSearch() {
   // Atalho Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
         e.preventDefault();
         inputRef.current?.focus();
         setOpen(true);

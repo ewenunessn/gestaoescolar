@@ -44,6 +44,7 @@ import {
 } from "../../../hooks/queries/useCardapioModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { EntityListTable } from "../../../components/data-display/EntityListTable";
+import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 
@@ -213,15 +214,7 @@ const CardapiosModalidadePage: React.FC = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              backgroundColor: getValue() ? 'success.main' : 'error.main',
-              display: 'inline-block',
-            }}
-          />
+          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
         </Tooltip>
       ),
     },
