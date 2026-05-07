@@ -1,14 +1,23 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface ApiUrlEnv {
+  [key: string]: string | undefined;
+  EXPO_PUBLIC_API_URL?: string;
+}
+
+export function getApiUrl(env: ApiUrlEnv = process.env): string {
+  return env.EXPO_PUBLIC_API_URL || 'https://gestaoescolar-backend.vercel.app/bff/app';
+}
+
 // Configure com seu IP local ou URL de produção
 // Para desenvolvimento, use seu IP local
 // export const API_URL = __DEV__ 
 //   ? 'http://192.168.1.111:3000/api' // IP local atualizado
-//   : 'https://gestaoescolar-backend.vercel.app/api';
+//   : 'https://gestaoescolar-backend.vercel.app/bff/app';
 
 // Forçando produção (Vercel)
-export const API_URL = 'https://gestaoescolar-backend.vercel.app/api';
+export const API_URL = getApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,

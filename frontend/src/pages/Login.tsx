@@ -414,37 +414,42 @@ export default function Login() {
                     }}
                     clearOnBlur={false}
                     noOptionsText="Nenhum usuario salvo"
-                    renderOption={(props, option) => (
-                      <Box
-                        component="li"
-                        {...props}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          pr: "8px !important",
-                        }}
-                      >
-                        <EmailOutlined sx={{ fontSize: 17, color: "text.secondary" }} />
-                        <Typography sx={{ flex: 1, minWidth: 0, fontSize: "0.84rem" }} noWrap>
-                          {option}
-                        </Typography>
-                        <Tooltip title="Remover usuario salvo">
-                          <IconButton
-                            size="small"
-                            aria-label={`Remover ${option}`}
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              removeSavedEmail(option);
-                            }}
-                            sx={{ color: "text.secondary" }}
-                          >
-                            <DeleteOutline fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    )}
+                    renderOption={(props, option) => {
+                      const { key, ...optionProps } = props;
+
+                      return (
+                        <Box
+                          component="li"
+                          key={key}
+                          {...optionProps}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            pr: "8px !important",
+                          }}
+                        >
+                          <EmailOutlined sx={{ fontSize: 17, color: "text.secondary" }} />
+                          <Typography sx={{ flex: 1, minWidth: 0, fontSize: "0.84rem" }} noWrap>
+                            {option}
+                          </Typography>
+                          <Tooltip title="Remover usuario salvo">
+                            <IconButton
+                              size="small"
+                              aria-label={`Remover ${option}`}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeSavedEmail(option);
+                              }}
+                              sx={{ color: "text.secondary" }}
+                            >
+                              <DeleteOutline fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      );
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}

@@ -1,8 +1,8 @@
 const https = require('https');
 
 const data = JSON.stringify({
-  email: 'ewenunes0@gmail.com',
-  senha: '@Nunes8922'
+  email: 'admin@example.com',
+  senha: '<admin-password>'
 });
 
 const options = {
@@ -18,7 +18,7 @@ const options = {
 };
 
 console.log('🔐 Testando login...');
-console.log('Email:', 'ewenunes0@gmail.com');
+console.log('Email:', 'admin@example.com');
 console.log('URL:', `https://${options.hostname}${options.path}`);
 console.log('');
 

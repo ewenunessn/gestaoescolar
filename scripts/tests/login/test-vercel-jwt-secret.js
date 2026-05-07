@@ -10,8 +10,8 @@ async function testJWTSecret() {
     // 1. Fazer login para obter um token
     console.log('1️⃣ Fazendo login...');
     const loginResponse = await axios.post(`${BACKEND_URL}/auth/login`, {
-      email: 'ewenunes0@gmail.com',
-      senha: '@Nunes8922'
+      email: process.env.TEST_ADMIN_EMAIL || '<admin-email>',
+      senha: process.env.TEST_ADMIN_PASSWORD || '<admin-password>'
     });
     
     const token = loginResponse.data.token || loginResponse.data.data?.token;
@@ -43,7 +43,7 @@ async function testJWTSecret() {
       console.log('\n📋 AÇÃO NECESSÁRIA:');
       console.log('1. Vá em Vercel > Settings > Environment Variables');
       console.log('2. Edite JWT_SECRET');
-      console.log('3. Cole: 0af3++BeU5woHy0VyjpNKgOHPPkUCDkmeIt0NhYhZVatE3t+xtkTIoEGLIrpKE5OSjKgfmO4FY2L3qRs/+KEBw==');
+      console.log('3. Cole um valor novo, longo e aleatorio gerado fora do repositorio');
       console.log('4. IMPORTANTE: Marque todas as opções (Production, Preview, Development)');
       console.log('5. Salve e faça REDEPLOY');
     }

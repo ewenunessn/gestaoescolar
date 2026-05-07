@@ -1,110 +1,98 @@
 /**
- * Service-level Cache (Cache-Aside Pattern)
+ * Service-level cache (cache-aside pattern).
  *
- * Best practice: cache at service level, not HTTP middleware.
- * - Cache by entity ID (e.g., 'produto:145')
- * - Explicit invalidation when data changes
- * - Short TTL as safety net
- *
- * Usage:
- *   const cached = await cacheService.get('produtos:145');
- *   if (cached) return cached;
- *   const data = await db.query(...);
- *   await cacheService.set('produtos:145', data, 60); // 60s
- *   return data;
- *
- *   // On write:
- *   await cacheService.del('produtos:145');
- *   await cacheService.delPattern('produtos:list:*');
+ * The default backend uses Redis when configured and the shared in-memory
+ * fallback from config/redis when Redis is unavailable.
  */
 
-interface CacheEntry<T = any> {
-  data: T;
-  expiresAt: number;
+import { redisDel, redisGet, redisKeys, redisSet } from "../config/redis";
+
+export interface CacheBackend {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ttlSeconds?: number): Promise<void>;
+  del(key: string): Promise<void>;
+  keys(pattern: string): Promise<string[]>;
 }
 
-class CacheService {
-  private store = new Map<string, CacheEntry>();
-  private maxSize = 2000;
+class RedisFallbackCacheBackend implements CacheBackend {
+  get(key: string): Promise<string | null> {
+    return redisGet(key);
+  }
 
-  // Default TTLs (in seconds)
+  set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    return redisSet(key, value, ttlSeconds);
+  }
+
+  del(key: string): Promise<void> {
+    return redisDel(key);
+  }
+
+  keys(pattern: string): Promise<string[]> {
+    return redisKeys(pattern);
+  }
+}
+
+export class CacheService {
+  // Default TTLs in seconds. Domain-specific TTLs mirror architecture/cacheStrategy.ts.
   TTL = {
-    single: 60,      // Single entity: 1 min
-    list: 30,        // Lists: 30 sec
-    stats: 45,       // Stats/dashboard: 45 sec
-    static: 300,     // Static data (units, categories): 5 min
+    single: 60,
+    list: 30,
+    stats: 5 * 60,
+    static: 300,
+    cardapios: 10 * 60,
+    estoque: 2 * 60,
+    dashboard: 5 * 60,
+    nutricao: 60 * 60,
   };
 
+  constructor(private readonly backend: CacheBackend = new RedisFallbackCacheBackend()) {}
+
   async get<T>(key: string): Promise<T | null> {
-    const entry = this.store.get(key);
-    if (!entry) return null;
-    if (Date.now() > entry.expiresAt) {
-      this.store.delete(key);
+    const raw = await this.backend.get(key);
+    if (raw === null) return null;
+
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      await this.backend.del(key);
       return null;
     }
-    return entry.data as T;
   }
 
   async set<T>(key: string, data: T, ttlSeconds: number = 60): Promise<void> {
-    if (this.store.size >= this.maxSize) {
-      // Evict oldest
-      const firstKey = this.store.keys().next().value;
-      if (firstKey) this.store.delete(firstKey);
-    }
-    this.store.set(key, {
-      data,
-      expiresAt: Date.now() + ttlSeconds * 1000,
-    });
+    await this.backend.set(key, JSON.stringify(data), ttlSeconds);
   }
 
   async del(key: string): Promise<void> {
-    this.store.delete(key);
+    await this.backend.del(key);
   }
 
   async delPattern(pattern: string): Promise<void> {
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-    for (const key of this.store.keys()) {
-      if (regex.test(key)) {
-        this.store.delete(key);
-      }
-    }
+    const keys = await this.backend.keys(pattern);
+    await Promise.all(keys.map((key) => this.backend.del(key)));
   }
 
-  /**
-   * Invalidate all caches related to an entity type
-   */
-  invalidateEntity(entityType: string, id?: number): void {
-    // Invalidate specific entity
+  async invalidateEntity(entityType: string, id?: number): Promise<void> {
+    const invalidations: Promise<void>[] = [
+      this.delPattern(`${entityType}:list:*`),
+      this.delPattern(`${entityType}:*`),
+    ];
+
     if (id !== undefined) {
-      this.del(`${entityType}:${id}`);
+      invalidations.push(this.del(`${entityType}:${id}`));
     }
-    // Invalidate all lists of this entity type
-    this.delPattern(`${entityType}:list:*`);
-    // Also invalidate any pattern that starts with this type
-    this.delPattern(`${entityType}:*`);
+
+    await Promise.all(invalidations);
   }
 
-  clear(): void {
-    this.store.clear();
+  async clear(): Promise<void> {
+    await this.delPattern("*");
   }
 
-  stats(): { size: number; keys: string[] } {
-    return {
-      size: this.store.size,
-      keys: Array.from(this.store.keys()),
-    };
+  async stats(): Promise<{ size: number; keys: string[] }> {
+    const keys = await this.backend.keys("*");
+    return { size: keys.length, keys };
   }
 }
 
 export const cacheService = new CacheService();
-
-// Cleanup expired entries every 2 minutes
-const cleanupInterval = setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of cacheService['store'].entries()) {
-    if (now > entry.expiresAt) {
-      cacheService['store'].delete(key);
-    }
-  }
-}, 120000);
-cleanupInterval.unref?.();

@@ -9,8 +9,8 @@ async function buscarBanana20UN() {
     // Fazer login
     console.log('0. Fazendo login...');
     const loginResponse = await axios.post(`${BASE_URL}/auth/login`, {
-      email: 'ewenunes0@gmail.com',
-      senha: '@Nunes8922'
+      email: 'admin@example.com',
+      senha: '<admin-password>'
     });
     
     const token = loginResponse.data.token;

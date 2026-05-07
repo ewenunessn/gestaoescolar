@@ -125,6 +125,7 @@ export interface Usuario {
   nome: string;
   email: string;
   escola_id?: number;
+  escola?: Escola;
   perfil: string;
 }
 

@@ -83,7 +83,7 @@ export const getRedisClient = (): Redis | null => {
 const memoryCache = new Map<string, { value: string; expiresAt: number }>();
 
 // Limpar cache expirado a cada minuto
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   memoryCache.forEach((entry, key) => {
     if (entry.expiresAt < now) {
@@ -91,6 +91,7 @@ setInterval(() => {
     }
   });
 }, 60000);
+cleanupInterval.unref?.();
 
 /**
  * GET - Buscar valor

@@ -5,7 +5,7 @@ async function testarLogin() {
     console.log('🔐 Testando login...\n');
     
     const response = await axios.post('http://localhost:3000/api/auth/login', {
-      email: 'ewenunes0@gmail.com',
+      email: 'admin@example.com',
       senha: 'sua_senha_aqui' // SUBSTITUA PELA SENHA REAL
     });
 

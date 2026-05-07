@@ -137,7 +137,7 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
 
     const result = await query(sql, params);
     const response = { success: true, data: result.rows, total: result.rows.length };
-    await cacheService.set(cacheKey, response, cacheService.TTL.list);
+    await cacheService.set(cacheKey, response, cacheService.TTL.cardapios);
     res.json(response);
   } catch (error) {
     console.error('❌ Erro ao listar cardápios:', error);
@@ -174,7 +174,7 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
     }
 
     const response = { success: true, data: result.rows[0] };
-    await cacheService.set(`cardapios:${id}`, response, cacheService.TTL.single);
+    await cacheService.set(`cardapios:${id}`, response, cacheService.TTL.cardapios);
     res.json(response);
   } catch (error) {
     console.error('❌ Erro ao buscar cardápio:', error);
@@ -321,7 +321,7 @@ export async function listarRefeicoesCardapio(req: Request, res: Response) {
     `, [cardapioId]);
 
     const response = { success: true, data: result.rows, total: result.rows.length };
-    await cacheService.set(`cardapios:refeicoes:${cardapioId}`, response, cacheService.TTL.list);
+    await cacheService.set(`cardapios:refeicoes:${cardapioId}`, response, cacheService.TTL.cardapios);
     res.json(response);
   } catch (error) {
     console.error('❌ Erro ao listar refeições:', error);

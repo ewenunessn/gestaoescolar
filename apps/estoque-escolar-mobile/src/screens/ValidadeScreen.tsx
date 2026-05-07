@@ -50,6 +50,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
         item.lotes.forEach(lote => {
           if (lote.data_validade && lote.quantidade_atual > 0) {
             const diasRestantes = calcularDiasParaVencimento(lote.data_validade);
+            if (diasRestantes === null) return;
 
             let statusValidade: 'vencido' | 'critico' | 'atencao' | 'normal' = 'normal';
             if (diasRestantes <= 0) {

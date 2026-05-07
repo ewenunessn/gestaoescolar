@@ -27,7 +27,7 @@ export async function listarNutricionistas(req: Request, res: Response) {
       data: result.rows,
       total: result.rows.length
     };
-    await cacheService.set('nutricionistas:list:all', response, cacheService.TTL.list);
+    await cacheService.set('nutricionistas:list:all', response, cacheService.TTL.nutricao);
     res.json(response);
   } catch (error: any) {
     console.error('❌ Erro ao listar nutricionistas:', error);
@@ -62,7 +62,7 @@ export async function buscarNutricionista(req: Request, res: Response) {
       success: true,
       data: result.rows[0]
     };
-    await cacheService.set(`nutricionistas:${id}`, response, cacheService.TTL.single);
+    await cacheService.set(`nutricionistas:${id}`, response, cacheService.TTL.nutricao);
     res.json(response);
   } catch (error: any) {
     console.error('❌ Erro ao buscar nutricionista:', error);

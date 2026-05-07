@@ -11,6 +11,12 @@ interface ApiConfig {
 
 type Environment = 'desktop' | 'development' | 'production';
 
+interface ApiEnvOverrides {
+  VITE_API_URL?: string;
+  VITE_HEALTH_URL?: string;
+  VITE_DEBUG?: string;
+}
+
 const getDesktopShell = () => {
   if (typeof window === 'undefined') return undefined;
   return window.desktopShell;
@@ -34,9 +40,11 @@ const getEnvironment = (): Environment => {
   return 'development';
 };
 
-const createApiConfig = (): ApiConfig => {
-  const environment = getEnvironment();
-  const desktopShell = getDesktopShell();
+export const createApiConfigForEnvironment = (
+  environment: Environment,
+  env: ApiEnvOverrides = import.meta.env,
+  desktopShell = getDesktopShell(),
+): ApiConfig => {
   const isDesktop = environment === 'desktop';
   const isDevelopment = environment === 'development';
   const isProduction = environment === 'production';
@@ -45,14 +53,14 @@ const createApiConfig = (): ApiConfig => {
   let healthURL: string;
 
   if (isDesktop) {
-    baseURL = desktopShell?.apiBaseURL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:3131/api';
-    healthURL = desktopShell?.healthURL || import.meta.env.VITE_HEALTH_URL || 'http://127.0.0.1:3131/health';
+    baseURL = desktopShell?.apiBaseURL || env.VITE_API_URL || 'http://127.0.0.1:3131/bff/web';
+    healthURL = desktopShell?.healthURL || env.VITE_HEALTH_URL || 'http://127.0.0.1:3131/health';
   } else if (isDevelopment) {
-    baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    healthURL = import.meta.env.VITE_HEALTH_URL || 'http://localhost:3000/health';
+    baseURL = env.VITE_API_URL || 'http://localhost:3000/bff/web';
+    healthURL = env.VITE_HEALTH_URL || 'http://localhost:3000/health';
   } else {
-    baseURL = import.meta.env.VITE_API_URL || 'https://gestaoescolar-backend.vercel.app/api';
-    healthURL = import.meta.env.VITE_HEALTH_URL || 'https://gestaoescolar-backend.vercel.app/health';
+    baseURL = env.VITE_API_URL || 'https://gestaoescolar-backend.vercel.app/bff/web';
+    healthURL = env.VITE_HEALTH_URL || 'https://gestaoescolar-backend.vercel.app/health';
   }
 
   return {
@@ -63,9 +71,11 @@ const createApiConfig = (): ApiConfig => {
     isDevelopment,
     isProduction,
     isDesktop,
-    debug: import.meta.env.VITE_DEBUG === 'true' || isDevelopment,
+    debug: env.VITE_DEBUG === 'true' || isDevelopment,
   };
 };
+
+const createApiConfig = (): ApiConfig => createApiConfigForEnvironment(getEnvironment());
 
 export const apiConfig = createApiConfig();
 

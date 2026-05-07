@@ -22,6 +22,7 @@ import Header from '../components/Header';
 
 import { useEstoque } from '../hooks/useEstoque';
 import { apiService } from '../services/api';
+import { buildPortalBffUrl } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface EstoqueScreenProps {
@@ -201,7 +202,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const confirmarEntrada = async (dados: {
     quantidade: number;
     data_validade?: string;
-    motivo: string;
+    motivo?: string;
     documento_referencia?: string;
   }) => {
     if (!itemSelecionado || !escolaId || !usuario) {
@@ -210,7 +211,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
 
     try {
       // Usar a API para registrar movimentação
-      const response = await fetch(`https://gestaoescolar-backend.vercel.app/api/estoque-escola/escola/${escolaId}/movimentacao`, {
+      const response = await fetch(buildPortalBffUrl(`/api/estoque-escola/escola/${escolaId}/movimentacao`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

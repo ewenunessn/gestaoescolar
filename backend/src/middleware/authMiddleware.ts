@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/config';
+import { tokenBlacklistService } from '../modules/usuarios/services/tokenBlacklistService';
 
 interface JwtPayload {
   id: number;
@@ -29,7 +30,7 @@ export interface AuthenticatedRequest extends Request {
 /**
  * Middleware para verificar autenticação JWT
  */
-export function authenticateToken(req: Request, res: Response, next: NextFunction) {
+export async function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
@@ -42,6 +43,14 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   }
 
   try {
+    if (await tokenBlacklistService.isBlacklisted(token)) {
+      return res.status(401).json({
+        success: false,
+        error: 'TOKEN_REVOKED',
+        message: 'Token revogado. Faca login novamente.'
+      });
+    }
+
     const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
     
     // Adicionar informações do usuário à requisição
@@ -85,7 +94,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 /**
  * Middleware opcional de autenticação (não bloqueia se não houver token)
  */
-export function optionalAuth(req: Request, res: Response, next: NextFunction) {
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
@@ -94,6 +103,10 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
+    if (await tokenBlacklistService.isBlacklisted(token)) {
+      return next();
+    }
+
     const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
     
     (req as AuthenticatedRequest).user = {

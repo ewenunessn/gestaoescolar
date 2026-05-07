@@ -123,7 +123,7 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
       return;
     }
 
-    const lotesValidos = lotesMovimento.filter(l => l.lote.trim() && l.quantidade > 0);
+    const lotesValidos = lotesMovimento.filter(l => (l.lote ?? '').trim() && l.quantidade > 0);
     if (lotesValidos.length === 0) {
       Alert.alert('Erro', 'Preencha pelo menos um lote com quantidade válida');
       return;

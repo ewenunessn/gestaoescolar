@@ -22,7 +22,7 @@ interface ModalEntradaSimplesProps {
   onConfirm: (dados: {
     quantidade: number;
     data_validade?: string;
-    motivo: string;
+    motivo?: string;
     documento_referencia?: string;
   }) => Promise<void>;
 }

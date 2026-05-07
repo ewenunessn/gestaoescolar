@@ -1817,7 +1817,7 @@ INSERT INTO modalidades (id, nome, descricao, ativo, valor_repasse, created_at, 
 
 -- Dados da tabela: usuarios
 INSERT INTO usuarios (id, nome, email, senha, tipo, ativo, created_at, updated_at, perfil, ultimo_login) VALUES (1, 'Administrador', 'admin@sistema.com', '$2b$10$rQZ8kHWKtGkVQZ8kHWKtGOuKQZ8kHWKtGkVQZ8kHWKtGkVQZ8kHWKt', 'ADMIN', true, '2025-08-14T02:49:41.366Z', '2025-08-14T02:49:41.366Z', 'usuario', NULL) ON CONFLICT DO NOTHING;
-INSERT INTO usuarios (id, nome, email, senha, tipo, ativo, created_at, updated_at, perfil, ultimo_login) VALUES (2, 'Ewerton Nunes', 'ewenunes0@gmail.com', '$2a$10$KKR/RixGLaGjiRLyYj75t.rbOy1k9WzCP.p//ASdnW0WezRRS95Mm', 'gestor', true, '2025-08-16T04:35:55.346Z', '2025-08-16T04:35:55.346Z', 'usuario', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO usuarios (id, nome, email, senha, tipo, ativo, created_at, updated_at, perfil, ultimo_login) VALUES (2, 'Ewerton Nunes', 'admin@example.com', '$2a$10$7EqJtq98hPqEX7fNZaFWoOhiuL9yO/ehWqCTkw4TcXRFYRiPntMFi', 'gestor', true, '2025-08-16T04:35:55.346Z', '2025-08-16T04:35:55.346Z', 'usuario', NULL) ON CONFLICT DO NOTHING;
 INSERT INTO usuarios (id, nome, email, senha, tipo, ativo, created_at, updated_at, perfil, ultimo_login) VALUES (3, 'Leonardo Oliveira', 'leonardo@semed.com', '$2b$10$.93kmnKrMdnFtCdOK3T.sOkWxd8HOIRenl3kXyj5OLi2DMNjbIz3O', 'admin', true, '2025-10-10T22:18:48.224Z', '2025-10-10T22:20:49.577Z', 'usuario', NULL) ON CONFLICT DO NOTHING;
 
 -- Dados da tabela: fornecedores

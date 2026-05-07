@@ -4,8 +4,8 @@ async function testarLogin() {
   try {
     console.log('🔐 Testando login na API de produção...\n');
 
-    const email = 'ewenunes0@gmail.com';
-    const senha = '@Nunes8922';
+    const email = 'admin@example.com';
+    const senha = '<admin-password>';
 
     console.log('📧 Email:', email);
     console.log('🔒 Senha:', '***********');

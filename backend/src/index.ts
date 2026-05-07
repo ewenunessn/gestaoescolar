@@ -11,11 +11,12 @@ import { config } from "./config/config";
 
 // Importar middlewares
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
-import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
+import { authenticatedUserLimiter, ipLimiter, loginLimiter } from './middleware/rateLimiter';
 import { balancedCompression } from './middleware/compression';
 
 import { ensureAdminTables, requireAdmin } from "./modules/usuarios/controllers/adminUsuariosController";
+import { registerBffRoutes } from "./bff/registerBffRoutes";
+import { gatewayClientChannelMiddleware } from "./gateway/clientChannel";
 import { registerApiRoutes } from "./routes/registerApiRoutes";
 
 import { createServer } from 'http';
@@ -25,6 +26,7 @@ import { buildEntregaIdempotencySchemaSql } from "./modules/entregas/models/entr
 import { ensureEstoqueLedgerSchema } from "./modules/estoque/services/estoqueSchemaService";
 
 import db from "./database";
+import { authenticateToken, optionalAuth } from './middleware/authMiddleware';
 
 // Normalizar CORS origins â€” remover entradas nÃ£o-string para seguranÃ§a
 const rawOrigin = config.backend.cors.origin;
@@ -57,7 +59,16 @@ app.use(cors(corsOptions));
 // Responder OPTIONS imediatamente para preflight
 app.options('*', cors(corsOptions));
 
+// Rate limit por IP antes de JSON/auth para barrar abuso com baixo custo.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS' || req.path === '/health') return next();
+  return ipLimiter(req, res, next);
+});
+
 app.use(express.json({ limit: '10mb' }));
+
+// Limite especifico para login nos aliases legados.
+app.post(['/api/auth/login', '/api/usuarios/login'], loginLimiter);
 
 async function ensureProdutoComposicaoNutricionalTable() {
   const exists = await db.get(
@@ -95,17 +106,21 @@ async function ensureProdutoComposicaoNutricionalTable() {
   }
 }
 
-// Middlewares de otimizaÃ§Ã£o
-app.use(balancedCompression);  // CompressÃ£o de respostas
-app.use(paginationMiddleware);  // Helpers de paginaÃ§Ã£o
-app.use(validatePaginationParams);  // ValidaÃ§Ã£o de parÃ¢metros
+// Gateway interno: identifica canal legado /api ou BFF por cliente.
+app.use(gatewayClientChannelMiddleware);
 
-// Rate limiting geral â€” excluir rotas de operaÃ§Ãµes pesadas
-app.use('/api', (req, res, next) => {
+// Auth opcional popula req.user quando houver JWT; rotas protegidas continuam exigindo authenticateToken.
+app.use(optionalAuth);
+
+// Rate limiting por usuario depois de JWT; cai para IP em rotas publicas.
+app.use(['/api', '/bff'], (req, res, next) => {
   // NÃ£o aplicar rate limit em rotas de geraÃ§Ã£o (operaÃ§Ãµes longas e legÃ­timas)
   if (req.path.startsWith('/planejamento-compras/gerar')) return next();
-  return generalLimiter(req, res, next);
+  return authenticatedUserLimiter(req, res, next);
 });
+
+// Compressao precisa envolver handlers de rota, mas fica depois de rate limit/auth.
+app.use(balancedCompression);
 
 // Servir arquivos estÃ¡ticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -140,8 +155,6 @@ app.get("/health", async (req, res) => {
   }
 });
 
-import { authenticateToken } from './middleware/authMiddleware';
-
 // Endpoint operacional de banco restrito a administradores
 app.get("/api/test-db", authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -160,6 +173,7 @@ app.get("/api/test-db", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+registerBffRoutes(app);
 registerApiRoutes(app);
 
 // Rota raiz - informaÃ§Ãµes da API
@@ -195,7 +209,8 @@ app.get("/", (req, res) => {
       "/api/taco", "/api/grupos-ingredientes",
       "/api/solicitacoes-alimentos",
       "/api/dashboard", "/api/notificacoes", "/api/disparos-notificacao",
-      "/api/permissoes", "/api/admin"
+      "/api/permissoes", "/api/admin",
+      "/bff/web", "/bff/app", "/bff/portal", "/bff/chatbot"
     ],
     timestamp: new Date().toISOString()
   });

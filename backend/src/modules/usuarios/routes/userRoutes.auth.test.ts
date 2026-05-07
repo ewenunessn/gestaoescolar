@@ -24,6 +24,12 @@ describe("userRoutes auth contract", () => {
     ]);
   });
 
+  it("uses JWT authentication for logout so the presented token can be revoked", () => {
+    assert.deepEqual(routeMiddlewareNames("/logout", "post").slice(0, 1), [
+      "authenticateToken",
+    ]);
+  });
+
   it("requires admin access for listing users", () => {
     assert.deepEqual(routeMiddlewareNames("/", "get").slice(0, 2), [
       "authenticateToken",

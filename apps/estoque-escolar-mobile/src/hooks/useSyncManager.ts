@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-netinfo/netinfo';
+import NetInfo from '@react-native-community/netinfo';
 import { apiService } from '../services/api';
 
 interface SyncItem {
@@ -60,7 +60,7 @@ export const useSyncManager = (config: Partial<SyncConfig> = {}) => {
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       const wasOffline = !status.isOnline;
-      const isNowOnline = state.isConnected && state.isInternetReachable;
+      const isNowOnline = Boolean(state.isConnected && state.isInternetReachable);
       
       setStatus(prev => ({ ...prev, isOnline: isNowOnline }));
       

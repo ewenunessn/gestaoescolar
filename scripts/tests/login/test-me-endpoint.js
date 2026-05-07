@@ -5,8 +5,8 @@ async function testMeEndpoint() {
   
   // Primeiro fazer login para pegar o token
   const loginData = JSON.stringify({
-    email: 'ewenunes0@gmail.com',
-    senha: '@Nunes8922'
+    email: 'admin@example.com',
+    senha: '<admin-password>'
   });
 
   const loginOptions = {

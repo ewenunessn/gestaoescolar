@@ -1,6 +1,6 @@
 import { storage } from '../utils/storage';
 import { ItemEstoqueEscola, HistoricoEstoque, ResumoEstoque, AtualizacaoLote, MovimentoEstoque } from '../types';
-import { API_CONFIG, API_ENDPOINTS, DEV_CONFIG } from '../config/api';
+import { API_CONFIG, API_ENDPOINTS, DEV_CONFIG, normalizePortalBffEndpoint } from '../config/api';
 import { criarDataLocal, converterParaFormatoAPI } from '../utils/dateUtils';
 
 // Função auxiliar para processar datas corrigindo problema de timezone
@@ -42,7 +42,7 @@ class ApiService {
       await new Promise(resolve => setTimeout(resolve, DEV_CONFIG.NETWORK_DELAY));
     }
 
-    const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+    const url = `${API_CONFIG.BASE_URL}${normalizePortalBffEndpoint(endpoint)}`;
 
     const config: RequestInit = {
       headers: {
@@ -497,7 +497,13 @@ class ApiService {
   }
 
   async logout(): Promise<void> {
-    await this.removeToken();
+    try {
+      await this.request('/auth/logout', { method: 'POST' });
+    } catch {
+      // Logout local continua valido se o token ja expirou ou o app estiver offline.
+    } finally {
+      await this.removeToken();
+    }
   }
 
   // Método auxiliar para mapear status do estoque baseado na quantidade

@@ -14,9 +14,9 @@ function getUsuarioId(req: Request): number | null {
 }
 
 async function invalidarCachesAlunos() {
-  cacheService.invalidateEntity("escolas");
-  cacheService.invalidateEntity("modalidades");
-  await cacheService.del("dashboard:stats");
+  await cacheService.invalidateEntity("escolas");
+  await cacheService.invalidateEntity("modalidades");
+  await cacheService.delPattern("dashboard:*");
 }
 
 export async function listarEscolaModalidades(req: Request, res: Response) {

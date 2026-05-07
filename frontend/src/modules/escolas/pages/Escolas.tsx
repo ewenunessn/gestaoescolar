@@ -244,7 +244,9 @@ const EscolasPage = () => {
       enableSorting: true,
       cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => (
         <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
-          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativa' : 'Inativa'} size="small" />
+          <span>
+            <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativa' : 'Inativa'} size="small" />
+          </span>
         </Tooltip>
       ),
     },

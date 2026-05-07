@@ -6,8 +6,8 @@ const token = 'COLE_O_TOKEN_AQUI';
 // Secrets para testar
 const secrets = [
   'your_super_secret_jwt_key_change_this_in_production', // Local
-  'blgvVcIGT9MQCwMhpmmK1YbbSK0QHa36f8Gu0mWMWtI=1264117f47ed46f8', // Vercel antigo (errado)
-  '0af3++BeU5woHy0VyjpNKgOHPPkUCDkmeIt0NhYhZVatE3t+xtkTIoEGLIrpKE5OSjKgfmO4FY2L3qRs/+KEBw==', // Novo gerado
+  '<old-vercel-secret>', // Vercel antigo (errado)
+  '<current-vercel-secret>', // Novo gerado
 ];
 
 console.log('\n=== TESTANDO JWT_SECRET ===\n');

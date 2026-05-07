@@ -7,8 +7,8 @@
 const axios = require('axios');
 
 const BASE_URL = 'http://localhost:3000/api';
-const EMAIL = 'ewenunes0@gmail.com'; // TROQUE AQUI
-const SENHA = '@Nunes8922'; // TROQUE AQUI
+const EMAIL = 'admin@example.com'; // TROQUE AQUI
+const SENHA = '<admin-password>'; // TROQUE AQUI
 
 let token = null;
 

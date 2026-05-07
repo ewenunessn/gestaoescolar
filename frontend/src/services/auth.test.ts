@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('./api', () => ({
+  apiWithRetry: {
+    get: vi.fn(),
+    post: vi.fn().mockResolvedValue({ data: { success: true } }),
+  },
+}));
+
 import { logout } from './auth';
+import { apiWithRetry } from './api';
 
 describe('logout', () => {
   beforeEach(() => {
@@ -33,6 +42,7 @@ describe('logout', () => {
 
     logout();
 
+    expect(apiWithRetry.post).toHaveBeenCalledWith('/auth/logout');
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('user')).toBeNull();
     expect(localStorage.getItem('perfil')).toBeNull();

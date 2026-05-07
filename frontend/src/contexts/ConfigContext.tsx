@@ -12,20 +12,34 @@ interface ConfigContextType {
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
+const DEFAULT_CONFIG_MODULO_SALDO: ConfiguracaoModuloSaldo = {
+  modulo_principal: 'modalidades',
+  mostrar_ambos: false,
+};
+
+const hasAuthToken = () => {
+  const token = localStorage.getItem('token');
+  return !!token && token !== 'null' && token !== 'undefined';
+};
+
 interface ConfigProviderProps {
   children: ReactNode;
 }
 
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
-  const [configModuloSaldo, setConfigModuloSaldo] = useState<ConfiguracaoModuloSaldo>({
-    modulo_principal: 'modalidades',
-    mostrar_ambos: false,
-  });
+  const [configModuloSaldo, setConfigModuloSaldo] = useState<ConfiguracaoModuloSaldo>(DEFAULT_CONFIG_MODULO_SALDO);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const callbacksRef = React.useRef<Array<() => void>>([]);
 
   const recarregarConfig = useCallback(async () => {
+    if (!hasAuthToken()) {
+      setConfigModuloSaldo(DEFAULT_CONFIG_MODULO_SALDO);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -47,6 +61,12 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
 
   useEffect(() => {
     recarregarConfig();
+
+    window.addEventListener('auth-changed', recarregarConfig);
+
+    return () => {
+      window.removeEventListener('auth-changed', recarregarConfig);
+    };
   }, [recarregarConfig]);
 
   const value: ConfigContextType = useMemo(() => ({

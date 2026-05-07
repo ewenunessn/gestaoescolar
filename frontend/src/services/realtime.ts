@@ -77,7 +77,9 @@ export function shouldRefreshForRealtimeEvent(
 
 export function toRealtimeEventsUrl(baseURL = apiConfig.baseURL, token?: string | null): string {
   const normalizedBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
-  const endpoint = normalizedBase.endsWith('/api')
+  const endpoint = /\/bff\/[^/]+$/.test(normalizedBase)
+    ? `${normalizedBase}/realtime/events`
+    : normalizedBase.endsWith('/api')
     ? `${normalizedBase}/events`
     : `${normalizedBase}/api/events`;
   const url = new URL(endpoint);

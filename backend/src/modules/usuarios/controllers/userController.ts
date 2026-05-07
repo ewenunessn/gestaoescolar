@@ -12,6 +12,7 @@ import {
   NotFoundError,
   validateRequired
 } from "../../../utils/errorHandler";
+import { tokenBlacklistService } from "../services/tokenBlacklistService";
 
 // Registro de novo usuário
 export const register = asyncHandler(async (req: Request, res: Response) => {
@@ -111,6 +112,20 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 // Listar todos os usuários
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (token) {
+    await tokenBlacklistService.blacklist(token);
+  }
+
+  res.json({
+    success: true,
+    message: 'Logout realizado com sucesso'
+  });
+});
+
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const result = await db.query(`
     SELECT id, nome, email, tipo, ativo, created_at, updated_at

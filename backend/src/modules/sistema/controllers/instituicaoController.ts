@@ -2,28 +2,12 @@ import { Request, Response } from 'express';
 import { Instituicao, InstituicaoInput } from '../models/Instituicao';
 import multer from 'multer';
 import path from 'path';
-import { promises as fs } from 'fs';
 import db from '../../../database';
+import { createStorageProvider } from '../../../storage/storageProvider';
 
 // Configuração do multer para upload de logo
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads/logos');
-    try {
-      await fs.mkdir(uploadPath, { recursive: true });
-      cb(null, uploadPath);
-    } catch (error) {
-      cb(error as Error, '');
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'logo-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
   },
@@ -114,16 +98,19 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
 
     // Se foi enviado um arquivo de logo
     if (req.file) {
+      const storageProvider = createStorageProvider();
+
       // Remover logo anterior se existir
       if (instituicao && instituicao.logo_url && !instituicao.logo_url.startsWith('data:')) {
         try {
-          const logoPath = path.join(__dirname, '../../uploads/logos', path.basename(instituicao.logo_url));
-          await fs.unlink(logoPath);
+          await storageProvider.delete(`logos/${path.basename(instituicao.logo_url)}`);
         } catch (error) {
         }
       }
 
-      dadosAtualizacao.logo_url = `/uploads/logos/${req.file.filename}`;
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = `logo-${uniqueSuffix}${path.extname(req.file.originalname)}`;
+      dadosAtualizacao.logo_url = await storageProvider.upload(req.file.buffer, `logos/${filename}`);
     }
 
     let result;

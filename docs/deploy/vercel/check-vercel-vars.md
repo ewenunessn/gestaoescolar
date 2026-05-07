@@ -15,14 +15,14 @@
 Se a variável JÁ EXISTE:
 - Clique nos 3 pontinhos (...) ao lado dela
 - Clique em **Edit**
-- Cole o valor: `0af3++BeU5woHy0VyjpNKgOHPPkUCDkmeIt0NhYhZVatE3t+xtkTIoEGLIrpKE5OSjKgfmO4FY2L3qRs/+KEBw==`
+- Cole um valor novo, longo e aleatorio gerado fora do repositorio.
 - Marque: ☑️ Production ☑️ Preview ☑️ Development
 - Clique em **Save**
 
 Se a variável NÃO EXISTE:
 - Clique em **Add New**
 - Name: `JWT_SECRET`
-- Value: `0af3++BeU5woHy0VyjpNKgOHPPkUCDkmeIt0NhYhZVatE3t+xtkTIoEGLIrpKE5OSjKgfmO4FY2L3qRs/+KEBw==`
+- Value: `<generate-a-long-random-secret>`
 - Marque: ☑️ Production ☑️ Preview ☑️ Development
 - Clique em **Save**
 

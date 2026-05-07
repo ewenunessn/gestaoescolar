@@ -5,8 +5,8 @@ async function testLogin() {
   
   // Passo 1: Login
   const loginData = JSON.stringify({
-    email: 'ewenunes0@gmail.com',
-    senha: '@Nunes8922'
+    email: 'admin@example.com',
+    senha: '<admin-password>'
   });
 
   const loginOptions = {
@@ -66,7 +66,7 @@ async function testLogin() {
           const userData = {
             id: payload.id,
             nome: nome,
-            email: payload.email || 'ewenunes0@gmail.com',
+            email: payload.email || 'admin@example.com',
             tipo: tipo,
             perfil: tipo,
             institution_id: payload.institution_id,

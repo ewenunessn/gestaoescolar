@@ -10,8 +10,8 @@ async function testCompleteFlow() {
   console.log('-'.repeat(60));
   
   const loginData = JSON.stringify({
-    email: 'ewenunes0@gmail.com',
-    senha: '@Nunes8922'
+    email: 'admin@example.com',
+    senha: '<admin-password>'
   });
 
   const token = await new Promise((resolve, reject) => {

@@ -44,53 +44,59 @@ import disparosNotificacaoRoutes from "../modules/sistema/routes/disparosNotific
 import unidadeMedidaRoutes from "../modules/unidades/routes/unidadeMedidaRoutes";
 import realtimeRoutes from "../modules/sistema/routes/realtimeRoutes";
 import chatbotRoutes from "../modules/chatbot/routes/chatbotRoutes";
+import architectureRoutes from "../architecture/architectureRoutes";
 
-export function registerApiRoutes(app: Express): void {
-  app.use("/api/usuarios", userRoutes);
-  app.use("/api/auth", userRoutes);
-  app.use("/api/permissoes", permissaoRoutes);
-  app.use("/api/admin", adminUsuariosRoutes);
+function route(prefix: string, path = ""): string {
+  return `${prefix}${path}`;
+}
 
-  app.use("/api/escolas", escolaRoutes);
-  app.use("/api/modalidades", modalidadeRoutes);
-  app.use("/api/escola-modalidades", escolaModalidadeRoutes);
-  app.use("/api/fornecedores", fornecedorRoutes);
-  app.use("/api/contratos", contratoRoutes);
-  app.use("/api/contrato-produtos", contratoProdutoRoutes);
+export function registerApiRoutes(app: Express, prefix = "/api"): void {
+  app.use(route(prefix, "/usuarios"), userRoutes);
+  app.use(route(prefix, "/auth"), userRoutes);
+  app.use(route(prefix, "/permissoes"), permissaoRoutes);
+  app.use(route(prefix, "/admin"), adminUsuariosRoutes);
 
-  app.use("/api/refeicoes", refeicaoRoutes);
-  app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
-  app.use("/api/refeicao-produto-modalidade", refeicaoProdutoModalidadeRoutes);
-  app.use("/api", refeicaoCalculosRoutes);
-  app.use("/api/cardapios", cardapioRoutes);
-  app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
-  app.use("/api/nutricionistas", nutricionistaRoutes);
-  app.use("/api/produtos", produtoRoutes);
-  app.use("/api/produto-modalidades", produtoModalidadeRoutes);
-  app.use("/api/unidades-medida", unidadeMedidaRoutes);
-  app.use("/api/estoque-central", estoqueCentralRoutes);
-  app.use("/api/estoque-escolar", estoqueEscolarRoutes);
+  app.use(route(prefix, "/escolas"), escolaRoutes);
+  app.use(route(prefix, "/modalidades"), modalidadeRoutes);
+  app.use(route(prefix, "/escola-modalidades"), escolaModalidadeRoutes);
+  app.use(route(prefix, "/fornecedores"), fornecedorRoutes);
+  app.use(route(prefix, "/contratos"), contratoRoutes);
+  app.use(route(prefix, "/contrato-produtos"), contratoProdutoRoutes);
 
-  app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
-  app.use("/api/guias", guiaRoutes);
-  app.use("/api/entregas", entregaRoutes);
-  app.use("/api/entregas", rotaRoutes);
-  app.use("/api/compras", compraRoutes);
-  app.use("/api/faturamentos", faturamentoRoutes);
-  app.use("/api/demandas", demandasRoutes);
-  app.use("/api/recebimentos", recebimentoRoutes);
-  app.use("/api/instituicao", instituicaoRoutes);
-  app.use("/api/pnae", pnaeRoutes);
-  app.use("/api/planejamento-compras", planejamentoComprasRoutes);
-  app.use("/api/periodos", periodosRoutes);
-  app.use("/api/escola-portal", escolaPortalRoutes);
-  app.use("/api", calendarioLetivoRoutes);
-  app.use("/api/taco", tacoRoutes);
-  app.use("/api/grupos-ingredientes", gruposIngredientesRoutes);
-  app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
-  app.use("/api/dashboard", dashboardRoutes);
-  app.use("/api/notificacoes", notificacoesRoutes);
-  app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
-  app.use("/api", realtimeRoutes);
-  app.use("/api/chatbot", chatbotRoutes);
+  app.use(route(prefix, "/refeicoes"), refeicaoRoutes);
+  app.use(route(prefix, "/refeicao-produtos"), refeicaoProdutoRoutes);
+  app.use(route(prefix, "/refeicao-produto-modalidade"), refeicaoProdutoModalidadeRoutes);
+  app.use(route(prefix), refeicaoCalculosRoutes);
+  app.use(route(prefix, "/cardapios"), cardapioRoutes);
+  app.use(route(prefix, "/tipos-refeicao"), tipoRefeicaoRoutes);
+  app.use(route(prefix, "/nutricionistas"), nutricionistaRoutes);
+  app.use(route(prefix, "/produtos"), produtoRoutes);
+  app.use(route(prefix, "/produto-modalidades"), produtoModalidadeRoutes);
+  app.use(route(prefix, "/unidades-medida"), unidadeMedidaRoutes);
+  app.use(route(prefix, "/estoque-central"), estoqueCentralRoutes);
+  app.use(route(prefix, "/estoque-escolar"), estoqueEscolarRoutes);
+
+  app.use(route(prefix, "/saldo-contratos-modalidades"), saldoContratosModalidadesRoutes);
+  app.use(route(prefix, "/guias"), guiaRoutes);
+  app.use(route(prefix, "/entregas"), entregaRoutes);
+  app.use(route(prefix, "/entregas"), rotaRoutes);
+  app.use(route(prefix, "/compras"), compraRoutes);
+  app.use(route(prefix, "/faturamentos"), faturamentoRoutes);
+  app.use(route(prefix, "/demandas"), demandasRoutes);
+  app.use(route(prefix, "/recebimentos"), recebimentoRoutes);
+  app.use(route(prefix, "/instituicao"), instituicaoRoutes);
+  app.use(route(prefix, "/pnae"), pnaeRoutes);
+  app.use(route(prefix, "/planejamento-compras"), planejamentoComprasRoutes);
+  app.use(route(prefix, "/periodos"), periodosRoutes);
+  app.use(route(prefix, "/escola-portal"), escolaPortalRoutes);
+  app.use(route(prefix), calendarioLetivoRoutes);
+  app.use(route(prefix, "/taco"), tacoRoutes);
+  app.use(route(prefix, "/grupos-ingredientes"), gruposIngredientesRoutes);
+  app.use(route(prefix, "/solicitacoes-alimentos"), solicitacoesAlimentosRoutes);
+  app.use(route(prefix, "/dashboard"), dashboardRoutes);
+  app.use(route(prefix, "/notificacoes"), notificacoesRoutes);
+  app.use(route(prefix, "/disparos-notificacao"), disparosNotificacaoRoutes);
+  app.use(route(prefix), realtimeRoutes);
+  app.use(route(prefix, "/chatbot"), chatbotRoutes);
+  app.use(route(prefix, "/architecture"), architectureRoutes);
 }

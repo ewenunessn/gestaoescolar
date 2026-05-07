@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ItemEstoqueEscola } from '../types';
 import { apiService } from '../services/api';
+import { buildPortalBffUrl } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoteValidade {
@@ -288,7 +289,7 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
             setLoading(true);
 
             // Registrar saída usando a API
-            const response = await fetch(`https://gestaoescolar-backend.vercel.app/api/estoque-escola/escola/${escolaId}/movimentacao`, {
+            const response = await fetch(buildPortalBffUrl(`/api/estoque-escola/escola/${escolaId}/movimentacao`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -214,7 +214,9 @@ const CardapiosModalidadePage: React.FC = () => {
       enableSorting: true,
       cell: ({ getValue }) => (
         <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
-          <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
+          <span>
+            <StatusIndicator status={getValue() ? 'ativo' : 'inativo'} text={getValue() ? 'Ativo' : 'Inativo'} size="small" />
+          </span>
         </Tooltip>
       ),
     },

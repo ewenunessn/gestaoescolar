@@ -65,8 +65,8 @@ async function testBrowserFlow() {
     const loginResponse = await makeRequest('/api/auth/login', {
       method: 'POST',
       body: {
-        email: 'ewenunes0@gmail.com',
-        senha: '@Nunes8922'
+        email: 'admin@example.com',
+        senha: '<admin-password>'
       }
     });
     

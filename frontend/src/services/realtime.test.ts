@@ -82,4 +82,10 @@ describe('realtime service helpers', () => {
     expect(url).toBe('http://localhost:3000/api/events?token=abc+123');
     expect(REALTIME_BROWSER_EVENT).toBe('nutrilog:realtime-event');
   });
+
+  it('builds the SSE endpoint from a BFF base URL', () => {
+    const url = toRealtimeEventsUrl('http://localhost:3000/bff/web', 'abc');
+
+    expect(url).toBe('http://localhost:3000/bff/web/realtime/events?token=abc');
+  });
 });

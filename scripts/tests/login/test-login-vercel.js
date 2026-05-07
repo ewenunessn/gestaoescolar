@@ -4,8 +4,8 @@ async function testLoginVercel() {
   console.log('🔐 Testando login na PRODUÇÃO Vercel...\n');
   
   const loginData = JSON.stringify({
-    email: 'ewenunes0@gmail.com',
-    senha: '@Nunes8922'
+    email: 'admin@example.com',
+    senha: '<admin-password>'
   });
 
   const loginOptions = {
@@ -23,7 +23,7 @@ async function testLoginVercel() {
 
   return new Promise((resolve, reject) => {
     console.log('📡 Enviando requisição para:', `https://${loginOptions.hostname}${loginOptions.path}`);
-    console.log('📧 Email:', 'ewenunes0@gmail.com');
+    console.log('📧 Email:', 'admin@example.com');
     console.log('');
 
     const req = https.request(loginOptions, (res) => {

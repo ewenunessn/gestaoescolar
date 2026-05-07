@@ -47,6 +47,11 @@ export function notifyAuthChanged(): void {
 
 export function logout(options: LogoutOptions = {}) {
   const { redirect = true } = options;
+  const token = getToken();
+
+  if (token) {
+    void apiWithRetry.post("/auth/logout").catch(() => undefined);
+  }
 
   clearAuthSession();
   notifyAuthChanged();

@@ -15,5 +15,10 @@ export async function login(email: string, senha: string): Promise<LoginResponse
 
 export async function logout() {
   const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  try {
+    await api.post('/auth/logout');
+  } catch {
+    // Local logout must still work when the device is offline or the token is already invalid.
+  }
   await AsyncStorage.removeItem('token');
 }

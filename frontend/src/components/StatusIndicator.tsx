@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { alpha, Box, Typography } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
@@ -145,7 +146,10 @@ const getStatusIcon = (status: string) => {
   return InfoOutlinedIcon;
 };
 
-export default function StatusIndicator({ status, text, size = 'medium' }: StatusIndicatorProps) {
+const StatusIndicator = forwardRef<HTMLSpanElement, StatusIndicatorProps>(function StatusIndicator(
+  { status, text, size = 'medium' },
+  ref,
+) {
   const color = getStatusColor(status);
   const dotSize = getSizePixels(size);
   const Icon = getStatusIcon(status);
@@ -156,6 +160,7 @@ export default function StatusIndicator({ status, text, size = 'medium' }: Statu
     return (
       <Box
         component="span"
+        ref={ref}
         sx={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -190,8 +195,9 @@ export default function StatusIndicator({ status, text, size = 'medium' }: Statu
   }
   
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box ref={ref} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
       <Box
+        component="span"
         sx={{
           width: dotSize,
           height: dotSize,
@@ -207,4 +213,6 @@ export default function StatusIndicator({ status, text, size = 'medium' }: Statu
       )}
     </Box>
   );
-}
+});
+
+export default StatusIndicator;

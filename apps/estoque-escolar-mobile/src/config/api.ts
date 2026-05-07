@@ -1,5 +1,27 @@
 import Constants from 'expo-constants';
 
+export const PORTAL_BFF_PREFIX = '/bff/portal';
+
+export function normalizePortalBffEndpoint(endpoint: string): string {
+  if (endpoint.startsWith(`${PORTAL_BFF_PREFIX}/`) || endpoint === PORTAL_BFF_PREFIX) {
+    return endpoint;
+  }
+
+  if (endpoint.startsWith('/api/')) {
+    return `${PORTAL_BFF_PREFIX}/${endpoint.slice('/api/'.length)}`;
+  }
+
+  if (endpoint === '/api') {
+    return PORTAL_BFF_PREFIX;
+  }
+
+  return endpoint;
+}
+
+export function buildPortalBffUrl(endpoint: string): string {
+  return `${getApiUrl()}${normalizePortalBffEndpoint(endpoint)}`;
+}
+
 // Configuração da API baseada no ambiente
 const getApiUrl = (): string => {
   // Sempre usar o backend do Vercel para evitar problemas de conexão local
@@ -26,49 +48,49 @@ export const DEV_CONFIG = {
 // Endpoints da API - Atualizados para as rotas do Vercel
 export const API_ENDPOINTS = {
   // Autenticação
-  LOGIN: '/api/auth/login',
-  VERIFY_SESSION: '/api/auth/verificar',
+  LOGIN: `${PORTAL_BFF_PREFIX}/auth/login`,
+  VERIFY_SESSION: `${PORTAL_BFF_PREFIX}/auth/verificar`,
   
   // Usuários
-  USUARIOS: '/api/usuarios',
+  USUARIOS: `${PORTAL_BFF_PREFIX}/usuarios`,
   
   // Escolas
-  ESCOLAS: '/api/escolas',
+  ESCOLAS: `${PORTAL_BFF_PREFIX}/escolas`,
   
   // Produtos
-  PRODUTOS: '/api/produtos',
-  PRODUTOS_ORM: '/api/produtos-orm',
+  PRODUTOS: `${PORTAL_BFF_PREFIX}/produtos`,
+  PRODUTOS_ORM: `${PORTAL_BFF_PREFIX}/produtos-orm`,
   
   // Estoque
-  ESTOQUE_MODERNO: '/api/estoque-moderno',
-  ESTOQUE_ESCOLAR: '/api/estoque-escolar',
+  ESTOQUE_MODERNO: `${PORTAL_BFF_PREFIX}/estoque-moderno`,
+  ESTOQUE_ESCOLAR: `${PORTAL_BFF_PREFIX}/estoque-escolar`,
   
   // Fornecedores
-  FORNECEDORES: '/api/fornecedores',
+  FORNECEDORES: `${PORTAL_BFF_PREFIX}/fornecedores`,
   
   // Contratos
-  CONTRATOS: '/api/contratos',
-  CONTRATO_PRODUTOS: '/api/contrato-produtos',
+  CONTRATOS: `${PORTAL_BFF_PREFIX}/contratos`,
+  CONTRATO_PRODUTOS: `${PORTAL_BFF_PREFIX}/contrato-produtos`,
   
   // Pedidos
-  PEDIDOS_MODERNOS: '/api/pedidos-modernos',
+  PEDIDOS_MODERNOS: `${PORTAL_BFF_PREFIX}/pedidos-modernos`,
   
   // Recebimento
-  RECEBIMENTO_SIMPLES: '/api/recebimento-simples',
+  RECEBIMENTO_SIMPLES: `${PORTAL_BFF_PREFIX}/recebimento-simples`,
   
   // Health Check
   HEALTH: '/health',
   
   // Estoque Escolar (usando endpoints corretos do backend)
-  ESTOQUE_ESCOLA: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}`,
-  ESTOQUE_RESUMO: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}`,
-  ESTOQUE_HISTORICO: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}/historico`,
-  ESTOQUE_ITEM: (itemId: number) => `/api/estoque-escola/item/${itemId}`,
-  ESTOQUE_ESCOLA_ITEM: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}`,
-  ESTOQUE_LOTE: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}/lote`,
+  ESTOQUE_ESCOLA: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}`,
+  ESTOQUE_RESUMO: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}`,
+  ESTOQUE_HISTORICO: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}/historico`,
+  ESTOQUE_ITEM: (itemId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/item/${itemId}`,
+  ESTOQUE_ESCOLA_ITEM: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}`,
+  ESTOQUE_LOTE: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}/lote`,
   
   // Movimentações
-  MOVIMENTO_ESTOQUE: (escolaId: number) => `/api/estoque-escola/escola/${escolaId}/movimentacao`,
+  MOVIMENTO_ESTOQUE: (escolaId: number) => `${PORTAL_BFF_PREFIX}/estoque-escola/escola/${escolaId}/movimentacao`,
   
 
 };

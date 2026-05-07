@@ -402,7 +402,9 @@ export default function GuiaDemandaProdutoItens() {
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title={row.status || ""}>
-                      <StatusIndicator status={row.status || ''} text={statusLabel(row.status)} size="small" />
+                      <span>
+                        <StatusIndicator status={row.status || ''} text={statusLabel(row.status)} size="small" />
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>
