@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark" style="background: #121212; color: #f5f7fb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Gestao Escolar Go</title>
+    <style>
+      html,
+      body,
+      #root {
+        min-height: 100%;
+        margin: 0;
+        background: var(--color-bg, #121212);
+        color: var(--color-text, #f5f7fb);
+        font-family: "Segoe UI Variable Text", "Segoe UI Variable Static Text", "Segoe UI Variable", "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      }
+
+      html {
+        font-size: 14px;
+      }
+    </style>
+    <script>
+      (function () {
+        var storageKey = "gestaoescolar:theme";
+        var themes = {
+          light: {
+            "app-bg": "#f4f6f8",
+            "app-surface": "#ffffff",
+            "app-surface-soft": "#f6f8fb",
+            "app-surface-raised": "#ffffff",
+            "app-text": "#172033",
+            "app-muted": "#64748b",
+            "app-subtle": "#7a8796",
+            "app-border": "#dfe5ed",
+            "app-border-soft": "#edf0f4",
+            "app-primary": "#246bfe",
+            "app-primary-contrast": "#ffffff",
+            "app-sidebar": "#ffffff",
+            "app-sidebar-text": "#334155",
+            "app-sidebar-muted": "#64748b",
+            "app-sidebar-active": "#e4e9ef",
+            "app-sidebar-active-text": "#172033",
+            "app-input": "#ffffff",
+            "app-table-head": "#f8fafc",
+            "shadow-soft": "0 12px 30px rgba(30, 39, 52, 0.05)"
+          },
+          dark: {
+            "app-bg": "#121212",
+            "app-surface": "#1a1a1a",
+            "app-surface-soft": "#202020",
+            "app-surface-raised": "#171717",
+            "app-text": "#f5f7fb",
+            "app-muted": "#a6adbb",
+            "app-subtle": "#858c99",
+            "app-border": "#303030",
+            "app-border-soft": "#262626",
+            "app-primary": "#2dd4bf",
+            "app-primary-contrast": "#06221e",
+            "app-sidebar": "#000000",
+            "app-sidebar-text": "#d7dce5",
+            "app-sidebar-muted": "#9aa2af",
+            "app-sidebar-active": "#222222",
+            "app-sidebar-active-text": "#ffffff",
+            "app-input": "#141414",
+            "app-table-head": "#202020",
+            "shadow-soft": "0 16px 36px rgba(0, 0, 0, 0.28)"
+          }
+        };
+        var themeName = "dark";
+        try {
+          var stored = window.localStorage.getItem(storageKey);
+          if (stored === "light" || stored === "dark") themeName = stored;
+        } catch (error) {}
+        var selected = themes[themeName];
+        var root = document.documentElement;
+        root.dataset.theme = themeName;
+        Object.keys(selected).forEach(function (token) {
+          root.style.setProperty("--" + token, selected[token]);
+        });
+        root.style.setProperty("--color-bg", selected["app-bg"]);
+        root.style.setProperty("--color-surface", selected["app-surface"]);
+        root.style.setProperty("--color-surface-soft", selected["app-surface-soft"]);
+        root.style.setProperty("--color-surface-raised", selected["app-surface-raised"]);
+        root.style.setProperty("--color-text", selected["app-text"]);
+        root.style.setProperty("--color-muted", selected["app-muted"]);
+        root.style.setProperty("--color-subtle", selected["app-subtle"]);
+        root.style.setProperty("--color-border", selected["app-border"]);
+        root.style.setProperty("--color-border-soft", selected["app-border-soft"]);
+        root.style.setProperty("--color-primary", selected["app-primary"]);
+        root.style.setProperty("--color-primary-contrast", selected["app-primary-contrast"]);
+        root.style.setProperty("--color-sidebar", selected["app-sidebar"]);
+        root.style.setProperty("--color-sidebar-text", selected["app-sidebar-text"]);
+        root.style.setProperty("--color-sidebar-muted", selected["app-sidebar-muted"]);
+        root.style.setProperty("--color-sidebar-active", selected["app-sidebar-active"]);
+        root.style.setProperty("--color-sidebar-active-text", selected["app-sidebar-active-text"]);
+        root.style.setProperty("--color-input", selected["app-input"]);
+        root.style.setProperty("--color-table-head", selected["app-table-head"]);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
