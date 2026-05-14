@@ -9,6 +9,8 @@ const router = Router();
 router.use(authenticateToken);
 
 // Rotas de LEITURA
+router.get('/alocacao-automatica/config', requireLeitura('faturamentos'), faturamentoController.obterConfiguracaoAlocacaoAutomatica);
+router.post('/alocacao-automatica/preview', requireLeitura('faturamentos'), faturamentoController.previewAlocacaoAutomatica);
 router.get('/pedido/:pedidoId', requireLeitura('faturamentos'), faturamentoController.listarFaturamentosPedido);
 router.get('/pedido/:pedidoId/resumo', requireLeitura('faturamentos'), faturamentoController.resumoFaturamentoPedido);
 router.get('/:faturamentoId/relatorio-tipo-fornecedor', requireLeitura('faturamentos'), faturamentoController.relatorioTipoFornecedorModalidade);
@@ -16,6 +18,7 @@ router.get('/:id/resumo', requireLeitura('faturamentos'), faturamentoController.
 router.get('/:id', requireLeitura('faturamentos'), faturamentoController.buscarFaturamento);
 
 // Rotas de ESCRITA
+router.put('/alocacao-automatica/config', requireEscrita('faturamentos'), faturamentoController.atualizarConfiguracaoAlocacaoAutomatica);
 router.post('/', requireEscrita('faturamentos'), faturamentoController.criarFaturamento);
 router.put('/:id', requireEscrita('faturamentos'), faturamentoController.atualizarFaturamento);
 router.patch('/:id/status', requireEscrita('faturamentos'), faturamentoController.atualizarStatusFaturamento);

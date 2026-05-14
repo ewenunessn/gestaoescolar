@@ -74,6 +74,7 @@ const AlunosPage = lazy(() => import("../modules/portal-escola/pages/AlunosPage"
 
 // Lazy loading - Módulo: sistema
 const Modalidades = lazy(() => import("../modules/sistema/pages/Modalidades"));
+const ModalidadesFinanceiras = lazy(() => import("../modules/sistema/pages/ModalidadesFinanceiras"));
 const ConfiguracaoInstituicao = lazy(() => import("../modules/sistema/pages/ConfiguracaoInstituicao"));
 const GerenciamentoUsuarios = lazy(() => import("../modules/sistema/pages/GerenciamentoUsuarios"));
 const GerenciamentoPeriodos = lazy(() => import("../modules/sistema/pages/GerenciamentoPeriodos"));
@@ -282,6 +283,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/modalidades"
               element={<LazyRoute moduloSlug="modalidades"><Modalidades /></LazyRoute>}
+            />
+            <Route
+              path="/modalidades-financeiras"
+              element={<LazyRoute moduloSlug="modalidades"><ModalidadesFinanceiras /></LazyRoute>}
             />
             <Route
               path="/modalidades/gerenciar-alunos"

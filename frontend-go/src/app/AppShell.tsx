@@ -43,8 +43,8 @@ export function AppShell({ auth, config, route, theme, onThemeChange, onNavigate
 
   const navButtonClass = (active: boolean) =>
     cn(
-      "h-10 justify-start gap-3 rounded-xl px-2 text-xs font-bold uppercase text-[var(--color-sidebar-text)] hover:bg-[var(--color-sidebar-active)] hover:text-[var(--color-sidebar-active-text)]",
-      active && "bg-[var(--color-sidebar-active)] text-[var(--color-sidebar-active-text)]",
+      "sidebar-hover h-10 justify-start gap-3 rounded-xl px-2 text-xs font-bold uppercase",
+      active && "sidebar-selected",
       collapsed && "mx-auto w-[58px] justify-center px-0",
     );
 
@@ -89,7 +89,8 @@ export function AppShell({ auth, config, route, theme, onThemeChange, onNavigate
                           variant="ghost"
                           className={cn(
                             "h-9 justify-start rounded-xl px-2 text-xs font-semibold text-[var(--color-sidebar-text)] hover:bg-[var(--color-sidebar-active)] hover:text-[var(--color-sidebar-active-text)]",
-                            catalogListRoute(route) === child.route && "bg-[var(--color-sidebar-active)] text-[var(--color-sidebar-active-text)]",
+                            "sidebar-hover",
+                            catalogListRoute(route) === child.route && "sidebar-selected",
                           )}
                           onClick={() => onNavigate(child.route)}
                         >
@@ -130,7 +131,7 @@ export function AppShell({ auth, config, route, theme, onThemeChange, onNavigate
                 <span className="min-w-0 truncate">{auth.user.email}</span>
               </div>
 
-              <button type="button" className="flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-xs text-muted-foreground hover:bg-[var(--color-sidebar-active)]">
+              <button type="button" className="surface-hover flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-xs text-muted-foreground">
                 <SettingsIcon className="size-4" />
                 Conta pessoal
               </button>
@@ -156,11 +157,11 @@ export function AppShell({ auth, config, route, theme, onThemeChange, onNavigate
 
               <div className="my-1 border-t border-[var(--color-border)]" />
 
-              <button type="button" className="flex h-9 w-full items-center justify-between rounded-lg px-2 text-left text-xs font-semibold text-foreground hover:bg-[var(--color-sidebar-active)]">
+              <button type="button" className="surface-hover flex h-9 w-full items-center justify-between rounded-lg px-2 text-left text-xs font-semibold text-foreground">
                 <span>Limites de uso restantes</span>
                 <ChevronDownIcon className="-rotate-90 size-4 text-muted-foreground" />
               </button>
-              <button type="button" className="flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-xs font-semibold text-foreground hover:bg-[var(--color-sidebar-active)]" onClick={onLogout}>
+              <button type="button" className="surface-hover flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-xs font-semibold text-foreground" onClick={onLogout}>
                 <LogoutIcon className="size-4" />
                 Sair
               </button>

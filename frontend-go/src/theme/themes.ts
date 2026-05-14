@@ -31,6 +31,10 @@ export const themes: Record<ThemeName, AppTheme> = {
       "app-sidebar-active-text": "#172033",
       "app-input": "#ffffff",
       "app-table-head": "#f8fafc",
+      "app-hover": "#eef2f7",
+      "app-hover-text": "#172033",
+      "app-selected": "#e4e9ef",
+      "app-selected-text": "#172033",
       "shadow-soft": "0 12px 30px rgba(30, 39, 52, 0.05)",
     },
   },
@@ -56,6 +60,10 @@ export const themes: Record<ThemeName, AppTheme> = {
       "app-sidebar-active-text": "#ffffff",
       "app-input": "#141414",
       "app-table-head": "#202020",
+      "app-hover": "#252525",
+      "app-hover-text": "#ffffff",
+      "app-selected": "#303642",
+      "app-selected-text": "#ffffff",
       "shadow-soft": "0 16px 36px rgba(0, 0, 0, 0.28)",
     },
   },
@@ -96,4 +104,8 @@ export function applyTheme(theme: ThemeName) {
   document.documentElement.style.setProperty("--color-sidebar-active-text", selected.tokens["app-sidebar-active-text"]);
   document.documentElement.style.setProperty("--color-input", selected.tokens["app-input"]);
   document.documentElement.style.setProperty("--color-table-head", selected.tokens["app-table-head"]);
+  document.documentElement.style.setProperty("--color-hover", selected.tokens["app-hover"]);
+  document.documentElement.style.setProperty("--color-hover-text", selected.tokens["app-hover-text"]);
+  document.documentElement.style.setProperty("--color-selected", selected.tokens["app-selected"]);
+  document.documentElement.style.setProperty("--color-selected-text", selected.tokens["app-selected-text"]);
 }

@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
 import db from "../../../database";
 import { cacheService } from '../../../utils/cacheService';
-import {
-  asyncHandler,
-  ValidationError,
-  NotFoundError,
-  BusinessError,
-  ConflictError,
-  validateRequired,
-  handleDatabaseError
-} from "../../../utils/errorHandler";
+
+function isBlank(value: unknown): boolean {
+  return typeof value !== "string" || value.trim().length === 0;
+}
+
+function hasRequiredSchoolFields(body: Record<string, unknown>): boolean {
+  return !isBlank(body.nome) && !isBlank(body.codigo) && !isBlank(body.municipio);
+}
 
 export async function listarEscolas(req: Request, res: Response) {
   try {
@@ -58,7 +57,7 @@ export async function listarEscolas(req: Request, res: Response) {
   }
 }
 
-export async function buscarEscola(req, res) {
+export async function buscarEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
@@ -107,7 +106,7 @@ export async function buscarEscola(req, res) {
   }
 }
 
-export async function criarEscola(req, res) {
+export async function criarEscola(req: Request, res: Response) {
   try {
     const {
       nome,
@@ -122,6 +121,13 @@ export async function criarEscola(req, res) {
       ativo = true
     } = req.body;
 
+    if (!hasRequiredSchoolFields(req.body)) {
+      return res.status(400).json({
+        success: false,
+        message: "Campos obrigatorios ausentes"
+      });
+    }
+
     const result = await db.query(`
       INSERT INTO escolas (
         nome, codigo, endereco, municipio, endereco_maps,
@@ -131,12 +137,12 @@ export async function criarEscola(req, res) {
       RETURNING *
     `, [nome, codigo, endereco, municipio, endereco_maps, telefone, email, nome_gestor, administracao, ativo]);
 
+    await cacheService.invalidateEntity('escolas');
     res.json({
       success: true,
       message: "Escola criada com sucesso",
       data: result.rows[0]
     });
-    cacheService.invalidateEntity('escolas');
   } catch (error) {
     console.error("❌ Erro ao criar escola:", error);
     res.status(500).json({
@@ -147,7 +153,7 @@ export async function criarEscola(req, res) {
   }
 }
 
-export async function editarEscola(req, res) {
+export async function editarEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const {
@@ -162,6 +168,13 @@ export async function editarEscola(req, res) {
       administracao,
       ativo
     } = req.body;
+
+    if (!hasRequiredSchoolFields(req.body)) {
+      return res.status(400).json({
+        success: false,
+        message: "Campos obrigatorios ausentes"
+      });
+    }
 
     const result = await db.query(`
       UPDATE escolas SET
@@ -187,12 +200,12 @@ export async function editarEscola(req, res) {
       });
     }
 
+    await cacheService.invalidateEntity('escolas', Number(id));
     res.json({
       success: true,
       message: "Escola atualizada com sucesso",
       data: result.rows[0]
     });
-    cacheService.invalidateEntity('escolas', Number(id));
   } catch (error) {
     console.error("❌ Erro ao editar escola:", error);
     res.status(500).json({
@@ -203,12 +216,15 @@ export async function editarEscola(req, res) {
   }
 }
 
-export async function removerEscola(req, res) {
+export async function removerEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
     const result = await db.query(`
-      DELETE FROM escolas WHERE id = $1 RETURNING *
+      UPDATE escolas
+      SET ativo = false, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -218,12 +234,12 @@ export async function removerEscola(req, res) {
       });
     }
 
+    await cacheService.invalidateEntity('escolas', Number(id));
     res.json({
       success: true,
       message: "Escola removida com sucesso",
       data: result.rows[0]
     });
-    cacheService.invalidateEntity('escolas', Number(id));
   } catch (error) {
     console.error("❌ Erro ao remover escola:", error);
     res.status(500).json({

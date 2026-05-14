@@ -23,6 +23,42 @@ const STATUS_COMPRA = {
   cancelado: { label: 'Cancelado', color: 'error' }
 } as const;
 
+export interface ComprasCursorResponseInput<T> {
+  items: T[];
+  pageSize: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+function encodeComprasCursor(offset: number): string {
+  return Buffer.from(JSON.stringify({ offset })).toString("base64url");
+}
+
+function decodeComprasCursor(cursor: unknown): number {
+  if (typeof cursor !== "string" || cursor.trim() === "") return 0;
+  try {
+    const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    const offset = Number(decoded?.offset);
+    return Number.isFinite(offset) && offset >= 0 ? offset : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function buildComprasCursorResponse<T>({
+  items,
+  pageSize,
+  offset,
+  hasMore,
+}: ComprasCursorResponseInput<T>) {
+  return {
+    page_size: pageSize,
+    next_cursor: hasMore ? encodeComprasCursor(offset + pageSize) : null,
+    has_more: hasMore,
+    items,
+  };
+}
+
 function publicarCompraAlterada(
   action: string,
   pedidoId: number | string,
@@ -58,7 +94,12 @@ async function buscarPeriodoPedidoEditavel(client: any, pedidoId: number | strin
 
 export async function listarCompras(req: Request, res: Response) {
   try {
-    const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
+    const { status, contrato_id, escola_id, data_inicio, data_fim } = req.query;
+    const pageSize = Number(req.query.page_size || req.query.limit || 50);
+    const pageNumber = Number(req.query.page || 1);
+    const offset = req.query.cursor
+      ? decodeComprasCursor(req.query.cursor)
+      : Math.max(0, (pageNumber - 1) * pageSize);
     const periodo = await obterPeriodoContexto(req.user?.id);
 
     let whereClause = '1=1';
@@ -101,12 +142,11 @@ export async function listarCompras(req: Request, res: Response) {
       params.push(data_fim);
     }
 
-    const offset = (Number(page) - 1) * Number(limit);
     paramCount++;
     const limitParam = `$${paramCount}`;
     paramCount++;
     const offsetParam = `$${paramCount}`;
-    params.push(Number(limit), offset);
+    params.push(pageSize + 1, offset);
 
     const pedidosResult = await db.query(`
       SELECT
@@ -130,20 +170,15 @@ export async function listarCompras(req: Request, res: Response) {
       LIMIT ${limitParam} OFFSET ${offsetParam}
     `, params);
 
-    const totalResult = await db.query(`
-      SELECT COUNT(*) as total
-      FROM pedidos p
-      WHERE ${whereClause}
-    `, params.slice(0, -2));
+    const items = pedidosResult.rows.slice(0, pageSize);
+    const hasMore = pedidosResult.rows.length > pageSize;
 
-    res.json({
-      success: true,
-      data: pedidosResult.rows,
-      total: Number(totalResult.rows[0].total),
-      page: Number(page),
-      limit: Number(limit),
-      totalPages: Math.ceil(Number(totalResult.rows[0].total) / Number(limit))
-    });
+    res.json(buildComprasCursorResponse({
+      items,
+      pageSize,
+      offset,
+      hasMore,
+    }));
 
   } catch (error: any) {
     console.error('Erro ao listar compras:', error);

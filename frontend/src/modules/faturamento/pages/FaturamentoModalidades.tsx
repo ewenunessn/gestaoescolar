@@ -46,7 +46,14 @@ import LoadingScreen from "../../../components/LoadingScreen";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import pedidosService from "../../../services/pedidos";
 import { modalidadeService } from "../../../services/modalidades";
-import { criarFaturamento, atualizarFaturamento, ItemFaturamento as ItemFaturamentoAPI, listarFaturamentosPedido } from "../../../services/faturamentos";
+import {
+  criarFaturamento,
+  atualizarFaturamento,
+  ItemFaturamento as ItemFaturamentoAPI,
+  listarFaturamentosPedido,
+  previewAlocacaoAutomatica,
+  ResultadoAlocacaoAutomatica,
+} from "../../../services/faturamentos";
 import { PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda } from "../../../utils/dateUtils";
 import { usePeriodoOperacional } from "../../../hooks/usePeriodoOperacional";
@@ -98,6 +105,9 @@ export default function FaturamentoModalidades() {
   const [etapaAutomatico, setEtapaAutomatico] = useState<1 | 2>(1);
   const [itensAutomaticoSelecionados, setItensAutomaticoSelecionados] = useState<number[]>([]);
   const [modalidadesAutomaticoSelecionadas, setModalidadesAutomaticoSelecionadas] = useState<number[]>([]);
+  const [alocacaoAutomaticaSnapshot, setAlocacaoAutomaticaSnapshot] = useState<ResultadoAlocacaoAutomatica['snapshot'] | null>(null);
+  const [calculandoAlocacao, setCalculandoAlocacao] = useState(false);
+  const [previewAutomatico, setPreviewAutomatico] = useState<ResultadoAlocacaoAutomatica | null>(null);
 
   useEffect(() => {
     carregarDados();
@@ -377,7 +387,100 @@ export default function FaturamentoModalidades() {
     setEtapaAutomatico(1);
   };
 
-  const confirmarAlocamentoAutomatico = () => {
+  const prepararItensParaEnvio = (): ItemFaturamentoAPI[] => {
+    if (!pedido) return [];
+
+    const itensParaEnviar: ItemFaturamentoAPI[] = [];
+
+    faturamentos.forEach(fat => {
+      fat.itens.forEach(item => {
+        const quantidadesPorItem = item.pedido_item_ids.map(itemId => {
+          const pedidoItem = pedido.itens.find(pi => pi.id === itemId);
+          return {
+            id: itemId,
+            quantidade: pedidoItem ? Number(pedidoItem.quantidade) : 0
+          };
+        });
+
+        const quantidadeTotal = quantidadesPorItem.reduce((sum, qItem) => sum + qItem.quantidade, 0);
+        let quantidadeRestante = Number(item.quantidade_alocada) || 0;
+
+        quantidadesPorItem.forEach((qItem, index) => {
+          const quantidadeParaEsteItem = index === quantidadesPorItem.length - 1
+            ? quantidadeRestante
+            : Number(item.quantidade_alocada) * (quantidadeTotal > 0 ? qItem.quantidade / quantidadeTotal : 0);
+
+          quantidadeRestante -= quantidadeParaEsteItem;
+
+          if (quantidadeParaEsteItem > 0) {
+            itensParaEnviar.push({
+              pedido_item_id: qItem.id,
+              modalidade_id: fat.modalidade_id,
+              quantidade_alocada: quantidadeParaEsteItem,
+              preco_unitario: item.preco_unitario
+            });
+          }
+        });
+      });
+    });
+
+    return itensParaEnviar;
+  };
+
+  const montarPayloadPreviewAlocacao = () => {
+    if (!pedido) return null;
+
+    return {
+      pedido_id: pedido.id,
+      pedido_item_ids: itensAutomaticoSelecionados,
+      modalidade_ids: modalidadesAutomaticoSelecionadas,
+      faturamento_id: faturamentoId ? Number(faturamentoId) : undefined,
+      alocacoes_atuais: prepararItensParaEnvio().map(item => ({
+        pedido_item_id: item.pedido_item_id,
+        quantidade_alocada: item.quantidade_alocada
+      }))
+    };
+  };
+
+  useEffect(() => {
+    if (
+      !dialogAutomaticoAberto ||
+      etapaAutomatico !== 2 ||
+      itensAutomaticoSelecionados.length === 0 ||
+      modalidadesAutomaticoSelecionadas.length === 0
+    ) {
+      setPreviewAutomatico(null);
+      return;
+    }
+
+    const payload = montarPayloadPreviewAlocacao();
+    if (!payload) return;
+
+    let ativo = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const resultado = await previewAlocacaoAutomatica(payload);
+        if (ativo) setPreviewAutomatico(resultado);
+      } catch (error) {
+        if (ativo) setPreviewAutomatico(null);
+      }
+    }, 250);
+
+    return () => {
+      ativo = false;
+      window.clearTimeout(timer);
+    };
+  }, [
+    dialogAutomaticoAberto,
+    etapaAutomatico,
+    itensAutomaticoSelecionados,
+    modalidadesAutomaticoSelecionadas,
+    faturamentos,
+    pedido,
+    faturamentoId
+  ]);
+
+  const confirmarAlocamentoAutomatico = async () => {
     if (modalidadesAutomaticoSelecionadas.length === 0) {
       setErro('Selecione pelo menos uma modalidade');
       return;
@@ -385,121 +488,58 @@ export default function FaturamentoModalidades() {
 
     if (!pedido) return;
 
+    try {
+      setCalculandoAlocacao(true);
+      setErro('');
 
-    // Calcular soma total dos repasses das modalidades selecionadas
-    const modalidadesSelecionadasData = modalidades.filter(m => 
-      modalidadesAutomaticoSelecionadas.includes(m.id)
-    );
-    
-    
-    const somaRepasses = modalidadesSelecionadasData.reduce((sum, m) => sum + Number(m.valor_repasse), 0);
+      const payload = montarPayloadPreviewAlocacao();
+      if (!payload) return;
+      const resultado = previewAutomatico || await previewAlocacaoAutomatica(payload);
 
-    if (somaRepasses === 0) {
-      setErro('A soma dos repasses não pode ser zero');
-      return;
-    }
+      const novosFaturamentos = [...faturamentos];
 
-    const novosFaturamentos = [...faturamentos];
+      resultado.itens.forEach(itemCalculado => {
+        const faturamentoIndex = novosFaturamentos.findIndex(f => f.modalidade_id === itemCalculado.modalidade_id);
+        if (faturamentoIndex === -1 || itemCalculado.quantidade_alocada <= 0) return;
 
-    // Agrupar itens selecionados por contrato_produto_id
-    const itensAgrupados = new Map<number, {
-      contrato_produto_id: number;
-      produto_nome: string;
-      unidade: string;
-      preco_unitario: number;
-      pedido_item_ids: number[];
-      quantidade_total: number;
-      quantidade_disponivel: number;
-    }>();
+        const itemExistenteIndex = novosFaturamentos[faturamentoIndex].itens.findIndex(
+          item => item.contrato_produto_id === itemCalculado.contrato_produto_id
+        );
 
-    itensAutomaticoSelecionados.forEach(itemId => {
-      const pedidoItem = pedido.itens.find(i => i.id === itemId);
-      if (!pedidoItem) return;
-
-      const contratoId = pedidoItem.contrato_produto_id;
-      
-      if (!itensAgrupados.has(contratoId)) {
-        itensAgrupados.set(contratoId, {
-          contrato_produto_id: contratoId,
-          produto_nome: pedidoItem.produto_nome || '',
-          unidade: pedidoItem.unidade || 'UN',
-          preco_unitario: Number(pedidoItem.preco_unitario),
-          pedido_item_ids: [],
-          quantidade_total: 0,
-          quantidade_disponivel: 0
-        });
-      }
-
-      const grupo = itensAgrupados.get(contratoId)!;
-      grupo.pedido_item_ids.push(itemId);
-      grupo.quantidade_total += Number(pedidoItem.quantidade);
-      
-      const quantidadeDisponivel = Number(pedidoItem.quantidade) - calcularTotalAlocadoPorPedidoItem(itemId);
-      grupo.quantidade_disponivel += quantidadeDisponivel;
-    });
-
-    // Para cada grupo de itens (por contrato_produto_id)
-    itensAgrupados.forEach((grupo) => {
-      
-      if (grupo.quantidade_disponivel <= 0) {
-        return;
-      }
-
-      // Distribuir proporcionalmente entre as modalidades
-      let quantidadeRestante = grupo.quantidade_disponivel;
-      
-      modalidadesSelecionadasData.forEach((modalidade, index) => {
-        const faturamentoIndex = novosFaturamentos.findIndex(f => f.modalidade_id === modalidade.id);
-        if (faturamentoIndex === -1) {
-          return;
-        }
-
-        let quantidadeModalidade;
-        
-        // Para a última modalidade, alocar todo o restante
-        if (index === modalidadesSelecionadasData.length - 1) {
-          quantidadeModalidade = quantidadeRestante;
+        if (itemExistenteIndex !== -1) {
+          const itemExistente = novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex];
+          novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex] = {
+            ...itemExistente,
+            quantidade_alocada: Number(itemExistente.quantidade_alocada) + Number(itemCalculado.quantidade_alocada),
+            quantidade_pedido: Math.max(Number(itemExistente.quantidade_pedido), Number(itemCalculado.quantidade_pedido)),
+            pedido_item_ids: [...new Set([...itemExistente.pedido_item_ids, ...itemCalculado.pedido_item_ids])]
+          };
         } else {
-          // Para as outras, calcular proporção e arredondar para baixo
-          const proporcao = Number(modalidade.valor_repasse) / somaRepasses;
-          quantidadeModalidade = Math.floor(grupo.quantidade_disponivel * proporcao);
-          quantidadeRestante -= quantidadeModalidade;
-        }
-
-
-        if (quantidadeModalidade > 0) {
-          // Verificar se o item já existe (agrupar por contrato_produto_id)
-          const itemExistenteIndex = novosFaturamentos[faturamentoIndex].itens.findIndex(
-            i => i.contrato_produto_id === grupo.contrato_produto_id
-          );
-
-          if (itemExistenteIndex !== -1) {
-            const itemExistente = novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex];
-            novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex] = {
-              ...itemExistente,
-              quantidade_alocada: Number(itemExistente.quantidade_alocada) + Number(quantidadeModalidade),
-              quantidade_pedido: Number(itemExistente.quantidade_pedido) + grupo.quantidade_total,
-              pedido_item_ids: [...new Set([...itemExistente.pedido_item_ids, ...grupo.pedido_item_ids])]
-            };
-          } else {
-            novosFaturamentos[faturamentoIndex].itens.push({
-              pedido_item_ids: grupo.pedido_item_ids,
-              contrato_produto_id: grupo.contrato_produto_id,
-              produto_nome: grupo.produto_nome,
-              unidade: grupo.unidade,
-              quantidade_pedido: grupo.quantidade_total,
-              quantidade_alocada: Number(quantidadeModalidade),
-              preco_unitario: grupo.preco_unitario
-            });
-          }
+          novosFaturamentos[faturamentoIndex].itens.push({
+            pedido_item_ids: itemCalculado.pedido_item_ids,
+            contrato_produto_id: itemCalculado.contrato_produto_id,
+            produto_nome: itemCalculado.produto_nome,
+            unidade: itemCalculado.unidade,
+            quantidade_pedido: Number(itemCalculado.quantidade_pedido),
+            quantidade_alocada: Number(itemCalculado.quantidade_alocada),
+            preco_unitario: Number(itemCalculado.preco_unitario)
+          });
         }
       });
-    });
 
-    setFaturamentos(novosFaturamentos);
-    setDialogAutomaticoAberto(false);
-    setSucesso('Itens alocados automaticamente com sucesso!');
-    setTimeout(() => setSucesso(''), 3000);
+      setFaturamentos(novosFaturamentos);
+      setAlocacaoAutomaticaSnapshot(resultado.snapshot);
+      setDialogAutomaticoAberto(false);
+      setSucesso('Itens alocados automaticamente com sucesso!');
+      setTimeout(() => setSucesso(''), 3000);
+      return;
+    } catch (error: any) {
+      console.error('Erro ao calcular alocacao automatica:', error);
+      setErro(error.response?.data?.message || 'Erro ao calcular alocacao automatica');
+      return;
+    } finally {
+      setCalculandoAlocacao(false);
+    }
   };
 
   const toggleItemAutomatico = (itemId: number) => {
@@ -606,7 +646,8 @@ export default function FaturamentoModalidades() {
       });
 
       await atualizarFaturamento(Number(faturamentoId), {
-        itens: itensParaEnviar
+        itens: itensParaEnviar,
+        alocacao_agricultura_snapshot: alocacaoAutomaticaSnapshot
       });
       setSucesso('Faturamento salvo com sucesso!');
       setItemEditando(null); // Limpar item em edição
@@ -1274,7 +1315,7 @@ export default function FaturamentoModalidades() {
             // Etapa 2: Selecionar Modalidades
             <>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
-                Selecione as modalidades para distribuir os itens proporcionalmente ao repasse:
+                Selecione as modalidades para calcular a alocacao automatica:
               </Typography>
               <Grid container spacing={2}>
                 {modalidades.map((modalidade) => (
@@ -1310,7 +1351,25 @@ export default function FaturamentoModalidades() {
               </Grid>
               {modalidadesAutomaticoSelecionadas.length > 0 && (
                 <Alert severity="info" sx={{ mt: 2 }}>
-                  Os itens serão distribuídos proporcionalmente ao valor do repasse de cada modalidade selecionada.
+                  O backend aplicara a regra configurada de agricultura familiar e a proporcao de repasse das modalidades selecionadas.
+                </Alert>
+              )}
+              {previewAutomatico && (
+                <Alert
+                  severity={previewAutomatico.resumo.meta_itens_agricultura_atingida ? "success" : "error"}
+                  sx={{ mt: 2 }}
+                >
+                  Agricultura familiar: {previewAutomatico.resumo.percentual_itens_agricultura.toFixed(2)}% dos itens selecionados.
+                  Meta: {previewAutomatico.regra.percentual_agricultura.toFixed(2)}%.
+                  {previewAutomatico.resumo.meta_itens_agricultura_atingida
+                    ? ` Reserva minima atingida (${formatarMoeda(previewAutomatico.resumo.valor_itens_agricultura)} de ${formatarMoeda(previewAutomatico.resumo.valor_total_itens)}).`
+                    : ` Faltam ${formatarMoeda(previewAutomatico.resumo.valor_faltante_itens_agricultura)} em itens da agricultura para atingir a meta.`}
+                </Alert>
+              )}
+              {previewAutomatico && previewAutomatico.resumo.valor_faltante_reserva > 0 && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  As modalidades base FNDE selecionadas nao comportam toda a reserva global.
+                  Faltam {formatarMoeda(previewAutomatico.resumo.valor_faltante_reserva)} de capacidade nas bases configuradas.
                 </Alert>
               )}
             </>
@@ -1325,8 +1384,17 @@ export default function FaturamentoModalidades() {
           ) : (
             <>
               <Button onClick={voltarParaEtapa1}>Voltar</Button>
-              <Button onClick={confirmarAlocamentoAutomatico} variant="contained" disabled={periodoBloqueado}>
-                Confirmar Alocamento
+              <Button
+                onClick={confirmarAlocamentoAutomatico}
+                variant="contained"
+                disabled={
+                  periodoBloqueado ||
+                  calculandoAlocacao ||
+                  !previewAutomatico ||
+                  !previewAutomatico.resumo.meta_itens_agricultura_atingida
+                }
+              >
+                {calculandoAlocacao ? 'Calculando...' : 'Confirmar Alocamento'}
               </Button>
             </>
           )}

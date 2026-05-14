@@ -5,6 +5,7 @@ import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { Assessment as AssessmentIcon, Search as SearchIcon } from "@mui/icons-material";
 import {
+  alpha,
   Alert,
   Box,
   Button,
@@ -20,16 +21,13 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from "../../../services/escolas";
 import { modalidadeService } from "../../../services/modalidades";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import CompactPagination from "../../../components/CompactPagination";
 
 // ── Design tokens ──────────────────────────────────────────────
-const GREEN = "#22c55e";
-const NAVY = "#0f172a";
-
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 interface Escola {
@@ -96,6 +94,7 @@ InputCell.displayName = 'InputCell';
 
 const GerenciarAlunosModalidades: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const queryClient = useQueryClient();
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
@@ -243,6 +242,16 @@ const GerenciarAlunosModalidades: React.FC = () => {
     setPage(0);
   }, []);
 
+  const isDark = theme.palette.mode === 'dark';
+  const tableBorderColor = alpha(theme.palette.divider, isDark ? 0.8 : 1);
+  const tableHeaderBg = isDark
+    ? alpha(theme.palette.common.white, 0.04)
+    : theme.palette.grey[50];
+  const tableHoverBg = alpha(theme.palette.primary.main, isDark ? 0.12 : 0.06);
+  const inputBg = isDark
+    ? alpha(theme.palette.common.white, 0.06)
+    : alpha(theme.palette.common.black, 0.02);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
@@ -252,11 +261,21 @@ const GerenciarAlunosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - var(--app-top-offset, 0px))',
+        bgcolor: 'background.default',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
         <PageHeader
           title="Gerenciar Alunos por Modalidade"
           subtitle="Gerencie a quantidade de alunos por modalidade em cada escola"
+          onBack={() => navigate('/modalidades')}
+          backLabel="Voltar para modalidades"
           breadcrumbs={[
             { label: 'Dashboard', path: '/dashboard' },
             { label: 'Escolas', path: '/escolas' },
@@ -270,7 +289,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
               onClick={() => navigate('/modalidades/relatorio-alunos')}
               sx={{ borderRadius: 1, textTransform: 'none' }}
             >
-              Relatorio
+              Relatório
             </Button>
           }
         />
@@ -281,8 +300,9 @@ const GerenciarAlunosModalidades: React.FC = () => {
           </Alert>
         )}
 
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Busca */}
-        <Box sx={{ mb: 3 }}>
+        <Box>
           <TextField
             fullWidth
             placeholder="Buscar escola..."
@@ -303,16 +323,56 @@ const GerenciarAlunosModalidades: React.FC = () => {
         </Box>
 
         {/* Table card */}
-        <Card sx={{ borderRadius: '6px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <Table>
+        <Card
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '6px',
+            overflow: 'hidden',
+            border: `1px solid ${tableBorderColor}`,
+            bgcolor: 'background.paper',
+            boxShadow: 'none',
+          }}
+        >
+          <TableContainer
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'auto',
+              bgcolor: 'background.paper',
+              '& .MuiTableCell-root': {
+                borderBottomColor: tableBorderColor,
+              },
+              '& .MuiTableCell-stickyHeader': {
+                bgcolor: tableHeaderBg,
+              },
+              '& .MuiTableRow-hover:hover': {
+                bgcolor: tableHoverBg,
+              },
+              '& .MuiTableRow-hover:hover .school-name-cell': {
+                bgcolor: tableHoverBg,
+              },
+              '& .MuiOutlinedInput-root': {
+                bgcolor: inputBg,
+                '& fieldset': {
+                  borderColor: tableBorderColor,
+                },
+                '&:hover fieldset': {
+                  borderColor: alpha(theme.palette.text.primary, isDark ? 0.4 : 0.24),
+                },
+              },
+            }}
+          >
+            <Table stickyHeader sx={{ minWidth: Math.max(920, 220 + modalidades.length * 150) }}>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                  <TableCell sx={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 3, bgcolor: '#f8fafc', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>
+                <TableRow sx={{ bgcolor: tableHeaderBg }}>
+                  <TableCell sx={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 3, bgcolor: tableHeaderBg, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: 'text.secondary' }}>
                     Escola
                   </TableCell>
                   {modalidades.map((modalidade) => (
-                    <TableCell key={modalidade.id} align="center" sx={{ minWidth: 150, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>
+                    <TableCell key={modalidade.id} align="center" sx={{ minWidth: 150, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: 'text.secondary' }}>
                       {modalidade.nome}
                     </TableCell>
                   ))}
@@ -321,7 +381,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
               <TableBody>
                 {escolasPaginadas.map((escola) => (
                   <TableRow key={escola.id} hover>
-                    <TableCell sx={{ fontWeight: 500, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                    <TableCell className="school-name-cell" sx={{ fontWeight: 500, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
                       {escola.nome}
                     </TableCell>
                     {modalidades.map((modalidade) => (
@@ -349,9 +409,10 @@ const GerenciarAlunosModalidades: React.FC = () => {
           />
         </Card>
 
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', flexShrink: 0 }}>
           * Valores 0 ou vazios não são salvos no banco de dados
         </Typography>
+        </Box>
       </PageContainer>
     </Box>
   );

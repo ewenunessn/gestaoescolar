@@ -37,6 +37,10 @@
   --app-sidebar-active-text: #ffffff;
   --app-input: #141414;
   --app-table-head: #202020;
+  --app-hover: #252525;
+  --app-hover-text: #ffffff;
+  --app-selected: #303642;
+  --app-selected-text: #ffffff;
   --color-bg: var(--app-bg);
   --color-surface: var(--app-surface);
   --color-surface-soft: var(--app-surface-soft);
@@ -55,6 +59,10 @@
   --color-sidebar-active-text: var(--app-sidebar-active-text);
   --color-input: var(--app-input);
   --color-table-head: var(--app-table-head);
+  --color-hover: var(--app-hover);
+  --color-hover-text: var(--app-hover-text);
+  --color-selected: var(--app-selected);
+  --color-selected-text: var(--app-selected-text);
   --shadow-soft: 0 16px 36px rgba(0, 0, 0, 0.28);
   color: var(--color-text);
   background: var(--color-bg);
@@ -107,6 +115,36 @@ button.secondary {
 
 button:not([class]):hover {
   filter: brightness(0.96);
+}
+
+.surface-hover {
+  color: inherit;
+}
+
+.surface-hover:hover,
+.surface-hover:focus-visible {
+  background: var(--color-hover);
+  color: var(--color-hover-text);
+}
+
+.surface-selected {
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+}
+
+.sidebar-hover {
+  color: var(--color-sidebar-text);
+}
+
+.sidebar-hover:hover,
+.sidebar-hover:focus-visible {
+  background: var(--color-hover);
+  color: var(--color-hover-text);
+}
+
+.sidebar-selected {
+  background: var(--color-selected);
+  color: var(--color-selected-text);
 }
 
 svg {

@@ -93,7 +93,7 @@ const getStatusIcon = (status: string) => {
     statusLower === 'ativo' ||
     statusLower.includes('aprovado') ||
     statusLower.includes('concluido') ||
-    statusLower.includes('concluÃƒÂ­do') ||
+    statusLower.includes('concluído') ||
     statusLower.includes('finalizado') ||
     statusLower.includes('entregue') ||
     statusLower.includes('pago') ||

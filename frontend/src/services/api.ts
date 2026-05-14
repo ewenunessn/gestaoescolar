@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { apiConfig, apiLog, apiError, checkApiHealth } from "../config/api";
+import { adaptApiEnvelopeForLegacyClients } from "./apiEnvelope";
 
 // Usar a nova configuração de API
 export const checkBackendHealth = async (): Promise<boolean> => {
@@ -108,6 +109,7 @@ api.interceptors.response.use(
         }
       );
     }
+    response.data = adaptApiEnvelopeForLegacyClients(response.data);
     return response;
   },
   async (error: AxiosError) => {

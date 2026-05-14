@@ -6,6 +6,12 @@ import {
   estornarConsumoSaldoFaturamentoItem,
   registrarConsumoSaldoFaturamentoItem,
 } from '../../contratos/services/contratoSaldoService';
+import {
+  calcularAlocacaoAutomatica,
+  ensureAlocacaoAgriculturaSchema,
+  obterConfiguracaoAlocacaoAgricultura,
+  salvarConfiguracaoAlocacaoAgricultura,
+} from '../services/alocacaoAgriculturaService';
 
 interface ItemFaturamento {
   pedido_item_id: number;
@@ -18,6 +24,7 @@ interface FaturamentoInput {
   pedido_id: number;
   observacoes?: string;
   itens: ItemFaturamento[];
+  alocacao_agricultura_snapshot?: any;
 }
 
 async function atualizarStatusFaturamentoPorItens(client: any, faturamentoId: number) {
@@ -132,10 +139,10 @@ const detalhesFaturamentoQuery = `
     fi.pedido_item_id,
     fi.modalidade_id,
     m.nome as modalidade_nome,
-    m.categoria_financeira_id,
-    cfm.nome as categoria_financeira_nome,
-    COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as modalidade_codigo_financeiro,
-    COALESCE(cfm.valor_repasse, m.valor_repasse) as modalidade_repasse,
+    categorias_financeiras.ids[1] as categoria_financeira_id,
+    categorias_financeiras.nomes as categoria_financeira_nome,
+    categorias_financeiras.codigos as modalidade_codigo_financeiro,
+    COALESCE(categorias_financeiras.valor_repasse, 0) as modalidade_repasse,
     fi.quantidade_alocada,
     fi.preco_unitario,
     COALESCE(fi.valor_total, fi.quantidade_alocada * fi.preco_unitario) as valor_total,
@@ -149,13 +156,25 @@ const detalhesFaturamentoQuery = `
     c.numero as contrato_numero,
     f.id as fornecedor_id,
     f.nome as fornecedor_nome,
-    f.cnpj as fornecedor_cnpj
+    f.cnpj as fornecedor_cnpj,
+    COALESCE(f.tipo_fornecedor, 'empresa') as fornecedor_tipo
   FROM faturamentos_pedidos fp
   JOIN pedidos p ON fp.pedido_id = p.id
   LEFT JOIN usuarios u ON fp.usuario_id = u.id
   LEFT JOIN faturamentos_itens fi ON fp.id = fi.faturamento_pedido_id
   LEFT JOIN modalidades m ON fi.modalidade_id = m.id
-  LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+  LEFT JOIN LATERAL (
+    SELECT
+      ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+      STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+      STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos,
+      SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse
+    FROM modalidade_categorias_financeiras mcf
+    JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+    WHERE mcf.modalidade_id = m.id
+      AND mcf.ativo = true
+      AND cfmv.ativo = true
+  ) categorias_financeiras ON true
   LEFT JOIN pedido_itens pi ON fi.pedido_item_id = pi.id
   LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
   LEFT JOIN produtos prod ON cp.produto_id = prod.id
@@ -164,6 +183,215 @@ const detalhesFaturamentoQuery = `
   LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
 `;
 
+async function buscarModalidadesParaAlocacao(client: any, modalidadeIds?: number[]) {
+  const params: any[] = [];
+  let filtro = '';
+
+  if (modalidadeIds && modalidadeIds.length > 0) {
+    params.push(modalidadeIds);
+    filtro = 'AND m.id = ANY($1::int[])';
+  }
+
+  const result = await client.query(`
+    SELECT
+      m.id,
+      m.nome,
+      COALESCE(categorias_financeiras.valor_repasse, 0) as valor_repasse,
+      categorias_financeiras.codigos as codigo_financeiro
+    FROM modalidades m
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse,
+        STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos
+      FROM modalidade_categorias_financeiras mcf
+      JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+      WHERE mcf.modalidade_id = m.id
+        AND mcf.ativo = true
+        AND cfmv.ativo = true
+    ) categorias_financeiras ON true
+    WHERE m.ativo = true
+      ${filtro}
+    ORDER BY m.nome
+  `, params);
+
+  return result.rows.map((row: any) => ({
+    id: Number(row.id),
+    nome: row.nome,
+    valor_repasse: Number(row.valor_repasse || 0),
+    codigo_financeiro: row.codigo_financeiro,
+  }));
+}
+
+async function resolverModalidadesBaseAlocacao(client: any, modalidadeBaseIds: number[]) {
+  const modalidades = await buscarModalidadesParaAlocacao(client);
+
+  if (modalidadeBaseIds.length > 0) {
+    const ids = new Set(modalidadeBaseIds.map(Number));
+    return modalidades.filter((modalidade: any) => ids.has(Number(modalidade.id)));
+  }
+
+  const porCodigoFnde = modalidades.filter((modalidade: any) =>
+    String(modalidade.codigo_financeiro || modalidade.nome || '').toUpperCase().includes('FNDE')
+  );
+  if (porCodigoFnde.length > 0) return porCodigoFnde;
+
+  const maior = modalidades.reduce((maior: any | null, modalidade: any) => {
+    if (!maior || Number(modalidade.valor_repasse || 0) > Number(maior.valor_repasse || 0)) return modalidade;
+    return maior;
+  }, null);
+
+  return maior ? [maior] : [];
+}
+
+export async function obterConfiguracaoAlocacaoAutomatica(req: Request, res: Response) {
+  try {
+    const config = await obterConfiguracaoAlocacaoAgricultura();
+    const modalidades = await buscarModalidadesParaAlocacao(db);
+    const modalidadesBase = await resolverModalidadesBaseAlocacao(db, config.modalidade_base_ids);
+
+    res.json({
+      success: true,
+      data: {
+        config,
+        modalidades_base_resolvidas: modalidadesBase,
+        modalidades,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao obter configuracao de alocacao automatica:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erro ao obter configuracao de alocacao automatica',
+    });
+  }
+}
+
+export async function atualizarConfiguracaoAlocacaoAutomatica(req: Request, res: Response) {
+  try {
+    const config = await salvarConfiguracaoAlocacaoAgricultura(req.body || {});
+    const modalidadesBase = await resolverModalidadesBaseAlocacao(db, config.modalidade_base_ids);
+
+    res.json({
+      success: true,
+      data: {
+        config,
+        modalidades_base_resolvidas: modalidadesBase,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar configuracao de alocacao automatica:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erro ao atualizar configuracao de alocacao automatica',
+    });
+  }
+}
+
+export async function previewAlocacaoAutomatica(req: Request, res: Response) {
+  try {
+    const {
+      pedido_id,
+      pedido_item_ids,
+      modalidade_ids,
+      faturamento_id,
+      alocacoes_atuais = [],
+    } = req.body || {};
+
+    if (!pedido_id || !Array.isArray(pedido_item_ids) || pedido_item_ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'pedido_id e pedido_item_ids sao obrigatorios' });
+    }
+    if (!Array.isArray(modalidade_ids) || modalidade_ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'modalidade_ids e obrigatorio' });
+    }
+
+    await ensureAlocacaoAgriculturaSchema();
+
+    const alocacoesAtuaisPorItem = new Map<number, number>();
+    for (const alocacao of alocacoes_atuais) {
+      const itemId = Number(alocacao?.pedido_item_id);
+      if (!itemId) continue;
+      alocacoesAtuaisPorItem.set(
+        itemId,
+        (alocacoesAtuaisPorItem.get(itemId) || 0) + Number(alocacao?.quantidade_alocada || 0)
+      );
+    }
+
+    const itensResult = await db.query(`
+      SELECT
+        pi.id as pedido_item_id,
+        pi.contrato_produto_id,
+        prod.nome as produto_nome,
+        COALESCE(um.codigo, prod.unidade_distribuicao, 'UN') as unidade,
+        pi.quantidade as quantidade_pedido,
+        pi.preco_unitario,
+        COALESCE(f.tipo_fornecedor, 'empresa') as tipo_fornecedor,
+        COALESCE(SUM(CASE
+          WHEN fp.id IS NULL THEN 0
+          WHEN $3::int IS NOT NULL AND fp.id = $3::int THEN 0
+          ELSE fi.quantidade_alocada
+        END), 0) as ja_alocado_db
+      FROM pedido_itens pi
+      JOIN contrato_produtos cp ON cp.id = pi.contrato_produto_id
+      JOIN contratos c ON c.id = cp.contrato_id
+      JOIN fornecedores f ON f.id = c.fornecedor_id
+      JOIN produtos prod ON prod.id = cp.produto_id
+      LEFT JOIN unidades_medida um ON um.id = prod.unidade_medida_id
+      LEFT JOIN faturamentos_itens fi ON fi.pedido_item_id = pi.id
+      LEFT JOIN faturamentos_pedidos fp ON fp.id = fi.faturamento_pedido_id
+      WHERE pi.pedido_id = $1
+        AND pi.id = ANY($2::int[])
+      GROUP BY pi.id, pi.contrato_produto_id, prod.nome, um.codigo, prod.unidade_distribuicao, pi.quantidade, pi.preco_unitario, f.tipo_fornecedor
+      ORDER BY prod.nome, pi.id
+    `, [pedido_id, pedido_item_ids, faturamento_id ? Number(faturamento_id) : null]);
+
+    const itens = itensResult.rows.map((row: any) => {
+      const quantidadePedido = Number(row.quantidade_pedido || 0);
+      const jaAlocadoDb = Number(row.ja_alocado_db || 0);
+      const jaAlocadoAtual = alocacoesAtuaisPorItem.get(Number(row.pedido_item_id)) || 0;
+
+      return {
+        pedido_item_id: Number(row.pedido_item_id),
+        contrato_produto_id: Number(row.contrato_produto_id),
+        produto_nome: row.produto_nome,
+        unidade: row.unidade || 'UN',
+        quantidade_pedido: quantidadePedido,
+        quantidade_disponivel: Math.max(quantidadePedido - jaAlocadoDb - jaAlocadoAtual, 0),
+        preco_unitario: Number(row.preco_unitario || 0),
+        tipo_fornecedor: row.tipo_fornecedor || 'empresa',
+      };
+    });
+
+    const config = await obterConfiguracaoAlocacaoAgricultura();
+    const modalidades = await buscarModalidadesParaAlocacao(db, modalidade_ids.map(Number));
+    const modalidadesBase = await resolverModalidadesBaseAlocacao(db, config.modalidade_base_ids);
+    const resultado = calcularAlocacaoAutomatica({
+      config,
+      modalidadesBase,
+      modalidades,
+      itens,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        ...resultado,
+        snapshot: {
+          regra: resultado.regra,
+          modalidades_base: resultado.modalidades_base,
+          resumo: resultado.resumo,
+          gerado_em: new Date().toISOString(),
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao calcular alocacao automatica:', error);
+    res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erro ao calcular alocacao automatica',
+    });
+  }
+}
+
 // Criar faturamento
 // IMPORTANTE: Esta função NÃO altera o status do pedido
 // O status só deve ser alterado pelo módulo de recebimentos quando os itens forem recebidos
@@ -171,7 +399,7 @@ export async function criarFaturamento(req: Request, res: Response) {
   const client = await db.pool.connect();
   
   try {
-    const { pedido_id, observacoes, itens }: FaturamentoInput = req.body;
+    const { pedido_id, observacoes, itens, alocacao_agricultura_snapshot }: FaturamentoInput = req.body;
     const usuarioId = req.user?.id;
     if (!usuarioId) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
 
@@ -192,6 +420,7 @@ export async function criarFaturamento(req: Request, res: Response) {
     }
 
     await client.query('BEGIN');
+    await ensureAlocacaoAgriculturaSchema(client);
 
     // Verificar se pedido existe e capturar status inicial
     const pedido = await buscarPedidoPeriodo(client, pedido_id);
@@ -255,10 +484,10 @@ export async function criarFaturamento(req: Request, res: Response) {
 
     // Criar faturamento (cabeçalho)
     const faturamentoResult = await client.query(`
-      INSERT INTO faturamentos_pedidos (pedido_id, usuario_id, observacoes)
-      VALUES ($1, $2, $3)
+      INSERT INTO faturamentos_pedidos (pedido_id, usuario_id, observacoes, alocacao_agricultura_snapshot)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [pedido_id, usuarioId, observacoes]);
+    `, [pedido_id, usuarioId, observacoes, alocacao_agricultura_snapshot ? JSON.stringify(alocacao_agricultura_snapshot) : null]);
 
     const faturamentoId = faturamentoResult.rows[0].id;
 
@@ -418,7 +647,7 @@ export async function atualizarFaturamento(req: Request, res: Response) {
   
   try {
     const { id } = req.params;
-    const { observacoes, itens }: { observacoes?: string; itens: ItemFaturamento[] } = req.body;
+    const { observacoes, itens, alocacao_agricultura_snapshot }: { observacoes?: string; itens: ItemFaturamento[]; alocacao_agricultura_snapshot?: any } = req.body;
 
     if (!itens) {
       return res.status(400).json({
@@ -428,6 +657,7 @@ export async function atualizarFaturamento(req: Request, res: Response) {
     }
 
     await client.query('BEGIN');
+    await ensureAlocacaoAgriculturaSchema(client);
 
     const { faturamento, error: periodoError } = await validarFaturamentoEditavel(client, Number(id));
 
@@ -480,9 +710,11 @@ export async function atualizarFaturamento(req: Request, res: Response) {
 
     await client.query(`
       UPDATE faturamentos_pedidos 
-      SET observacoes = $1, updated_at = CURRENT_TIMESTAMP
+      SET observacoes = $1,
+          alocacao_agricultura_snapshot = COALESCE($3::jsonb, alocacao_agricultura_snapshot),
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
-    `, [observacoes, id]);
+    `, [observacoes, id, alocacao_agricultura_snapshot ? JSON.stringify(alocacao_agricultura_snapshot) : null]);
 
     await estornarItensConsumidosFaturamento(client, Number(id));
     await client.query('DELETE FROM faturamentos_itens WHERE faturamento_pedido_id = $1', [id]);
@@ -632,7 +864,7 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
         fi.pedido_item_id,
         fi.modalidade_id,
         m.nome as modalidade_nome,
-        COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as modalidade_codigo_financeiro,
+        categorias_financeiras.codigos as modalidade_codigo_financeiro,
         cp.contrato_id,
         c.numero as contrato_numero,
         f.id as fornecedor_id,
@@ -648,7 +880,15 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
         fi.data_consumo
       FROM faturamentos_itens fi
       JOIN modalidades m ON m.id = fi.modalidade_id
-      LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+      LEFT JOIN LATERAL (
+        SELECT
+          STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos
+        FROM modalidade_categorias_financeiras mcf
+        JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+        WHERE mcf.modalidade_id = m.id
+          AND mcf.ativo = true
+          AND cfmv.ativo = true
+      ) categorias_financeiras ON true
       JOIN pedido_itens pi ON pi.id = fi.pedido_item_id
       JOIN contrato_produtos cp ON cp.id = pi.contrato_produto_id
       JOIN contratos c ON c.id = cp.contrato_id

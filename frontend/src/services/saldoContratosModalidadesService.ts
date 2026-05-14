@@ -72,14 +72,10 @@ export interface ResumoAlunosModalidade {
 }
 
 export interface SaldoContratosModalidadesResponse {
-  success: boolean;
-  data: SaldoContratoModalidadeItem[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  page_size: number;
+  next_cursor: string | null;
+  has_more: boolean;
+  items: SaldoContratoModalidadeItem[];
   estatisticas: {
     total_itens: number;
     itens_disponiveis: number;
@@ -93,8 +89,8 @@ export interface SaldoContratosModalidadesResponse {
 }
 
 export interface SaldoContratosModalidadesFilters {
-  page?: number;
-  limit?: number;
+  cursor?: string | null;
+  page_size?: number;
   status?: 'DISPONIVEL' | 'BAIXO_ESTOQUE' | 'ESGOTADO';
   contrato_numero?: string;
   produto_nome?: string;
@@ -271,7 +267,7 @@ class SaldoContratosModalidadesService {
   async exportarCSV(filtros: SaldoContratosModalidadesFilters = {}): Promise<Blob> {
     try {
       // Buscar todos os dados sem paginação
-      const dadosCompletos = await this.listarSaldosModalidades({ ...filtros, limit: 10000 });
+      const dadosCompletos = await this.listarSaldosModalidades({ ...filtros, page_size: 10000, cursor: null });
       
       // Criar CSV
       const headers = [
@@ -293,7 +289,7 @@ class SaldoContratosModalidadesService {
       
       const csvContent = [
         headers.join(','),
-        ...dadosCompletos.data.map(item => [
+        ...dadosCompletos.items.map(item => [
           `"${item.contrato_numero}"`,
           `"${item.fornecedor_nome}"`,
           `"${item.produto_nome}"`,

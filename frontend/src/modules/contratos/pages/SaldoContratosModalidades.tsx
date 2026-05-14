@@ -5,7 +5,6 @@ import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { OperationalDataTable } from "../../../components/data-display/OperationalDataTable";
 import TableFilter, { FilterField } from "../../../components/TableFilter";
-import CompactPagination from "../../../components/CompactPagination";
 import {
   Box,
   Card,
@@ -202,8 +201,6 @@ const SaldoContratosModalidades: React.FC = () => {
   // Estados para histórico - agora usa React Query
 
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   // Estados de filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -212,10 +209,11 @@ const SaldoContratosModalidades: React.FC = () => {
   const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<HTMLElement | null>(null);
 
   // React Query hooks
-  const filtrosQuery = {
-    page: page + 1,
-    limit: rowsPerPage
-  };
+  const filtrosQuery = useMemo(() => ({
+    ...filters,
+    cursor: null,
+    page_size: 500
+  }), [filters]);
   const saldosModalidadesQuery = useSaldosModalidades(filtrosQuery);
   const saldosItensQuery = useSaldosItens(filtrosQuery);
   const responseData = saldoPorItem ? saldosItensQuery.data : saldosModalidadesQuery.data;
@@ -235,8 +233,7 @@ const SaldoContratosModalidades: React.FC = () => {
   );
   
   // Extrair dados da resposta
-  const dados = responseData?.data || [];
-  const total = responseData?.pagination?.total || 0;
+  const dados = responseData?.items || [];
   const historicoConsumo: HistoricoConsumoItem[] = historicoData?.data?.historico || [];
 
   // Definir campos de filtro
@@ -305,7 +302,6 @@ const SaldoContratosModalidades: React.FC = () => {
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
         setFilters({});
-        setPage(0);
         setLinhaSelecionada(-1);
         return;
       }
@@ -451,12 +447,12 @@ const SaldoContratosModalidades: React.FC = () => {
     try {
       // Buscar dados atualizados do servidor para este produto
       const response = await saldoContratosModalidadesService.listarSaldosModalidades({
-        page: 1,
-        limit: 100
+        cursor: null,
+        page_size: 100
       });
 
       // Filtrar apenas as modalidades deste produto específico
-      const modalidadesAtualizadas = response.data.filter(
+      const modalidadesAtualizadas = response.items.filter(
         (item: any) => item.contrato_produto_id === produto.contrato_produto_id
       );
 
@@ -946,6 +942,13 @@ const SaldoContratosModalidades: React.FC = () => {
     totalEsgotados: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length,
   }), [produtosAgrupados]);
 
+  const estatisticasResumo = useMemo(() => [
+    { label: 'Produtos', value: estatisticasSaldo.totalProdutos, color: 'text.secondary' },
+    { label: 'Disponíveis', value: estatisticasSaldo.totalDisponiveis, color: 'success.main' },
+    { label: 'Baixo estoque', value: estatisticasSaldo.totalBaixoEstoque, color: 'warning.main' },
+    { label: 'Esgotados', value: estatisticasSaldo.totalEsgotados, color: 'error.main' },
+  ], [estatisticasSaldo]);
+
   // Definir colunas do EntityListTable
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -1038,16 +1041,6 @@ const SaldoContratosModalidades: React.FC = () => {
     },
   ], [saldoPorItem]);
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0);
-  };
-
   const exportarCSV = async () => {
     try {
       const blob = await saldoContratosModalidadesService.exportarCSV(filters as SaldoContratosModalidadesFilters);
@@ -1108,7 +1101,7 @@ const SaldoContratosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - var(--app-top-offset, 0px))', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
         <PageHeader
           title={saldoPorItem ? "Saldo de Contratos por Item" : "Saldo de Contratos por Modalidade"}
@@ -1117,30 +1110,43 @@ const SaldoContratosModalidades: React.FC = () => {
             { label: 'Compras' },
             { label: 'Saldo Contratos' },
           ]}
+          action={
+            <Box
+              sx={{
+                display: 'flex',
+                gap: { xs: 1.25, md: 2.5 },
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                flexWrap: 'wrap',
+              }}
+            >
+              {estatisticasResumo.map((item) => (
+                <Box key={item.label} sx={{ textAlign: 'center', minWidth: { xs: 58, md: 72 } }}>
+                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block', lineHeight: 1.1 }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: item.color, fontSize: '0.9rem', lineHeight: 1.2 }}>
+                    {item.value}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          }
         />
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5 }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {[
-              { label: 'Produtos', value: estatisticasSaldo.totalProdutos, color: 'text.secondary' },
-              { label: 'Disponíveis', value: estatisticasSaldo.totalDisponiveis, color: 'success.main' },
-              { label: 'Baixo estoque', value: estatisticasSaldo.totalBaixoEstoque, color: 'warning.main' },
-              { label: 'Esgotados', value: estatisticasSaldo.totalEsgotados, color: 'error.main' },
-            ].map((item) => (
-              <Box key={item.label} sx={{ textAlign: 'center', minWidth: 72 }}>
-                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
-                  {item.label}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: item.color, fontSize: '0.9rem' }}>
-                  {item.value}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-
         {/* OperationalDataTable */}
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            '& .data-table-paper': {
+              flex: 1,
+              minHeight: 0,
+            },
+          }}
+        >
           <OperationalDataTable
             title={saldoPorItem ? "Saldo de Contratos por Item" : "Saldo de Contratos por Modalidade"}
             data={produtosAgrupados}
@@ -1316,7 +1322,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
         {/* Modal de Gerenciar Modalidades */}
         <Dialog open={dialogGerenciarModalidades} onClose={fecharDialogGerenciarModalidades} maxWidth="md" fullWidth>
-          <DialogTitle>
+          <DialogTitle component="div">
             Gerenciar Modalidades
             {produtoSelecionado && (
               <Typography variant="subtitle1" color="text.secondary">
@@ -1431,6 +1437,7 @@ const SaldoContratosModalidades: React.FC = () => {
           }}
         >
           <DialogTitle
+            component="div"
             sx={(theme) => ({
               bgcolor: theme.palette.mode === "dark"
                 ? alpha(theme.palette.success.main, 0.14)
@@ -1588,7 +1595,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
         {/* Modal de Registro de Consumo */}
         <Dialog open={dialogConsumoAberto} onClose={fecharDialogConsumo} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DialogTitle component="div" sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', gap: 1 }}>
             <RestaurantIcon />
             Registrar Consumo
           </DialogTitle>
@@ -1679,7 +1686,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
         {/* Modal de Histórico de Consumos */}
         <Dialog open={dialogHistoricoOpen} onClose={fecharDialogHistorico} maxWidth="md" fullWidth>
-          <DialogTitle>
+          <DialogTitle component="div">
             <Box display="flex" alignItems="center" gap={1}>
               <HistoryIcon color="primary" />
               Histórico de Consumos - {itemSelecionado?.produto_nome} ({itemSelecionado?.modalidade_nome})

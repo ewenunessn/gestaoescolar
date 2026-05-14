@@ -5,9 +5,7 @@ export interface Modalidade {
   id: number;
   nome: string;
   descricao?: string;
-  codigo_financeiro?: string;
   ativo: boolean;
-  valor_repasse: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -24,9 +22,7 @@ export async function getModalidades(): Promise<Modalidade[]> {
         id,
         nome,
         descricao,
-        codigo_financeiro,
         ativo,
-        COALESCE(valor_repasse, 0.00) as valor_repasse,
         created_at,
         updated_at
       FROM modalidades 
@@ -59,15 +55,13 @@ export async function createModalidade(
 ): Promise<Modalidade> {
   try {
     const result = await db.query(
-      `INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse) 
-       VALUES ($1, $2, $3, $4, $5) 
+      `INSERT INTO modalidades (nome, descricao, ativo)
+       VALUES ($1, $2, $3)
        RETURNING *`,
       [
         modalidade.nome,
         modalidade.descricao || null,
-        modalidade.codigo_financeiro || null,
-        modalidade.ativo !== undefined ? modalidade.ativo : true,
-        modalidade.valor_repasse || 0.00
+        modalidade.ativo !== undefined ? modalidade.ativo : true
       ]
     );
     
@@ -91,18 +85,14 @@ export async function updateModalidade(
       `UPDATE modalidades SET 
          nome = COALESCE($1, nome),
          descricao = COALESCE($2, descricao),
-         codigo_financeiro = COALESCE($3, codigo_financeiro),
-         ativo = COALESCE($4, ativo),
-         valor_repasse = COALESCE($5, valor_repasse),
+         ativo = COALESCE($3, ativo),
          updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $4
        RETURNING *`,
       [
         dados.nome,
         dados.descricao,
-        dados.codigo_financeiro,
         dados.ativo,
-        dados.valor_repasse,
         id
       ]
     );

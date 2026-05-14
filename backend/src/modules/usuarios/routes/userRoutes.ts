@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { login, logout, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
-import { getMePermissoes } from "../controllers/userController";
+import { checkSystemStatus, login, logout } from "../controllers/authController";
+import { getProfile, getMePermissoes } from "../controllers/meController";
+import { getUsers } from "../controllers/usuariosController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
-import { requireAdmin } from "../controllers/adminUsuariosController";
+import { requireAdmin } from "../../../middleware/adminMiddleware";
 
 const router = Router();
 

@@ -166,7 +166,9 @@ export default function FornecedorDetalhe() {
   );
   
   const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
-  const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}?from=fornecedor&fornecedor_id=${id}`), [navigate, id]);
+  const handleVerContrato = useCallback((contratoId: number) => {
+    navigate(`/contratos/${contratoId}`, { state: { backTo: `/fornecedores/${id}` } });
+  }, [navigate, id]);
   const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
   const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
 

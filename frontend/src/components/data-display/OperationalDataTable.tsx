@@ -563,6 +563,17 @@ export function OperationalDataTable<TData>({
           },
           '.MuiTablePagination-actions': {
             backgroundColor: t.surface,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            marginLeft: 1,
+          },
+          '.MuiTablePagination-actions .MuiIconButton-root': {
+            width: 32,
+            height: 32,
+          },
+          '.MuiTablePagination-actions .MuiIconButton-root + .MuiIconButton-root': {
+            marginLeft: 0.75,
           },
         }}
       />

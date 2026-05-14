@@ -408,11 +408,16 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
 
     const anoAtual = periodoAtivo.ano;
 
-    // Calcular valor total recebido do FNDE (soma dos repasses * parcelas das modalidades)
+    // Calcular valor total recebido do FNDE pelas modalidades financeiras.
     const valorRecebidoQuery = `
-      SELECT COALESCE(SUM(valor_repasse * COALESCE(parcelas, 1)), 0) as valor_total_fnde
-      FROM modalidades
-      WHERE ativo = true
+      SELECT COALESCE(SUM(cfm.valor_repasse * COALESCE(cfm.parcelas, 1)), 0) as valor_total_fnde
+      FROM categorias_financeiras_modalidade cfm
+      LEFT JOIN origens_repasse ore ON ore.id = cfm.origem_repasse_id
+      WHERE cfm.ativo = true
+        AND (
+          UPPER(COALESCE(ore.codigo, '')) = 'FNDE'
+          OR UPPER(COALESCE(ore.nome, '')) LIKE '%FNDE%'
+        )
     `;
     const valorRecebidoResult = await db.query(valorRecebidoQuery);
     const valorTotalFNDE = parseFloat(valorRecebidoResult.rows[0].valor_total_fnde);

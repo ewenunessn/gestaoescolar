@@ -1,0 +1,4 @@
+ALTER TABLE contract_balance_entries
+    DROP CONSTRAINT IF EXISTS contract_balance_entries_contract_product_matches_contract_fkey;
+
+DROP INDEX IF EXISTS contract_products_tenant_contract_id_unique_idx;

@@ -27,6 +27,8 @@ export type AppRoute =
   | "menuAssembly"
   | "menuForm"
   | "demand"
+  | "centralStock"
+  | "schoolStock"
   | "users"
   | "saas";
 
@@ -64,6 +66,8 @@ export const routePaths: Record<AppRoute, string> = {
   menuAssembly: "/cardapios/montagem",
   menuForm: "/cardapios/novo",
   demand: "/necessidade",
+  centralStock: "/abastecimento/almoxarifado-central",
+  schoolStock: "/estoque/escolas",
   users: "/usuarios",
   saas: "/equipe-saas",
 };
@@ -103,10 +107,12 @@ export const navItems: NavItem[] = [
   {
     label: "Abastecimento",
     icon: BriefcaseIcon,
+    children: [{ route: "centralStock", label: "Almoxarifado Central" }],
   },
   {
     label: "Estoque",
     icon: BoxIcon,
+    children: [{ route: "schoolStock", label: "Estoque Escola" }],
   },
   {
     label: "Configuracoes",
@@ -135,6 +141,8 @@ export function routeFromLocation(): AppRoute {
   if (/^\/cardapios\/refeicoes\/\d+$/.test(path)) return "mealDetail";
   if (path.startsWith("/cardapios/refeicoes/")) return "mealForm";
   if (/^\/cardapios\/\d+\/montagem$/.test(path)) return "menuAssembly";
+  if (path.startsWith("/abastecimento/")) return "centralStock";
+  if (path.startsWith("/estoque/")) return "schoolStock";
   if (path.startsWith("/cardapios/novo") || path.endsWith("/editar")) return "menuForm";
   const entry = Object.entries(routePaths).find(([, value]) => value === path);
   return (entry?.[0] as AppRoute | undefined) || "dashboard";

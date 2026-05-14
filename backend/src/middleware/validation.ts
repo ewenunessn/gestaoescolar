@@ -15,6 +15,17 @@ interface ValidationOptions {
   abortEarly?: boolean;
 }
 
+interface ValidationIssue {
+  field: string;
+  message: string;
+  code: string;
+}
+
+interface FormattedValidationErrors {
+  errors: ValidationIssue[];
+  fields: Record<string, string[]>;
+}
+
 /**
  * Middleware de validação genérico
  * @param schema Schema Zod para validação
@@ -67,13 +78,7 @@ export function validate<T extends z.ZodTypeAny>(
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = formatZodErrors(error);
-        return res.status(400).json({
-          success: false,
-          message: 'Dados inválidos',
-          errors: formattedErrors,
-          details: error.errors
-        });
+        return res.status(422).json(createValidationErrorPayload(error));
       }
 
       // Erro inesperado
@@ -111,21 +116,43 @@ export function validateParams<T extends z.ZodTypeAny>(schema: T) {
 /**
  * Formatar erros do Zod para resposta mais amigável
  */
-function formatZodErrors(error: ZodError): Record<string, string[]> {
-  const formattedErrors: Record<string, string[]> = {};
+export function formatZodErrors(error: ZodError): FormattedValidationErrors {
+  const fields: Record<string, string[]> = {};
+  const errors: ValidationIssue[] = [];
 
   error.errors.forEach((err) => {
-    const path = err.path.join('.');
+    const path = err.path.length > 0 ? err.path.join('.') : '_root';
     const message = err.message;
 
-    if (!formattedErrors[path]) {
-      formattedErrors[path] = [];
+    errors.push({
+      field: path,
+      message,
+      code: err.code
+    });
+
+    if (!fields[path]) {
+      fields[path] = [];
     }
 
-    formattedErrors[path].push(message);
+    fields[path].push(message);
   });
 
-  return formattedErrors;
+  return { errors, fields };
+}
+
+export function createValidationErrorPayload(error: ZodError) {
+  const formattedErrors = formatZodErrors(error);
+
+  return {
+    success: false,
+    message: 'Dados invalidos',
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'Dados invalidos'
+    },
+    errors: formattedErrors.errors,
+    fields: formattedErrors.fields
+  };
 }
 
 /**
@@ -210,13 +237,7 @@ export function validateAsync<T extends z.ZodTypeAny>(
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = formatZodErrors(error);
-        return res.status(400).json({
-          success: false,
-          message: 'Dados inválidos',
-          errors: formattedErrors,
-          details: error.errors
-        });
+        return res.status(422).json(createValidationErrorPayload(error));
       }
 
       console.error('Erro inesperado na validação assíncrona:', error);

@@ -3,7 +3,7 @@ import type { Express } from "express";
 import chatbotRoutes from "../modules/chatbot/routes/chatbotRoutes";
 import dashboardRoutes from "../modules/sistema/routes/dashboardRoutes";
 import entregaRoutes from "../modules/entregas/routes/entregaRoutes";
-import escolaPortalRoutes from "../modules/escolas/routes/escolaPortalRoutes";
+import escolaPortalRoutes from "../modules/portal-escola/routes/escolaPortalRoutes";
 import estoqueCentralRoutes from "../modules/estoque/routes/estoqueCentralRoutes";
 import estoqueEscolaLegacyRoutes from "../modules/estoque/routes/estoqueEscolaLegacyRoutes";
 import estoqueEscolarRoutes from "../modules/estoque/routes/estoqueEscolarRoutes";

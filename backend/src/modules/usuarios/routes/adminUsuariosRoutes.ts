@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireAdmin } from "../../../middleware/adminMiddleware";
 import {
-  requireAdmin,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarFuncoes, criarFuncao, atualizarFuncao, excluirFuncao,
   listarModulos, listarNiveis,

@@ -33,7 +33,7 @@ import pnaeRoutes from "../modules/sistema/routes/pnaeRoutes";
 import nutricionistaRoutes from "../modules/nutricao/routes/nutricionistaRoutes";
 import planejamentoComprasRoutes from "../modules/compras/routes/planejamentoComprasRoutes";
 import periodosRoutes from "../modules/sistema/routes/periodosRoutes";
-import escolaPortalRoutes from "../modules/escolas/routes/escolaPortalRoutes";
+import escolaPortalRoutes from "../modules/portal-escola/routes/escolaPortalRoutes";
 import calendarioLetivoRoutes from "../modules/sistema/routes/calendarioLetivoRoutes";
 import tacoRoutes from "../modules/nutricao/routes/tacoRoutes";
 import gruposIngredientesRoutes from "../modules/nutricao/routes/gruposIngredientesRoutes";

@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS contracts;
+DROP TABLE IF EXISTS suppliers;
+DROP TABLE IF EXISTS products;

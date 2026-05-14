@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig } from '../../lib/queryClient';
 import {
   modalidadeService,
-  Modalidade,
   ModalidadeInput,
   CategoriaFinanceiraModalidade,
   CategoriaFinanceiraModalidadeInput,
+  OrigemRepasse,
+  OrigemRepasseInput,
 } from '../../services/modalidades';
 
 export function useModalidades() {
@@ -23,6 +24,16 @@ export function useCategoriasFinanceirasModalidade() {
   return useQuery({
     queryKey: [...queryKeys.modalidades.all, 'categorias-financeiras'],
     queryFn: modalidadeService.listarCategoriasFinanceiras,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+  });
+}
+
+export function useOrigensRepasse() {
+  return useQuery({
+    queryKey: [...queryKeys.modalidades.all, 'origens-repasse'],
+    queryFn: modalidadeService.listarOrigensRepasse,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnMount: true,
@@ -62,6 +73,45 @@ export function useCreateCategoriaFinanceiraModalidade() {
       });
       queryClient.invalidateQueries({ queryKey: categoriasKey });
       queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
+    },
+  });
+}
+
+export function useUpdateCategoriaFinanceiraModalidade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CategoriaFinanceiraModalidadeInput }) =>
+      modalidadeService.atualizarCategoriaFinanceira(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.modalidades.all, 'categorias-financeiras'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
+    },
+  });
+}
+
+export function useDeleteCategoriaFinanceiraModalidade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => modalidadeService.removerCategoriaFinanceira(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.modalidades.all, 'categorias-financeiras'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
+    },
+  });
+}
+
+export function useCreateOrigemRepasse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: OrigemRepasseInput) => modalidadeService.criarOrigemRepasse(data),
+    onSuccess: (origem) => {
+      const key = [...queryKeys.modalidades.all, 'origens-repasse'];
+      queryClient.setQueryData(key, (old: OrigemRepasse[] | undefined) => {
+        const origens = old || [];
+        return [...origens.filter((item) => item.id !== origem.id), origem]
+          .sort((a, b) => a.nome.localeCompare(b.nome));
+      });
+      queryClient.invalidateQueries({ queryKey: key });
     },
   });
 }

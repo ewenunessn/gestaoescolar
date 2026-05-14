@@ -20,6 +20,7 @@ import { MealDetailPage, MealFormPage, MealsPage } from "../features/menus/MealP
 import { MenuAssemblyPage, MenuFormPage, MenusPage } from "../features/menus/MenuPages";
 import { PreparationDetailPage, PreparationFormPage, PreparationsPage } from "../features/menus/PreparationPages";
 import { SaasOrganizationPage } from "../features/saas/SaasOrganizationPage";
+import { CentralStockPage, SchoolStockPage } from "../features/stock/StockPages";
 import { UsersPage } from "../features/users/UsersPage";
 import { applyTheme, loadThemeName, saveThemeName, ThemeName } from "../theme/themes";
 import { Contract, DemandResponse, EducationModality, Meal, Menu, MenuPreparation, Preparation, PreparationProduct, Product, School, Supplier } from "../types/domain";
@@ -667,6 +668,10 @@ export default function App() {
       )}
 
       {route === "demand" && <DemandPage api={api} demand={demand} setDemand={setDemand} demandForm={demandForm} setDemandForm={setDemandForm} submit={submit} />}
+
+      {route === "centralStock" && <CentralStockPage api={api} products={products} schools={schools} submit={submit} run={run} />}
+
+      {route === "schoolStock" && <SchoolStockPage api={api} products={products} schools={schools} submit={submit} run={run} />}
 
       {route === "users" && <UsersPage api={api} auth={auth} invite={invite} setInvite={setInvite} accept={accept} setAccept={setAccept} submit={submit} />}
       <Toaster toasts={toasts} onDismiss={dismissToast} />

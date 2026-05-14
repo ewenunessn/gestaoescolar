@@ -4,6 +4,10 @@ import {
   listarModalidades,
   listarCategoriasFinanceirasModalidade,
   criarCategoriaFinanceiraModalidade,
+  editarCategoriaFinanceiraModalidade,
+  removerCategoriaFinanceiraModalidade,
+  listarOrigensRepasse,
+  criarOrigemRepasse,
   buscarModalidade,
   criarModalidade,
   editarModalidade,
@@ -21,6 +25,10 @@ router.get("/categorias-financeiras", listarCategoriasFinanceirasModalidade);
 
 // Criar categoria financeira explicitamente para evitar duplicidade por digitação
 router.post("/categorias-financeiras", authenticateToken, criarCategoriaFinanceiraModalidade);
+router.put("/categorias-financeiras/:id", authenticateToken, editarCategoriaFinanceiraModalidade);
+router.delete("/categorias-financeiras/:id", authenticateToken, removerCategoriaFinanceiraModalidade);
+router.get("/origens-repasse", listarOrigensRepasse);
+router.post("/origens-repasse", authenticateToken, criarOrigemRepasse);
 
 // Buscar modalidade por ID
 router.get("/:id", buscarModalidade);

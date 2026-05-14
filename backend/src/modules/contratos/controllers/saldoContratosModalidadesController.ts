@@ -4,8 +4,67 @@ import {
   ensureContratoSaldoSchema,
   obterAvisosTrocaModoSaldo,
   obterConfiguracaoSaldoContrato,
+  registrarMovimentoContratoProduto,
   salvarConfiguracaoSaldoContrato,
 } from "../services/contratoSaldoService";
+
+export interface SaldoContratosCursorResponseInput<T> {
+  items: T[];
+  pageSize: number;
+  offset: number;
+  hasMore: boolean;
+  estatisticas?: Record<string, unknown>;
+}
+
+function encodeCursor(offset: number): string {
+  return Buffer.from(JSON.stringify({ offset })).toString("base64url");
+}
+
+function decodeCursor(cursor: unknown): number {
+  if (typeof cursor !== "string" || cursor.trim() === "") return 0;
+  try {
+    const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    const offset = Number(decoded?.offset);
+    return Number.isFinite(offset) && offset >= 0 ? offset : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function buildSaldoContratosCursorResponse<T>({
+  items,
+  pageSize,
+  offset,
+  hasMore,
+  estatisticas,
+}: SaldoContratosCursorResponseInput<T>) {
+  const response: {
+    page_size: number;
+    next_cursor: string | null;
+    has_more: boolean;
+    items: T[];
+    estatisticas?: Record<string, unknown>;
+  } = {
+    page_size: pageSize,
+    next_cursor: hasMore ? encodeCursor(offset + pageSize) : null,
+    has_more: hasMore,
+    items,
+  };
+
+  if (estatisticas) response.estatisticas = estatisticas;
+  return response;
+}
+
+function getPageSize(query: Request["query"], fallback = 500): number {
+  return parseInt((query.page_size || query.limit || fallback) as string);
+}
+
+function getCursorOffset(query: Request["query"]): number {
+  if (query.cursor) return decodeCursor(query.cursor);
+  const page = parseInt((query.page || 1) as string);
+  const pageSize = getPageSize(query);
+  return Math.max(0, (page - 1) * pageSize);
+}
 
 /**
  * Controller para gerenciar saldos de contratos por modalidade
@@ -18,7 +77,7 @@ class SaldoContratosModalidadesController {
       res.json({ success: true, data: config, avisos });
     } catch (error) {
       console.error('Erro ao obter configuracao de saldo:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Erro ao obter configuracao de saldo',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -42,7 +101,7 @@ class SaldoContratosModalidadesController {
       res.json({ success: true, data: config, avisos });
     } catch (error) {
       console.error('Erro ao atualizar configuracao de saldo:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Erro ao atualizar configuracao de saldo',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -54,15 +113,14 @@ class SaldoContratosModalidadesController {
     try {
       await ensureContratoSaldoSchema();
       const {
-        page = 1,
-        limit = 500,
         status,
         contrato_numero,
         produto_nome,
         fornecedor_id
       } = req.query;
 
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const pageSize = getPageSize(req.query);
+      const offset = getCursorOffset(req.query);
       const params: any[] = [];
       let paramIndex = 1;
 
@@ -90,11 +148,11 @@ class SaldoContratosModalidadesController {
       }
 
       if (status === 'DISPONIVEL' || status === 'disponivel') {
-        where += ` AND COALESCE(cps.quantidade_disponivel, 0) > 0`;
+        where += ` AND COALESCE(cps.saldo_atual, 0) > 0`;
       } else if (status === 'ESGOTADO' || status === 'esgotado') {
-        where += ` AND COALESCE(cps.quantidade_disponivel, 0) = 0`;
+        where += ` AND COALESCE(cps.saldo_atual, 0) = 0`;
       } else if (status === 'BAIXO_ESTOQUE' || status === 'baixo_estoque') {
-        where += ` AND COALESCE(cps.quantidade_disponivel, 0) > 0 AND COALESCE(cps.quantidade_disponivel, 0) <= 10`;
+        where += ` AND COALESCE(cps.saldo_atual, 0) > 0 AND COALESCE(cps.saldo_atual, 0) <= 10`;
       }
 
       const query = `
@@ -113,14 +171,14 @@ class SaldoContratosModalidadesController {
           f.id as fornecedor_id,
           cp.preco_unitario,
           cp.quantidade_contratada as quantidade_contrato,
-          COALESCE(cps.quantidade_inicial, 0) as quantidade_inicial,
+          COALESCE(cps.saldo_inicial, 0) as quantidade_inicial,
           COALESCE(cps.quantidade_consumida, 0) as quantidade_consumida,
-          COALESCE(cps.quantidade_disponivel, 0) as quantidade_disponivel,
+          COALESCE(cps.saldo_atual, 0) as quantidade_disponivel,
           COALESCE(cps.ativo, false) as ativo,
-          (COALESCE(cps.quantidade_disponivel, 0) * cp.preco_unitario) as valor_disponivel,
+          (COALESCE(cps.saldo_atual, 0) * cp.preco_unitario) as valor_disponivel,
           CASE
-            WHEN COALESCE(cps.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cps.quantidade_disponivel, 0) <= 10 THEN 'BAIXO_ESTOQUE'
+            WHEN COALESCE(cps.saldo_atual, 0) <= 0 THEN 'ESGOTADO'
+            WHEN COALESCE(cps.saldo_atual, 0) <= 10 THEN 'BAIXO_ESTOQUE'
             ELSE 'DISPONIVEL'
           END as status
         FROM contrato_produtos cp
@@ -128,47 +186,33 @@ class SaldoContratosModalidadesController {
         JOIN produtos p ON cp.produto_id = p.id
         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
-        LEFT JOIN contrato_produtos_saldos cps ON cps.contrato_produto_id = cp.id
+        LEFT JOIN contrato_produto_saldos cps ON cps.contrato_produto_id = cp.id AND cps.modalidade_financeira_id IS NULL
         ${where}
         ORDER BY p.nome, c.numero
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      const result = await db.query(query, [...params, parseInt(limit as string), offset]);
-
-      const countResult = await db.query(`
-        SELECT COUNT(*)::int as total
-        FROM contrato_produtos cp
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        LEFT JOIN contrato_produtos_saldos cps ON cps.contrato_produto_id = cp.id
-        ${where}
-      `, params);
-
-      const total = Number(countResult.rows[0]?.total || 0);
+      const result = await db.query(query, [...params, pageSize + 1, offset]);
+      const items = result.rows.slice(0, pageSize);
+      const hasMore = result.rows.length > pageSize;
       const estatisticas = {
-        total_itens: total,
-        itens_disponiveis: result.rows.filter((r: any) => Number(r.quantidade_disponivel) > 0).length,
-        itens_baixo_estoque: result.rows.filter((r: any) => Number(r.quantidade_disponivel) > 0 && Number(r.quantidade_disponivel) <= 10).length,
-        itens_esgotados: result.rows.filter((r: any) => Number(r.quantidade_disponivel) === 0).length,
-        quantidade_inicial_total: result.rows.reduce((sum: number, r: any) => sum + Number(r.quantidade_inicial || 0), 0),
-        quantidade_consumida_total: result.rows.reduce((sum: number, r: any) => sum + Number(r.quantidade_consumida || 0), 0),
-        quantidade_disponivel_total: result.rows.reduce((sum: number, r: any) => sum + Number(r.quantidade_disponivel || 0), 0),
-        valor_total_disponivel: result.rows.reduce((sum: number, r: any) => sum + Number(r.valor_disponivel || 0), 0)
+        total_itens: items.length,
+        itens_disponiveis: items.filter((r: any) => Number(r.quantidade_disponivel) > 0).length,
+        itens_baixo_estoque: items.filter((r: any) => Number(r.quantidade_disponivel) > 0 && Number(r.quantidade_disponivel) <= 10).length,
+        itens_esgotados: items.filter((r: any) => Number(r.quantidade_disponivel) === 0).length,
+        quantidade_inicial_total: items.reduce((sum: number, r: any) => sum + Number(r.quantidade_inicial || 0), 0),
+        quantidade_consumida_total: items.reduce((sum: number, r: any) => sum + Number(r.quantidade_consumida || 0), 0),
+        quantidade_disponivel_total: items.reduce((sum: number, r: any) => sum + Number(r.quantidade_disponivel || 0), 0),
+        valor_total_disponivel: items.reduce((sum: number, r: any) => sum + Number(r.valor_disponivel || 0), 0)
       };
 
-      res.json({
-        success: true,
-        data: result.rows,
-        pagination: {
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          total,
-          totalPages: Math.ceil(total / parseInt(limit as string))
-        },
-        estatisticas
-      });
+      res.json(buildSaldoContratosCursorResponse({
+        items,
+        pageSize,
+        offset,
+        hasMore,
+        estatisticas,
+      }));
     } catch (error) {
       console.error('Erro ao listar saldos por item:', error);
       res.status((error as any)?.statusCode || 500).json({
@@ -190,34 +234,106 @@ class SaldoContratosModalidadesController {
         return;
       }
 
-      const existingResult = await db.query(`
-        SELECT id, quantidade_consumida
-        FROM contrato_produtos_saldos
-        WHERE contrato_produto_id = $1
-      `, [contrato_produto_id]);
+      const result = await db.transaction(async (client) => {
+        await ensureContratoSaldoSchema(client);
+        const existingResult = await client.query(`
+          SELECT id, quantidade_consumida, saldo_atual
+          FROM contrato_produto_saldos
+          WHERE contrato_produto_id = $1
+            AND modalidade_financeira_id IS NULL
+          FOR UPDATE
+        `, [contrato_produto_id]);
 
-      if (existingResult.rows.length > 0 && quantidade < Number(existingResult.rows[0].quantidade_consumida || 0)) {
-        res.status(400).json({
-          success: false,
-          message: 'Quantidade inicial nao pode ser menor que a quantidade consumida'
-        });
-        return;
-      }
+        if (existingResult.rows.length > 0) {
+          if (quantidade < Number(existingResult.rows[0].quantidade_consumida || 0)) {
+            const error = new Error('Quantidade inicial nao pode ser menor que a quantidade consumida');
+            (error as any).statusCode = 400;
+            throw error;
+          }
 
-      const result = await db.query(`
-        INSERT INTO contrato_produtos_saldos (contrato_produto_id, quantidade_inicial, quantidade_consumida, ativo, created_at)
-        VALUES ($1, $2, 0, true, CURRENT_TIMESTAMP)
-        ON CONFLICT (contrato_produto_id) DO UPDATE
-          SET quantidade_inicial = EXCLUDED.quantidade_inicial,
-              ativo = true,
-              updated_at = CURRENT_TIMESTAMP
-        RETURNING *
-      `, [contrato_produto_id, quantidade]);
+          const saldoDepois = quantidade - Number(existingResult.rows[0].quantidade_consumida || 0);
+          const saldoAntes = Number(existingResult.rows[0].saldo_atual || 0);
+          const quantidadeAjuste = Math.abs(saldoDepois - saldoAntes);
 
-      res.json({ success: true, message: 'Saldo por item salvo com sucesso', data: result.rows[0] });
+          if (quantidadeAjuste > 0) {
+            await registrarMovimentoContratoProduto(client, {
+              contratoProdutoId: Number(contrato_produto_id),
+              modalidadeFinanceiraId: null,
+              tipoMovimento: "AJUSTE",
+              quantidade: quantidadeAjuste,
+              saldoDepois,
+              descricao: "Ajuste de saldo inicial por item",
+              origemTipo: "saldo_contrato_item",
+              origemId: Number(existingResult.rows[0].id),
+              criadoPor: req.user?.id ?? null,
+            });
+          }
+
+          await client.query(`
+            UPDATE contrato_produto_saldos
+            SET saldo_inicial = $1,
+                ativo = true,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [quantidade, existingResult.rows[0].id]);
+        } else {
+          const insertResult = await client.query(`
+            INSERT INTO contrato_produto_saldos (
+              contrato_produto_id,
+              modalidade_financeira_id,
+              saldo_inicial,
+              saldo_atual,
+              quantidade_consumida,
+              ativo,
+              created_at,
+              updated_at
+            )
+            VALUES ($1, NULL, 0, 0, 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING *
+          `, [contrato_produto_id]);
+
+          if (quantidade > 0) {
+            await registrarMovimentoContratoProduto(client, {
+              contratoProdutoId: Number(contrato_produto_id),
+              modalidadeFinanceiraId: null,
+              tipoMovimento: "ENTRADA_CONTRATO",
+              quantidade,
+              descricao: "Entrada inicial do produto contratado",
+              origemTipo: "saldo_contrato_item",
+              origemId: Number(insertResult.rows[0].id),
+              criadoPor: req.user?.id ?? null,
+            });
+          }
+
+          await client.query(`
+            UPDATE contrato_produto_saldos
+            SET saldo_inicial = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [quantidade, insertResult.rows[0].id]);
+        }
+
+        const saldoResult = await client.query(`
+          SELECT
+            id,
+            contrato_produto_id,
+            saldo_inicial as quantidade_inicial,
+            quantidade_consumida,
+            saldo_atual as quantidade_disponivel,
+            ativo,
+            created_at,
+            updated_at
+          FROM contrato_produto_saldos
+          WHERE contrato_produto_id = $1
+            AND modalidade_financeira_id IS NULL
+        `, [contrato_produto_id]);
+        return saldoResult.rows[0];
+      });
+
+      res.json({ success: true, message: 'Saldo por item salvo com sucesso', data: result });
     } catch (error) {
       console.error('Erro ao salvar saldo por item:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: 'Erro ao salvar saldo por item',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -234,8 +350,6 @@ class SaldoContratosModalidadesController {
     try {
       await ensureContratoSaldoSchema();
       const {
-        page = 1,
-        limit = 500,
         status,
         contrato_numero,
         produto_nome,
@@ -243,7 +357,8 @@ class SaldoContratosModalidadesController {
         modalidade_id
       } = req.query;
 
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const pageSize = getPageSize(req.query);
+      const offset = getCursorOffset(req.query);
 
       // Primeiro, buscar os produtos paginados (produtos únicos por nome)
       let produtosQuery = `
@@ -281,23 +396,21 @@ class SaldoContratosModalidadesController {
       produtosQuery += ` GROUP BY p.nome`;
       produtosQuery += ` ORDER BY p.nome`;
       produtosQuery += ` LIMIT $${produtosParamIndex} OFFSET $${produtosParamIndex + 1}`;
-      produtosParams.push(parseInt(limit as string), offset);
+      produtosParams.push(pageSize + 1, offset);
 
       const produtosPaginados = await db.query(produtosQuery, produtosParams);
-      const produtoIds = produtosPaginados.rows.flatMap((r: any) => r.contrato_produto_ids);
+      const produtosPagina = produtosPaginados.rows.slice(0, pageSize);
+      const hasMore = produtosPaginados.rows.length > pageSize;
+      const produtoIds = produtosPagina.flatMap((r: any) => r.contrato_produto_ids);
 
 
       // Se não há produtos, retornar vazio
       if (produtoIds.length === 0) {
-        res.json({
-          success: true,
-          data: [],
-          pagination: {
-            page: parseInt(page as string),
-            limit: parseInt(limit as string),
-            total: 0,
-            totalPages: 0
-          },
+        res.json(buildSaldoContratosCursorResponse({
+          items: [],
+          pageSize,
+          offset,
+          hasMore,
           estatisticas: {
             total_itens: 0,
             itens_disponiveis: 0,
@@ -308,7 +421,7 @@ class SaldoContratosModalidadesController {
             quantidade_disponivel_total: 0,
             valor_total_disponivel: 0
           }
-        });
+        }));
         return;
       }
 
@@ -327,26 +440,38 @@ class SaldoContratosModalidadesController {
           m.id as modalidade_id,
           m.nome as modalidade_nome,
           m.descricao as modalidade_descricao,
-          m.categoria_financeira_id,
-          cfm.nome as categoria_financeira_nome,
-          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as modalidade_codigo_financeiro,
-          COALESCE(cfm.valor_repasse, m.valor_repasse) as modalidade_valor_repasse,
-          COALESCE(cfm.parcelas, m.parcelas) as modalidade_parcelas,
-          COALESCE(cpm.quantidade_inicial, 0) as quantidade_inicial,
+          categorias_financeiras.ids[1] as categoria_financeira_id,
+          categorias_financeiras.nomes as categoria_financeira_nome,
+          categorias_financeiras.codigos as modalidade_codigo_financeiro,
+          COALESCE(categorias_financeiras.valor_repasse, 0) as modalidade_valor_repasse,
+          COALESCE(categorias_financeiras.parcelas, 1) as modalidade_parcelas,
+          COALESCE(cpm.saldo_inicial, 0) as quantidade_inicial,
           COALESCE(cpm.quantidade_consumida, 0) as quantidade_consumida,
-          COALESCE(cpm.quantidade_disponivel, 0) as quantidade_disponivel,
+          COALESCE(cpm.saldo_atual, 0) as quantidade_disponivel,
           COALESCE(cpm.ativo, false) as modalidade_ativa,
           cpm.id as saldo_id,
-          (COALESCE(cpm.quantidade_disponivel, 0) * cp.preco_unitario) as valor_disponivel
+          (COALESCE(cpm.saldo_atual, 0) * cp.preco_unitario) as valor_disponivel
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         CROSS JOIN modalidades m
-        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
-        LEFT JOIN contrato_produtos_modalidades cpm ON (
-          cpm.contrato_produto_id = cp.id AND cpm.modalidade_id = m.id
+        LEFT JOIN LATERAL (
+          SELECT
+            ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+            STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+            STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos,
+            SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse,
+            MAX(COALESCE(cfmv.parcelas, 1)) as parcelas
+          FROM modalidade_categorias_financeiras mcf
+          JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+          WHERE mcf.modalidade_id = m.id
+            AND mcf.ativo = true
+            AND cfmv.ativo = true
+        ) categorias_financeiras ON true
+        LEFT JOIN contrato_produto_saldos cpm ON (
+          cpm.contrato_produto_id = cp.id AND cpm.modalidade_financeira_id = m.id
         )
         WHERE cp.id = ANY($1)
           AND cp.ativo = true
@@ -364,12 +489,13 @@ class SaldoContratosModalidadesController {
       }
 
       if (status) {
-        if (status === 'disponivel') {
-          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) > 0`;
-        } else if (status === 'esgotado') {
-          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) = 0`;
-        } else if (status === 'baixo_estoque') {
-          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) > 0 AND COALESCE(cpm.quantidade_disponivel, 0) <= 10`;
+        const statusFiltro = String(status).toLowerCase();
+        if (statusFiltro === 'disponivel') {
+          query += ` AND COALESCE(cpm.saldo_atual, 0) > 0`;
+        } else if (statusFiltro === 'esgotado') {
+          query += ` AND COALESCE(cpm.saldo_atual, 0) = 0`;
+        } else if (statusFiltro === 'baixo_estoque') {
+          query += ` AND COALESCE(cpm.saldo_atual, 0) > 0 AND COALESCE(cpm.saldo_atual, 0) <= 10`;
         }
       }
 
@@ -378,40 +504,6 @@ class SaldoContratosModalidadesController {
       const result = await db.query(query, queryParams);
 
       // Contar total de produtos únicos para paginação
-      let countQuery = `
-        SELECT COUNT(DISTINCT p.nome) as total
-        FROM contrato_produtos cp
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true
-          AND c.ativo = true
-      `;
-
-      const countParams: any[] = [];
-      let countParamIndex = 1;
-
-      if (contrato_numero) {
-        countQuery += ` AND c.numero ILIKE $${countParamIndex}`;
-        countParams.push(`%${contrato_numero}%`);
-        countParamIndex++;
-      }
-
-      if (produto_nome) {
-        countQuery += ` AND p.nome ILIKE $${countParamIndex}`;
-        countParams.push(`%${produto_nome}%`);
-        countParamIndex++;
-      }
-
-      if (fornecedor_id) {
-        countQuery += ` AND f.id = $${countParamIndex}`;
-        countParams.push(parseInt(fornecedor_id as string));
-        countParamIndex++;
-      }
-
-      const countResult = await db.query(countQuery, countParams);
-      const total = parseInt(countResult.rows[0].total);
-
       // Calcular estatísticas
       const estatisticas = {
         total_itens: result.rows.length,
@@ -424,21 +516,17 @@ class SaldoContratosModalidadesController {
         valor_total_disponivel: result.rows.reduce((sum: number, r: any) => sum + parseFloat(r.valor_disponivel || 0), 0)
       };
 
-      res.json({
-        success: true,
-        data: result.rows,
-        pagination: {
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          total,
-          totalPages: Math.ceil(total / parseInt(limit as string))
-        },
-        estatisticas
-      });
+      res.json(buildSaldoContratosCursorResponse({
+        items: result.rows,
+        pageSize,
+        offset,
+        hasMore,
+        estatisticas,
+      }));
 
     } catch (error) {
       console.error('❌ Erro ao listar saldos de modalidades:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: 'Erro interno do servidor',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -453,59 +541,106 @@ class SaldoContratosModalidadesController {
   async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
     try {
       const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
+      const quantidade = Number(quantidade_inicial);
 
-      // Verificar se já existe um registro
-      await ensureContratoSaldoSchema();
-      const existingResult = await db.query(`
-        SELECT id, quantidade_consumida
-        FROM contrato_produtos_modalidades
-        WHERE contrato_produto_id = $1 AND modalidade_id = $2
-      `, [contrato_produto_id, modalidade_id]);
-
-      if (existingResult.rows.length > 0 && Number(quantidade_inicial) < Number(existingResult.rows[0].quantidade_consumida || 0)) {
-        res.status(400).json({
-          success: false,
-          message: 'Quantidade inicial nao pode ser menor que a quantidade consumida'
-        });
+      if (!contrato_produto_id || !modalidade_id || Number.isNaN(quantidade) || quantidade < 0) {
+        res.status(400).json({ success: false, message: 'Dados de saldo invalidos' });
         return;
       }
 
-      if (existingResult.rows.length > 0) {
-        // Atualizar registro existente
-        const updateResult = await db.query(`
-          UPDATE contrato_produtos_modalidades 
-          SET quantidade_inicial = $1,
-              quantidade_disponivel = $1 - quantidade_consumida,
-              ativo = true,
+      // Verificar se já existe um registro
+      const result = await db.transaction(async (client) => {
+        await ensureContratoSaldoSchema(client);
+        const existingResult = await client.query(`
+          SELECT id, quantidade_consumida, saldo_atual
+          FROM contrato_produto_saldos
+          WHERE contrato_produto_id = $1 AND modalidade_financeira_id = $2
+          FOR UPDATE
+        `, [contrato_produto_id, modalidade_id]);
+
+        if (existingResult.rows.length > 0 && quantidade < Number(existingResult.rows[0].quantidade_consumida || 0)) {
+          const error = new Error('Quantidade inicial nao pode ser menor que a quantidade consumida');
+          (error as any).statusCode = 400;
+          throw error;
+        }
+
+        if (existingResult.rows.length > 0) {
+          const saldoDepois = quantidade - Number(existingResult.rows[0].quantidade_consumida || 0);
+          const saldoAntes = Number(existingResult.rows[0].saldo_atual || 0);
+          const quantidadeAjuste = Math.abs(saldoDepois - saldoAntes);
+
+          if (quantidadeAjuste > 0) {
+            await registrarMovimentoContratoProduto(client, {
+              contratoProdutoId: Number(contrato_produto_id),
+              modalidadeFinanceiraId: Number(modalidade_id),
+              tipoMovimento: "AJUSTE",
+              quantidade: quantidadeAjuste,
+              saldoDepois,
+              descricao: "Ajuste de saldo inicial por modalidade financeira",
+              origemTipo: "saldo_contrato_modalidade",
+              origemId: Number(existingResult.rows[0].id),
+              criadoPor: req.user?.id ?? null,
+            });
+          }
+
+          const updateResult = await client.query(`
+            UPDATE contrato_produto_saldos
+            SET saldo_inicial = $1,
+                ativo = true,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING id, contrato_produto_id, modalidade_financeira_id as modalidade_id,
+              saldo_inicial as quantidade_inicial, quantidade_consumida,
+              saldo_atual as quantidade_disponivel, ativo, created_at, updated_at
+          `, [quantidade, existingResult.rows[0].id]);
+
+          return { message: 'Saldo atualizado com sucesso', data: updateResult.rows[0] };
+        }
+
+        const insertResult = await client.query(`
+          INSERT INTO contrato_produto_saldos
+          (contrato_produto_id, modalidade_financeira_id, saldo_inicial, saldo_atual, quantidade_consumida, ativo, created_at, updated_at)
+          VALUES ($1, $2, 0, 0, 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          RETURNING id, contrato_produto_id, modalidade_financeira_id as modalidade_id,
+            saldo_inicial as quantidade_inicial, quantidade_consumida,
+            saldo_atual as quantidade_disponivel, ativo, created_at, updated_at
+        `, [contrato_produto_id, modalidade_id]);
+
+        if (quantidade > 0) {
+          await registrarMovimentoContratoProduto(client, {
+            contratoProdutoId: Number(contrato_produto_id),
+            modalidadeFinanceiraId: Number(modalidade_id),
+            tipoMovimento: "DISTRIBUICAO",
+            quantidade,
+            descricao: "Distribuicao inicial por modalidade financeira",
+            origemTipo: "saldo_contrato_modalidade",
+            origemId: Number(insertResult.rows[0].id),
+            criadoPor: req.user?.id ?? null,
+          });
+        }
+
+        const updateResult = await client.query(`
+          UPDATE contrato_produto_saldos
+          SET saldo_inicial = $1,
               updated_at = CURRENT_TIMESTAMP
-          WHERE contrato_produto_id = $2 AND modalidade_id = $3
-          RETURNING *
-        `, [quantidade_inicial, contrato_produto_id, modalidade_id]);
+          WHERE id = $2
+          RETURNING id, contrato_produto_id, modalidade_financeira_id as modalidade_id,
+            saldo_inicial as quantidade_inicial, quantidade_consumida,
+            saldo_atual as quantidade_disponivel, ativo, created_at, updated_at
+        `, [quantidade, insertResult.rows[0].id]);
 
-        res.json({
-          success: true,
-          message: 'Saldo atualizado com sucesso',
-          data: updateResult.rows[0]
-        });
-      } else {
-        // Criar novo registro
-        const insertResult = await db.query(`
-          INSERT INTO contrato_produtos_modalidades 
-          (contrato_produto_id, modalidade_id, quantidade_inicial, quantidade_consumida, quantidade_disponivel, ativo, created_at)
-          VALUES ($1, $2, $3, 0, $3, true, CURRENT_TIMESTAMP)
-          RETURNING *
-        `, [contrato_produto_id, modalidade_id, quantidade_inicial]);
+        return { message: 'Saldo cadastrado com sucesso', data: updateResult.rows[0] };
+      });
 
-        res.json({
-          success: true,
-          message: 'Saldo cadastrado com sucesso',
-          data: insertResult.rows[0]
-        });
-      }
+      res.json({
+        success: true,
+        message: result.message,
+        data: result.data
+      });
 
     } catch (error) {
       console.error('❌ Erro ao cadastrar saldo por modalidade:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: 'Erro interno do servidor',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -524,14 +659,26 @@ class SaldoContratosModalidadesController {
           m.id,
           m.nome,
           m.descricao,
-          m.categoria_financeira_id,
-          cfm.nome as categoria_financeira_nome,
-          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
-          COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
-          COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+          categorias_financeiras.ids[1] as categoria_financeira_id,
+          categorias_financeiras.nomes as categoria_financeira_nome,
+          categorias_financeiras.codigos as codigo_financeiro,
+          COALESCE(categorias_financeiras.valor_repasse, 0) as valor_repasse,
+          COALESCE(categorias_financeiras.parcelas, 1) as parcelas,
           m.ativo
         FROM modalidades m
-        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+        LEFT JOIN LATERAL (
+          SELECT
+            ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+            STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+            STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos,
+            SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse,
+            MAX(COALESCE(cfmv.parcelas, 1)) as parcelas
+          FROM modalidade_categorias_financeiras mcf
+          JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+          WHERE mcf.modalidade_id = m.id
+            AND mcf.ativo = true
+            AND cfmv.ativo = true
+        ) categorias_financeiras ON true
         WHERE m.ativo = true
         ORDER BY m.nome
       `);
@@ -543,7 +690,7 @@ class SaldoContratosModalidadesController {
 
     } catch (error) {
       console.error('❌ Erro ao listar modalidades:', error);
-      res.status(500).json({
+      res.status((error as any)?.statusCode || 500).json({
         success: false,
         message: 'Erro interno do servidor',
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -604,18 +751,28 @@ class SaldoContratosModalidadesController {
         SELECT 
           m.id as modalidade_id,
           m.nome as modalidade_nome,
-          m.categoria_financeira_id,
-          cfm.nome as categoria_financeira_nome,
-          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
+          categorias_financeiras.ids[1] as categoria_financeira_id,
+          categorias_financeiras.nomes as categoria_financeira_nome,
+          categorias_financeiras.codigos as codigo_financeiro,
           COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
           COUNT(em.id) as total_escolas,
           m.ativo
         FROM modalidades m
-        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+        LEFT JOIN LATERAL (
+          SELECT
+            ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+            STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+            STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos
+          FROM modalidade_categorias_financeiras mcf
+          JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+          WHERE mcf.modalidade_id = m.id
+            AND mcf.ativo = true
+            AND cfmv.ativo = true
+        ) categorias_financeiras ON true
         LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
         LEFT JOIN escolas e ON em.escola_id = e.id
         WHERE m.ativo = true AND (e.ativo = true OR e.id IS NULL)
-        GROUP BY m.id, m.nome, m.categoria_financeira_id, cfm.nome, cfm.codigo_financeiro, m.codigo_financeiro, m.ativo
+        GROUP BY m.id, m.nome, categorias_financeiras.ids, categorias_financeiras.nomes, categorias_financeiras.codigos, m.ativo
         ORDER BY m.nome
       `);
 
@@ -642,25 +799,26 @@ class SaldoContratosModalidadesController {
     try {
       const result = await db.query(`
         SELECT
-          COALESCE(cfm.id, m.id) as categoria_financeira_id,
-          COALESCE(cfm.nome, m.nome) as categoria_financeira_nome,
-          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
-          COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
-          COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+          cfm.id as categoria_financeira_id,
+          cfm.nome as categoria_financeira_nome,
+          cfm.codigo_financeiro as codigo_financeiro,
+          cfm.valor_repasse as valor_repasse,
+          cfm.parcelas as parcelas,
           COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
           COUNT(DISTINCT em.escola_id) as total_escolas,
           ARRAY_AGG(DISTINCT m.nome ORDER BY m.nome) as modalidades_pedagogicas
         FROM modalidades m
-        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+        JOIN modalidade_categorias_financeiras mcf ON mcf.modalidade_id = m.id AND mcf.ativo = true
+        JOIN categorias_financeiras_modalidade cfm ON cfm.id = mcf.categoria_financeira_id AND cfm.ativo = true
         LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
         LEFT JOIN escolas e ON em.escola_id = e.id
         WHERE m.ativo = true AND (e.ativo = true OR e.id IS NULL)
         GROUP BY
-          COALESCE(cfm.id, m.id),
-          COALESCE(cfm.nome, m.nome),
-          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro),
-          COALESCE(cfm.valor_repasse, m.valor_repasse),
-          COALESCE(cfm.parcelas, m.parcelas)
+          cfm.id,
+          cfm.nome,
+          cfm.codigo_financeiro,
+          cfm.valor_repasse,
+          cfm.parcelas
         ORDER BY categoria_financeira_nome
       `);
 
@@ -702,11 +860,11 @@ class SaldoContratosModalidadesController {
           SELECT
             id,
             contrato_produto_id,
-            modalidade_id,
-            quantidade_inicial,
+            modalidade_financeira_id,
+            saldo_inicial as quantidade_inicial,
             quantidade_consumida,
-            quantidade_disponivel
-          FROM contrato_produtos_modalidades
+            saldo_atual as quantidade_disponivel
+          FROM contrato_produto_saldos
           WHERE id = $1
           FOR UPDATE
         `, [id]);
@@ -724,20 +882,22 @@ class SaldoContratosModalidadesController {
           throw insufficient;
         }
 
-        const saldoAtualizadoResult = await client.query(`
-          UPDATE contrato_produtos_modalidades
-          SET quantidade_consumida = quantidade_consumida + $1,
-              quantidade_disponivel = quantidade_inicial - (quantidade_consumida + $1),
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
-          RETURNING quantidade_consumida, quantidade_disponivel
-        `, [quantidadeNumerica, id]);
+        await registrarMovimentoContratoProduto(client, {
+          contratoProdutoId: Number(saldo.contrato_produto_id),
+          modalidadeFinanceiraId: saldo.modalidade_financeira_id === null ? null : Number(saldo.modalidade_financeira_id),
+          tipoMovimento: "SAIDA_CONSUMO",
+          quantidade: quantidadeNumerica,
+          descricao: observacao || `Consumo manual em ${data_consumo || new Date().toISOString().split('T')[0]}`,
+          origemTipo: "saldo_contrato_modalidade_manual",
+          origemId: Number(id),
+          criadoPor: req.user?.id ?? usuario_id ?? null,
+        });
 
-        await client.query(`
-          INSERT INTO contrato_produtos_modalidades_historico
-          (contrato_produto_modalidade_id, quantidade, data_consumo, observacao, usuario_id)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [id, quantidadeNumerica, data_consumo || new Date().toISOString().split('T')[0], observacao, usuario_id]);
+        const saldoAtualizadoResult = await client.query(`
+          SELECT quantidade_consumida, saldo_atual as quantidade_disponivel
+          FROM contrato_produto_saldos
+          WHERE id = $1
+        `, [id]);
 
         return {
           saldo,
@@ -777,17 +937,17 @@ class SaldoContratosModalidadesController {
         SELECT
           cpm.id,
           cpm.contrato_produto_id,
-          cpm.modalidade_id,
+          cpm.modalidade_financeira_id as modalidade_id,
           p.nome as produto_nome,
           COALESCE(um.codigo, 'UN') as unidade,
           m.nome as modalidade_nome,
           c.numero as contrato_numero
-        FROM contrato_produtos_modalidades cpm
+        FROM contrato_produto_saldos cpm
         JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
         JOIN produtos p ON cp.produto_id = p.id
         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN contratos c ON cp.contrato_id = c.id
-        JOIN modalidades m ON cpm.modalidade_id = m.id
+        LEFT JOIN modalidades m ON cpm.modalidade_financeira_id = m.id
         WHERE cpm.id = $1
       `, [id]);
 
@@ -803,15 +963,23 @@ class SaldoContratosModalidadesController {
       const historicoResult = await db.query(`
         SELECT 
           id,
+          tipo_movimento,
+          direcao,
           quantidade,
-          data_consumo,
-          observacao,
-          usuario_id,
-          created_at
-        FROM contrato_produtos_modalidades_historico
-        WHERE contrato_produto_modalidade_id = $1
-        ORDER BY data_consumo DESC, created_at DESC
-      `, [id]);
+          saldo_antes,
+          saldo_depois,
+          criado_em::date as data_consumo,
+          descricao as observacao,
+          criado_por as usuario_id,
+          criado_em as created_at
+        FROM contrato_produto_ledger
+        WHERE contrato_produto_id = $1
+          AND (
+            (modalidade_financeira_id IS NULL AND $2::int IS NULL)
+            OR modalidade_financeira_id = $2::int
+          )
+        ORDER BY criado_em DESC, id DESC
+      `, [saldoResult.rows[0].contrato_produto_id, saldoResult.rows[0].modalidade_id]);
 
       res.json({
         success: true,
@@ -843,11 +1011,17 @@ class SaldoContratosModalidadesController {
       await db.transaction(async (client) => {
         const consumoResult = await client.query(`
           SELECT
-            id,
-            contrato_produto_modalidade_id,
-            quantidade
-          FROM contrato_produtos_modalidades_historico
-          WHERE id = $1 AND contrato_produto_modalidade_id = $2
+            l.id,
+            l.contrato_produto_id,
+            l.modalidade_financeira_id,
+            l.quantidade
+          FROM contrato_produto_ledger l
+          JOIN contrato_produto_saldos s ON s.contrato_produto_id = l.contrato_produto_id
+            AND (
+              (s.modalidade_financeira_id IS NULL AND l.modalidade_financeira_id IS NULL)
+              OR s.modalidade_financeira_id = l.modalidade_financeira_id
+            )
+          WHERE l.id = $1 AND s.id = $2
           FOR UPDATE
         `, [consumoId, id]);
 
@@ -858,24 +1032,22 @@ class SaldoContratosModalidadesController {
         }
 
         const consumo = consumoResult.rows[0];
-
-        await client.query(`
-          UPDATE contrato_produtos_modalidades
-          SET quantidade_consumida = GREATEST(quantidade_consumida - $1, 0),
-              quantidade_disponivel = quantidade_inicial - GREATEST(quantidade_consumida - $1, 0),
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
-        `, [consumo.quantidade, id]);
-
-        await client.query(`
-          DELETE FROM contrato_produtos_modalidades_historico
-          WHERE id = $1
-        `, [consumoId]);
+        await registrarMovimentoContratoProduto(client, {
+          contratoProdutoId: Number(consumo.contrato_produto_id),
+          modalidadeFinanceiraId: consumo.modalidade_financeira_id === null ? null : Number(consumo.modalidade_financeira_id),
+          tipoMovimento: "ESTORNO",
+          quantidade: Number(consumo.quantidade),
+          descricao: "Estorno de consumo manual",
+          origemTipo: "saldo_contrato_modalidade_estorno",
+          origemId: Number(id),
+          movimentoReferenciadoId: Number(consumo.id),
+          criadoPor: req.user?.id ?? null,
+        });
       });
 
       res.json({
         success: true,
-        message: 'Consumo excluido com sucesso'
+        message: 'Consumo estornado com sucesso'
       });
     } catch (error) {
       console.error('Erro ao excluir consumo:', error);

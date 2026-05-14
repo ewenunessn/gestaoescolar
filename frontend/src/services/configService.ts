@@ -23,6 +23,21 @@ export interface AvisosModuloSaldo {
   movimentacoes_itens: number;
 }
 
+export interface ConfiguracaoAlocacaoAgricultura {
+  ativo: boolean;
+  percentual_agricultura: number;
+  modalidade_base_ids: number[];
+  fornecedor_tipos_agricultura: string[];
+  distribuir_excedente: boolean;
+}
+
+export interface ModalidadeConfigAlocacao {
+  id: number;
+  nome: string;
+  valor_repasse: number;
+  codigo_financeiro?: string;
+}
+
 class ConfigService {
   private readonly MODULO_SALDO_CHAVE = 'modulo_saldo_contratos';
 
@@ -137,6 +152,24 @@ class ConfigService {
       config: response.data.data,
       avisos: response.data.avisos
     };
+  }
+
+  async buscarConfiguracaoAlocacaoAgricultura(): Promise<{
+    config: ConfiguracaoAlocacaoAgricultura;
+    modalidades_base_resolvidas: ModalidadeConfigAlocacao[];
+    modalidades: ModalidadeConfigAlocacao[];
+  }> {
+    const response = await api.get('/faturamentos/alocacao-automatica/config');
+    return response.data.data;
+  }
+
+  async salvarConfiguracaoAlocacaoAgricultura(config: ConfiguracaoAlocacaoAgricultura): Promise<{
+    config: ConfiguracaoAlocacaoAgricultura;
+    modalidades_base_resolvidas: ModalidadeConfigAlocacao[];
+  }> {
+    const response = await api.put('/faturamentos/alocacao-automatica/config', config);
+    this.limparCache();
+    return response.data.data;
   }
 }
 

@@ -13,8 +13,11 @@ import { config } from "./config/config";
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authenticatedUserLimiter, ipLimiter, loginLimiter } from './middleware/rateLimiter';
 import { balancedCompression } from './middleware/compression';
+import { apiResponseEnvelope } from './http/apiResponse';
+import { registerOpenApiDocs } from './openapi/apiDocs';
 
-import { ensureAdminTables, requireAdmin } from "./modules/usuarios/controllers/adminUsuariosController";
+import { requireAdmin } from "./middleware/adminMiddleware";
+import { ensureAdminTables } from "./modules/usuarios/services/adminUsuariosSchema";
 import { registerBffRoutes } from "./bff/registerBffRoutes";
 import { gatewayClientChannelMiddleware } from "./gateway/clientChannel";
 import { registerApiRoutes } from "./routes/registerApiRoutes";
@@ -58,6 +61,7 @@ const app = express();
 app.use(cors(corsOptions));
 // Responder OPTIONS imediatamente para preflight
 app.options('*', cors(corsOptions));
+app.use(apiResponseEnvelope);
 
 // Rate limit por IP antes de JSON/auth para barrar abuso com baixo custo.
 app.use((req, res, next) => {
@@ -66,6 +70,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '10mb' }));
+registerOpenApiDocs(app);
 
 // Limite especifico para login nos aliases legados.
 app.post(['/api/auth/login', '/api/usuarios/login'], loginLimiter);

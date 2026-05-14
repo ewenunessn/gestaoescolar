@@ -12,20 +12,16 @@ const {
   buscarEscola,
   criarEscola,
   editarEscola,
-  removerEscola
+  removerEscola,
 } = escolaController;
 
-if (!listarEscolas || !buscarEscola || !criarEscola || !editarEscola || !removerEscola) {
-  throw new Error("Controladores de escolas não carregados corretamente");
-}
-
-// Rotas de LEITURA - Qualquer usuário autenticado pode acessar
+// Rotas de LEITURA - Qualquer usuario autenticado pode acessar
 router.get("/", listarEscolas);
 router.get("/:id", buscarEscola);
 
 // Rotas de ESCRITA
-router.post("/", requireEscrita('escolas'), criarEscola);
-router.put("/:id", requireEscrita('escolas'), editarEscola);
-router.delete("/:id", requireEscrita('escolas'), removerEscola);
+router.post("/", requireEscrita("escolas"), criarEscola);
+router.put("/:id", requireEscrita("escolas"), editarEscola);
+router.delete("/:id", requireEscrita("escolas"), removerEscola);
 
 export default router;

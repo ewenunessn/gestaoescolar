@@ -6,8 +6,10 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   CircularProgress,
   FormControl,
+  FormControlLabel,
   Grid,
   IconButton,
   InputLabel,
@@ -36,6 +38,10 @@ import {
   uploadLogoBase64,
 } from "../../../services/instituicao";
 import configService, { AvisosModuloSaldo, ConfiguracaoModuloSaldo } from "../../../services/configService";
+import type {
+  ConfiguracaoAlocacaoAgricultura,
+  ModalidadeConfigAlocacao,
+} from "../../../services/configService";
 import { useConfigContext } from "../../../contexts/ConfigContext";
 
 const sectionTitleSx = {
@@ -65,6 +71,14 @@ const emptyForm: InstituicaoForm = {
   departamento: "",
 };
 
+const defaultAlocacaoAgriculturaConfig: ConfiguracaoAlocacaoAgricultura = {
+  ativo: true,
+  percentual_agricultura: 45,
+  modalidade_base_ids: [],
+  fornecedor_tipos_agricultura: ["cooperativa", "individual"],
+  distribuir_excedente: true,
+};
+
 const ConfiguracaoInstituicaoPage: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
@@ -72,12 +86,16 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingSaldo, setSavingSaldo] = useState(false);
+  const [savingAlocacao, setSavingAlocacao] = useState(false);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<InstituicaoForm>(emptyForm);
   const [saldoConfig, setSaldoConfig] = useState<ConfiguracaoModuloSaldo>(configModuloSaldo);
   const [saldoAvisos, setSaldoAvisos] = useState<AvisosModuloSaldo | null>(null);
+  const [alocacaoConfig, setAlocacaoConfig] = useState<ConfiguracaoAlocacaoAgricultura>(defaultAlocacaoAgriculturaConfig);
+  const [modalidadesAlocacao, setModalidadesAlocacao] = useState<ModalidadeConfigAlocacao[]>([]);
+  const [modalidadesBaseResolvidas, setModalidadesBaseResolvidas] = useState<ModalidadeConfigAlocacao[]>([]);
 
   useEffect(() => {
     loadData();
@@ -102,6 +120,10 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       setLogoPreview(data.logo_url || null);
       await recarregarConfig();
       setSaldoAvisos(await configService.buscarAvisosModuloSaldo());
+      const alocacao = await configService.buscarConfiguracaoAlocacaoAgricultura();
+      setAlocacaoConfig(alocacao.config || defaultAlocacaoAgriculturaConfig);
+      setModalidadesAlocacao(alocacao.modalidades || []);
+      setModalidadesBaseResolvidas(alocacao.modalidades_base_resolvidas || []);
     } catch (err) {
       toast.toast.error("Erro ao carregar configuracoes da instituicao");
       console.error(err);
@@ -191,6 +213,21 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       console.error(err);
     } finally {
       setSavingSaldo(false);
+    }
+  };
+
+  const handleSalvarAlocacaoConfig = async () => {
+    try {
+      setSavingAlocacao(true);
+      const response = await configService.salvarConfiguracaoAlocacaoAgricultura(alocacaoConfig);
+      setAlocacaoConfig(response.config);
+      setModalidadesBaseResolvidas(response.modalidades_base_resolvidas || []);
+      toast.toast.success("Regra de alocacao salva");
+    } catch (err: any) {
+      toast.toast.error(err.response?.data?.message || "Erro ao salvar regra de alocacao");
+      console.error(err);
+    } finally {
+      setSavingAlocacao(false);
     }
   };
 
@@ -357,6 +394,129 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
                       startIcon={savingSaldo ? <CircularProgress size={18} /> : <SaveIcon />}
                     >
                       {savingSaldo ? "Salvando..." : "Salvar modo de saldo"}
+                    </Button>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <SectionTitle label="Alocacao da Agricultura Familiar" />
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Configure a reserva usada pelo faturamento automatico para fornecedores da agricultura familiar.
+                  A regra fica registrada no faturamento quando a alocacao automatica e aplicada.
+                </Typography>
+
+                {modalidadesBaseResolvidas.length > 0 && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Bases FNDE atuais: {modalidadesBaseResolvidas.map((modalidade) => modalidade.nome).join(", ")}.
+                    Repasse somado {modalidadesBaseResolvidas.reduce((sum, modalidade) => sum + Number(modalidade.valor_repasse || 0), 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.
+                  </Alert>
+                )}
+
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={3}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={alocacaoConfig.ativo}
+                          onChange={(event) => setAlocacaoConfig((prev) => ({ ...prev, ativo: event.target.checked }))}
+                        />
+                      }
+                      label="Usar regra"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      label="% reservado"
+                      type="number"
+                      fullWidth
+                      value={alocacaoConfig.percentual_agricultura}
+                      onChange={(event) => setAlocacaoConfig((prev) => ({
+                        ...prev,
+                        percentual_agricultura: Number(event.target.value),
+                      }))}
+                      inputProps={{ min: 0, max: 100, step: 0.01 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Modalidades base FNDE</InputLabel>
+                      <Select
+                        multiple
+                        label="Modalidades base FNDE"
+                        value={alocacaoConfig.modalidade_base_ids}
+                        onChange={(event) => setAlocacaoConfig((prev) => ({
+                          ...prev,
+                          modalidade_base_ids: typeof event.target.value === "string"
+                            ? event.target.value.split(",").map(Number).filter(Boolean)
+                            : event.target.value.map(Number),
+                        }))}
+                        renderValue={(selected) => {
+                          const ids = new Set((selected as number[]).map(Number));
+                          const nomes = modalidadesAlocacao
+                            .filter((modalidade) => ids.has(Number(modalidade.id)))
+                            .map((modalidade) => modalidade.nome);
+                          return nomes.length > 0 ? nomes.join(", ") : "Detectar automaticamente";
+                        }}
+                      >
+                        {modalidadesAlocacao.map((modalidade) => (
+                          <MenuItem key={modalidade.id} value={modalidade.id}>
+                            {modalidade.nome}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Tipos da agricultura</InputLabel>
+                      <Select
+                        multiple
+                        label="Tipos da agricultura"
+                        value={alocacaoConfig.fornecedor_tipos_agricultura}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setAlocacaoConfig((prev) => ({
+                            ...prev,
+                            fornecedor_tipos_agricultura: typeof value === "string" ? value.split(",") : value,
+                          }));
+                        }}
+                        renderValue={(selected) => (selected as string[]).join(", ")}
+                      >
+                        <MenuItem value="empresa">Empresa</MenuItem>
+                        <MenuItem value="cooperativa">Cooperativa</MenuItem>
+                        <MenuItem value="individual">Individual</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={alocacaoConfig.distribuir_excedente}
+                          onChange={(event) => setAlocacaoConfig((prev) => ({
+                            ...prev,
+                            distribuir_excedente: event.target.checked,
+                          }))}
+                        />
+                      }
+                      label="Distribuir excedente"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="add"
+                      onClick={handleSalvarAlocacaoConfig}
+                      disabled={savingAlocacao}
+                      startIcon={savingAlocacao ? <CircularProgress size={18} /> : <SaveIcon />}
+                    >
+                      {savingAlocacao ? "Salvando..." : "Salvar regra"}
                     </Button>
                   </Grid>
                 </Grid>

@@ -154,3 +154,36 @@ export type DemandResponse = {
   }>;
   avisos?: string[];
 };
+
+export type StockMovement = {
+  id: number;
+  schoolId?: number;
+  schoolName?: string;
+  productId: number;
+  productName: string;
+  productUnit: string;
+  movementType: string;
+  quantity: string;
+  quantityDelta: string;
+  occurredAt: string;
+  description?: string;
+  referenceDocument?: string;
+  sourceSchoolId?: number;
+  sourceSchool?: string;
+  destinationSchoolId?: number;
+  destinationSchool?: string;
+  transferGroupId?: string;
+  createdAt: string;
+};
+
+export type CentralStockBalance = {
+  productId: number;
+  productName: string;
+  productUnit: string;
+  quantity: string;
+};
+
+export type SchoolStockBalance = CentralStockBalance & {
+  schoolId: number;
+  schoolName: string;
+};

@@ -5,16 +5,7 @@ import { cacheService } from '../../../utils/cacheService';
 
 async function resolverCategoriaFinanceira(body: any) {
   if (body.categoria_financeira_id) {
-    const id = Number(body.categoria_financeira_id);
-    await db.query(`
-      UPDATE categorias_financeiras_modalidade
-      SET codigo_financeiro = $1,
-          valor_repasse = $2,
-          parcelas = $3,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
-    `, [body.codigo_financeiro || null, Number(body.valor_repasse) || 0, Number(body.parcelas) || 1, id]);
-    return id;
+    return Number(body.categoria_financeira_id);
   }
 
   const nomeCategoria = String(body.categoria_financeira_nome || '').trim();
@@ -32,6 +23,67 @@ async function resolverCategoriaFinanceira(body: any) {
   return null;
 }
 
+function resolverCategoriasFinanceirasIds(body: any): number[] {
+  const origem = Array.isArray(body.categorias_financeiras_ids)
+    ? body.categorias_financeiras_ids
+    : Array.isArray(body.categoria_financeira_ids)
+      ? body.categoria_financeira_ids
+      : body.categoria_financeira_id
+        ? [body.categoria_financeira_id]
+        : [];
+
+  return Array.from(new Set<number>(
+    origem
+      .map((id: any) => Number(id))
+      .filter((id: number) => Number.isInteger(id) && id > 0)
+  ));
+}
+
+async function sincronizarCategoriasFinanceiras(modalidadeId: number, categoriaIds: number[]) {
+  if (categoriaIds.length === 0) return;
+
+  await db.query(
+    'UPDATE modalidade_categorias_financeiras SET ativo = false, updated_at = CURRENT_TIMESTAMP WHERE modalidade_id = $1',
+    [modalidadeId]
+  );
+
+  for (const categoriaId of categoriaIds) {
+    await db.query(`
+      INSERT INTO modalidade_categorias_financeiras (modalidade_id, categoria_financeira_id, ativo, created_at, updated_at)
+      VALUES ($1, $2, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (modalidade_id, categoria_financeira_id) DO UPDATE
+        SET ativo = true,
+            updated_at = CURRENT_TIMESTAMP
+    `, [modalidadeId, categoriaId]);
+  }
+}
+
+async function resolverOrigemRepasse(body: any) {
+  if (body.origem_repasse_id) return Number(body.origem_repasse_id);
+
+  const nomeOrigem = String(body.origem_repasse_nome || body.nome || '').replace(/\s+/g, ' ').trim();
+  if (!nomeOrigem) return null;
+
+  const codigo = String(body.origem_repasse_codigo || body.codigo || nomeOrigem)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase()
+    .slice(0, 40);
+
+  const result = await db.query(`
+    INSERT INTO origens_repasse (nome, codigo, customizada, ativo)
+    VALUES ($1, $2, true, true)
+    ON CONFLICT (nome) DO UPDATE
+      SET ativo = true,
+          updated_at = CURRENT_TIMESTAMP
+    RETURNING id
+  `, [nomeOrigem, codigo || null]);
+
+  return result.rows[0]?.id ?? null;
+}
+
 export async function listarModalidades(req: Request, res: Response) {
   try {
     const cached = await cacheService.get('modalidades:list:all');
@@ -47,21 +99,43 @@ export async function listarModalidades(req: Request, res: Response) {
         m.id,
         m.nome,
         m.descricao,
-        m.categoria_financeira_id,
-        cfm.nome as categoria_financeira_nome,
-        COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
-        COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
-        COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+        categorias_financeiras.ids[1] as categoria_financeira_id,
+        COALESCE(categorias_financeiras.ids, ARRAY[]::integer[]) as categorias_financeiras_ids,
+        COALESCE(categorias_financeiras.itens, '[]'::jsonb) as categorias_financeiras,
+        categorias_financeiras.nomes as categoria_financeira_nome,
+        categorias_financeiras.codigos as codigo_financeiro,
+        COALESCE(categorias_financeiras.valor_repasse, 0) as valor_repasse,
+        COALESCE(categorias_financeiras.parcelas, 1) as parcelas,
         m.ativo,
         m.created_at,
         m.updated_at,
         COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
         COUNT(em.id) as total_escolas
       FROM modalidades m
-      LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+      LEFT JOIN LATERAL (
+        SELECT
+          ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+          JSONB_AGG(JSONB_BUILD_OBJECT(
+            'id', cfmv.id,
+            'nome', cfmv.nome,
+            'codigo_financeiro', cfmv.codigo_financeiro,
+            'valor_repasse', cfmv.valor_repasse,
+            'parcelas', cfmv.parcelas,
+            'origem_repasse_id', cfmv.origem_repasse_id
+          ) ORDER BY cfmv.nome) as itens,
+          STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+          STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos,
+          SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse,
+          MAX(COALESCE(cfmv.parcelas, 1)) as parcelas
+        FROM modalidade_categorias_financeiras mcf
+        JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+        WHERE mcf.modalidade_id = m.id
+          AND mcf.ativo = true
+          AND cfmv.ativo = true
+      ) categorias_financeiras ON true
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
       ${whereClause}
-      GROUP BY m.id, m.nome, m.descricao, m.categoria_financeira_id, cfm.nome, cfm.codigo_financeiro, cfm.valor_repasse, cfm.parcelas, m.codigo_financeiro, m.valor_repasse, m.parcelas, m.ativo, m.created_at, m.updated_at
+      GROUP BY m.id, m.nome, m.descricao, categorias_financeiras.ids, categorias_financeiras.itens, categorias_financeiras.nomes, categorias_financeiras.codigos, categorias_financeiras.valor_repasse, categorias_financeiras.parcelas, m.ativo, m.created_at, m.updated_at
       ORDER BY m.nome
     `, params);
 
@@ -94,21 +168,43 @@ export async function buscarModalidade(req: Request, res: Response) {
         m.id,
         m.nome,
         m.descricao,
-        m.categoria_financeira_id,
-        cfm.nome as categoria_financeira_nome,
-        COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
-        COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
-        COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+        categorias_financeiras.ids[1] as categoria_financeira_id,
+        COALESCE(categorias_financeiras.ids, ARRAY[]::integer[]) as categorias_financeiras_ids,
+        COALESCE(categorias_financeiras.itens, '[]'::jsonb) as categorias_financeiras,
+        categorias_financeiras.nomes as categoria_financeira_nome,
+        categorias_financeiras.codigos as codigo_financeiro,
+        COALESCE(categorias_financeiras.valor_repasse, 0) as valor_repasse,
+        COALESCE(categorias_financeiras.parcelas, 1) as parcelas,
         m.ativo,
         m.created_at,
         m.updated_at,
         COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
         COUNT(em.id) as total_escolas
       FROM modalidades m
-      LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+      LEFT JOIN LATERAL (
+        SELECT
+          ARRAY_AGG(cfmv.id ORDER BY cfmv.nome) as ids,
+          JSONB_AGG(JSONB_BUILD_OBJECT(
+            'id', cfmv.id,
+            'nome', cfmv.nome,
+            'codigo_financeiro', cfmv.codigo_financeiro,
+            'valor_repasse', cfmv.valor_repasse,
+            'parcelas', cfmv.parcelas,
+            'origem_repasse_id', cfmv.origem_repasse_id
+          ) ORDER BY cfmv.nome) as itens,
+          STRING_AGG(cfmv.nome, ', ' ORDER BY cfmv.nome) as nomes,
+          STRING_AGG(cfmv.codigo_financeiro, ', ' ORDER BY cfmv.nome) FILTER (WHERE cfmv.codigo_financeiro IS NOT NULL) as codigos,
+          SUM(COALESCE(cfmv.valor_repasse, 0)) as valor_repasse,
+          MAX(COALESCE(cfmv.parcelas, 1)) as parcelas
+        FROM modalidade_categorias_financeiras mcf
+        JOIN categorias_financeiras_modalidade cfmv ON cfmv.id = mcf.categoria_financeira_id
+        WHERE mcf.modalidade_id = m.id
+          AND mcf.ativo = true
+          AND cfmv.ativo = true
+      ) categorias_financeiras ON true
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
       WHERE m.id = $1
-      GROUP BY m.id, m.nome, m.descricao, m.categoria_financeira_id, cfm.nome, cfm.codigo_financeiro, cfm.valor_repasse, cfm.parcelas, m.codigo_financeiro, m.valor_repasse, m.parcelas, m.ativo, m.created_at, m.updated_at
+      GROUP BY m.id, m.nome, m.descricao, categorias_financeiras.ids, categorias_financeiras.itens, categorias_financeiras.nomes, categorias_financeiras.codigos, categorias_financeiras.valor_repasse, categorias_financeiras.parcelas, m.ativo, m.created_at, m.updated_at
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -139,14 +235,17 @@ export async function criarModalidade(req: Request, res: Response) {
     const {
       nome,
       descricao,
-      codigo_financeiro,
-      valor_repasse = 0,
-      parcelas = 1,
       ativo = true
     } = req.body;
     const categoriaFinanceiraId = await resolverCategoriaFinanceira(req.body);
+    const categoriasFinanceirasIds = resolverCategoriasFinanceirasIds(req.body);
+    const categoriasFinanceirasFinal = categoriasFinanceirasIds.length > 0
+      ? categoriasFinanceirasIds
+      : categoriaFinanceiraId
+        ? [categoriaFinanceiraId]
+        : [];
 
-    if (!categoriaFinanceiraId) {
+    if (categoriasFinanceirasFinal.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Informe uma categoria financeira válida"
@@ -154,10 +253,12 @@ export async function criarModalidade(req: Request, res: Response) {
     }
 
     const result = await db.query(`
-      INSERT INTO modalidades (nome, descricao, categoria_financeira_id, codigo_financeiro, valor_repasse, parcelas, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      INSERT INTO modalidades (nome, descricao, ativo, created_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, descricao || null, categoriaFinanceiraId, codigo_financeiro, valor_repasse, parcelas, ativo]);
+    `, [nome, descricao || null, ativo]);
+
+    await sincronizarCategoriasFinanceiras(Number(result.rows[0].id), categoriasFinanceirasFinal);
 
     res.json({
       success: true,
@@ -182,15 +283,17 @@ export async function editarModalidade(req: Request, res: Response) {
       nome,
       descricao,
       categoria_financeira_id,
-      codigo_financeiro,
-      valor_repasse,
-      parcelas,
       ativo
     } = req.body;
     const categoriaFinanceiraId = await resolverCategoriaFinanceira(req.body);
-    const categoriaFinanceiraFinal = categoriaFinanceiraId ?? categoria_financeira_id ?? null;
+    const categoriasFinanceirasIds = resolverCategoriasFinanceirasIds(req.body);
+    const categoriasFinanceirasFinal = categoriasFinanceirasIds.length > 0
+      ? categoriasFinanceirasIds
+      : categoriaFinanceiraId ?? categoria_financeira_id
+        ? [Number(categoriaFinanceiraId ?? categoria_financeira_id)]
+        : [];
 
-    if (!categoriaFinanceiraFinal) {
+    if (categoriasFinanceirasFinal.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Informe uma categoria financeira válida"
@@ -201,15 +304,11 @@ export async function editarModalidade(req: Request, res: Response) {
       UPDATE modalidades SET
         nome = $1,
         descricao = $2,
-        categoria_financeira_id = $3,
-        codigo_financeiro = $4,
-        valor_repasse = $5,
-        parcelas = $6,
-        ativo = $7,
+        ativo = $3,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+      WHERE id = $4
       RETURNING *
-    `, [nome, descricao || null, categoriaFinanceiraFinal, codigo_financeiro, valor_repasse, parcelas, ativo, id]);
+    `, [nome, descricao || null, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -217,6 +316,8 @@ export async function editarModalidade(req: Request, res: Response) {
         message: "Modalidade não encontrada"
       });
     }
+
+    await sincronizarCategoriasFinanceiras(Number(id), categoriasFinanceirasFinal);
 
     res.json({
       success: true,
@@ -344,10 +445,20 @@ export async function listarCategoriasFinanceirasModalidade(req: Request, res: R
         codigo_financeiro,
         valor_repasse,
         parcelas,
+        origem_repasse_id,
+        origem_repasse_nome,
+        origem_repasse_codigo,
         ativo,
         created_at,
         updated_at
-      FROM categorias_financeiras_modalidade
+      FROM (
+        SELECT
+          cfm.*,
+          ore.nome as origem_repasse_nome,
+          ore.codigo as origem_repasse_codigo
+        FROM categorias_financeiras_modalidade cfm
+        LEFT JOIN origens_repasse ore ON ore.id = cfm.origem_repasse_id
+      ) categorias
       WHERE ativo = true
       ORDER BY nome
     `);
@@ -374,6 +485,8 @@ export async function criarCategoriaFinanceiraModalidade(req: Request, res: Resp
       codigo_financeiro = null,
       valor_repasse = 0,
       parcelas = 1,
+      origem_repasse_id = null,
+      origem_repasse_nome = null,
       ativo = true
     } = req.body;
     const nomeNormalizado = String(nome || '').replace(/\s+/g, ' ').trim();
@@ -398,12 +511,14 @@ export async function criarCategoriaFinanceiraModalidade(req: Request, res: Resp
       });
     }
 
+    const origemRepasseId = await resolverOrigemRepasse({ origem_repasse_id, origem_repasse_nome });
+
     const result = await db.query(`
       INSERT INTO categorias_financeiras_modalidade
-        (nome, codigo_financeiro, valor_repasse, parcelas, ativo, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id, nome, codigo_financeiro, valor_repasse, parcelas, ativo, created_at, updated_at
-    `, [nomeNormalizado, codigo_financeiro || null, Number(valor_repasse) || 0, Number(parcelas) || 1, ativo]);
+        (nome, codigo_financeiro, valor_repasse, parcelas, origem_repasse_id, ativo, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id, nome, codigo_financeiro, valor_repasse, parcelas, origem_repasse_id, ativo, created_at, updated_at
+    `, [nomeNormalizado, codigo_financeiro || null, Number(valor_repasse) || 0, Number(parcelas) || 1, origemRepasseId, ativo]);
 
     cacheService.invalidateEntity('modalidades');
 
@@ -417,6 +532,160 @@ export async function criarCategoriaFinanceiraModalidade(req: Request, res: Resp
     res.status(500).json({
       success: false,
       message: "Erro ao criar categoria financeira",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function editarCategoriaFinanceiraModalidade(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const {
+      nome,
+      codigo_financeiro = null,
+      valor_repasse = 0,
+      parcelas = 1,
+      origem_repasse_id = null,
+      origem_repasse_nome = null,
+      ativo = true
+    } = req.body;
+    const nomeNormalizado = String(nome || '').replace(/\s+/g, ' ').trim();
+
+    if (!nomeNormalizado) {
+      return res.status(400).json({
+        success: false,
+        message: "Nome da modalidade financeira e obrigatorio"
+      });
+    }
+
+    const origemRepasseId = await resolverOrigemRepasse({ origem_repasse_id, origem_repasse_nome });
+    const result = await db.query(`
+      UPDATE categorias_financeiras_modalidade
+      SET nome = $1,
+          codigo_financeiro = $2,
+          valor_repasse = $3,
+          parcelas = $4,
+          origem_repasse_id = $5,
+          ativo = $6,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      RETURNING id, nome, codigo_financeiro, valor_repasse, parcelas, origem_repasse_id, ativo, created_at, updated_at
+    `, [nomeNormalizado, codigo_financeiro || null, Number(valor_repasse) || 0, Number(parcelas) || 1, origemRepasseId, ativo, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Modalidade financeira nao encontrada"
+      });
+    }
+
+    cacheService.invalidateEntity('modalidades');
+    res.json({
+      success: true,
+      message: "Modalidade financeira atualizada com sucesso",
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Erro ao editar modalidade financeira:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao editar modalidade financeira",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function removerCategoriaFinanceiraModalidade(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const result = await db.query(`
+      UPDATE categorias_financeiras_modalidade
+      SET ativo = false,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, nome, codigo_financeiro, valor_repasse, parcelas, origem_repasse_id, ativo, created_at, updated_at
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Modalidade financeira nao encontrada"
+      });
+    }
+
+    await db.query(`
+      UPDATE modalidade_categorias_financeiras
+      SET ativo = false,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE categoria_financeira_id = $1
+    `, [id]);
+
+    cacheService.invalidateEntity('modalidades');
+    res.json({
+      success: true,
+      message: "Modalidade financeira removida com sucesso",
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Erro ao remover modalidade financeira:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao remover modalidade financeira",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function listarOrigensRepasse(req: Request, res: Response) {
+  try {
+    const result = await db.query(`
+      SELECT id, nome, codigo, customizada, ativo, created_at, updated_at
+      FROM origens_repasse
+      WHERE ativo = true
+      ORDER BY customizada, nome
+    `);
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error("Erro ao listar origens de repasse:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao listar origens de repasse",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function criarOrigemRepasse(req: Request, res: Response) {
+  try {
+    const origemId = await resolverOrigemRepasse(req.body || {});
+    if (!origemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Nome da origem do repasse e obrigatorio"
+      });
+    }
+
+    const result = await db.query(`
+      SELECT id, nome, codigo, customizada, ativo, created_at, updated_at
+      FROM origens_repasse
+      WHERE id = $1
+    `, [origemId]);
+
+    res.status(201).json({
+      success: true,
+      message: "Origem do repasse criada com sucesso",
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Erro ao criar origem de repasse:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao criar origem de repasse",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

@@ -344,7 +344,7 @@ const GuiasDemandaLista: React.FC = () => {
     }
     
     if (cardapiosDisponiveis.length > 0 && cardapiosSelecionados.length === 0) {
-      toast.warning('Selecione ao menos um cardÃƒÂ¡pio para gerar a guia');
+      toast.warning('Selecione ao menos um cardápio para gerar a guia');
       return;
     }
 

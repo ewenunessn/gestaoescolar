@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import PageHeader from "../../../components/PageHeader";
@@ -194,10 +194,12 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }: ContratoInfoCard
 export default function ContratoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   
   // Detectar de onde o usuário veio
+  const backTo = (location.state as { backTo?: string } | null)?.backTo;
   const fromFornecedor = searchParams.get('from') === 'fornecedor';
   const fornecedorId = searchParams.get('fornecedor_id');
 
@@ -278,12 +280,14 @@ export default function ContratoDetalhe() {
 
   // Função para navegar de volta
   const handleVoltar = useCallback(() => {
-    if (fromFornecedor && fornecedorId) {
+    if (backTo) {
+      navigate(backTo);
+    } else if (fromFornecedor && fornecedorId) {
       navigate(`/fornecedores/${fornecedorId}`);
     } else {
       navigate('/contratos');
     }
-  }, [navigate, fromFornecedor, fornecedorId]);
+  }, [navigate, backTo, fromFornecedor, fornecedorId]);
 
   const carregarDados = useCallback(async () => {
     if (!id || isNaN(Number(id))) {
